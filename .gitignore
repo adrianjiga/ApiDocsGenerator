@@ -6,7 +6,7 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 
-# Generated documentation (api-doc-gen)
+# Generated documentation (api-docs-generator)
 examples/docs/
 docs/
 .output/

@@ -5,7 +5,7 @@
   "description": "Auto-generates API documentation from JavaScript/TypeScript source code",
   "main": "src/index.js",
   "bin": {
-    "api-doc-gen": "./bin/api-doc-gen"
+    "api-docs-generator": "./bin/api-docs-generator"
   },
   "scripts": {
     "start": "node src/cli.js",
