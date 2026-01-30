@@ -1,15 +1,17 @@
-# api-doc-gen
+# api-docs-generator
 
 A powerful Node.js CLI tool that auto-generates API documentation from JavaScript/TypeScript source code. Extracts function signatures, JSDoc comments, and Express/Fastify routes to produce beautiful documentation in multiple formats.
 
 ## Features
 
 ✨ **Multiple Output Formats**
+
 - Markdown (`.md`) - For GitHub/documentation sites
 - HTML (`.html`) - Self-contained with built-in styling
 - JSON (`.json`) - Machine-readable for tool integration
 
 🔍 **Smart Code Analysis**
+
 - Extracts function signatures and parameters
 - Parses JSDoc comments automatically
 - Detects Express/Fastify API routes
@@ -17,6 +19,7 @@ A powerful Node.js CLI tool that auto-generates API documentation from JavaScrip
 - Generates usage examples
 
 📚 **Zero Configuration**
+
 - Works out of the box
 - Simple CLI interface
 - Sensible defaults for all options
@@ -25,13 +28,13 @@ A powerful Node.js CLI tool that auto-generates API documentation from JavaScrip
 ## Installation
 
 ```bash
-npm install -g api-doc-gen
+npm install -g api-docs-generator
 ```
 
 Or use locally:
 
 ```bash
-npm install api-doc-gen
+npm install api-docs-generator
 npm run start -- generate --dir ./src --output ./docs
 ```
 
@@ -40,13 +43,13 @@ npm run start -- generate --dir ./src --output ./docs
 ### Generate Documentation
 
 ```bash
-api-doc-gen generate --dir ./src --output ./docs --formats markdown,html,json
+api-docs-generator generate --dir ./src --output ./docs --formats markdown,html,json
 ```
 
 ### Scan for APIs (Preview)
 
 ```bash
-api-doc-gen scan ./src
+api-docs-generator scan ./src
 ```
 
 ## Usage
@@ -56,7 +59,7 @@ api-doc-gen scan ./src
 Generate API documentation from source code.
 
 ```bash
-api-doc-gen generate [options]
+api-docs-generator generate [options]
 ```
 
 **Options:**
@@ -70,16 +73,16 @@ api-doc-gen generate [options]
 
 ```bash
 # Generate all formats in default directories
-api-doc-gen generate
+api-docs-generator generate
 
 # Custom source and output directories
-api-doc-gen generate --dir ./src --output ./api-docs
+api-docs-generator generate --dir ./src --output ./api-docs
 
 # Markdown only
-api-doc-gen generate --dir ./src --formats markdown
+api-docs-generator generate --dir ./src --formats markdown
 
 # Multiple formats
-api-doc-gen generate --formats markdown,html,json
+api-docs-generator generate --formats markdown,html,json
 ```
 
 ### Command: `scan`
@@ -87,17 +90,17 @@ api-doc-gen generate --formats markdown,html,json
 Scan a directory and display found APIs without generating documentation.
 
 ```bash
-api-doc-gen scan [directory]
+api-docs-generator scan [directory]
 ```
 
 **Examples:**
 
 ```bash
 # Scan current directory
-api-doc-gen scan
+api-docs-generator scan
 
 # Scan specific directory
-api-doc-gen scan ./src
+api-docs-generator scan ./src
 ```
 
 ## JSDoc Format
@@ -135,16 +138,17 @@ function sum(a, b) {
 The tool automatically detects Express and Fastify route definitions:
 
 ```javascript
-app.get('/users/:id', (req, res) => {
+app.get("/users/:id", (req, res) => {
   // route handler
 });
 
-app.post('/users', (req, res) => {
+app.post("/users", (req, res) => {
   // route handler
 });
 ```
 
 Supported HTTP methods:
+
 - `get()`
 - `post()`
 - `put()`
@@ -156,6 +160,7 @@ Supported HTTP methods:
 ### Markdown Output (`API.md`)
 
 Human-readable documentation with:
+
 - Table of contents
 - Function signatures and descriptions
 - Parameter details
@@ -165,6 +170,7 @@ Human-readable documentation with:
 ### HTML Output (`index.html`)
 
 Beautiful, self-contained HTML with:
+
 - Responsive design
 - Color-coded sections
 - Interactive navigation
@@ -174,6 +180,7 @@ Beautiful, self-contained HTML with:
 ### JSON Output (`api.json`)
 
 Machine-readable structured data with:
+
 - Metadata (generation timestamp, version)
 - All extracted functions and routes
 - JSDoc information
@@ -182,6 +189,7 @@ Machine-readable structured data with:
 ### Generation Report (`GENERATION_REPORT.md`)
 
 Summary of the documentation generation including:
+
 - File count statistics
 - Function and route counts
 - Generated file list
@@ -198,13 +206,13 @@ my-api/
 │   └── utils/
 │       └── helpers.js
 ├── package.json
-└── api-doc-gen.config.js (optional)
+└── api-docs-generator.config.js (optional)
 ```
 
 Generate documentation:
 
 ```bash
-api-doc-gen generate --dir ./src --output ./docs
+api-docs-generator generate --dir ./src --output ./docs
 ```
 
 Result:
@@ -231,33 +239,34 @@ async function getUserById(userId) {
   // implementation
 }
 
-const express = require('express');
+const express = require("express");
 const app = express();
 
 /**
  * Get all users
  */
-app.get('/users', (req, res) => {
+app.get("/users", (req, res) => {
   res.json([]);
 });
 
 /**
  * Create a new user
  */
-app.post('/users', (req, res) => {
-  res.json({ id: 'new-id' });
+app.post("/users", (req, res) => {
+  res.json({ id: "new-id" });
 });
 ```
 
 ### Run Generation
 
 ```bash
-api-doc-gen generate --dir ./src --output ./docs --formats markdown,html
+api-docs-generator generate --dir ./src --output ./docs --formats markdown,html
 ```
 
 ### Generated Documentation
 
 The tool will create:
+
 - `docs/API.md` - Comprehensive markdown guide
 - `docs/index.html` - Beautiful HTML documentation
 - `docs/api.json` - Structured data
@@ -266,6 +275,7 @@ The tool will create:
 ## Supported File Types
 
 The tool scans and parses:
+
 - `.js` - JavaScript files
 - `.ts` - TypeScript files
 - `.jsx` - React JavaScript
@@ -296,6 +306,7 @@ All options can be specified via command line flags. No configuration file is re
 ### No files found
 
 Make sure:
+
 - Directory path is correct
 - Files have `.js`, `.ts`, `.jsx`, or `.tsx` extensions
 - Check that `node_modules`, `dist`, `build` directories are not your only source files
@@ -303,6 +314,7 @@ Make sure:
 ### JSDoc not detected
 
 JSDoc comments must:
+
 - Use the `/** */` block comment format
 - Appear immediately before the function declaration
 - Be valid JSDoc syntax
@@ -310,6 +322,7 @@ JSDoc comments must:
 ### Routes not detected
 
 Express/Fastify routes must:
+
 - Use `app.get()`, `app.post()`, etc.
 - Have a string literal as the first argument
 - Follow standard Express route syntax
@@ -348,6 +361,7 @@ MIT
 ## Contributing
 
 Contributions welcome! Please:
+
 1. Fork the repository
 2. Create a feature branch
 3. Submit a pull request
@@ -355,6 +369,7 @@ Contributions welcome! Please:
 ## Support
 
 For issues and questions:
+
 - Check the examples directory
 - Review generated output formats
 - Ensure JSDoc is properly formatted
