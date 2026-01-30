@@ -1,5 +1,5 @@
 {
-  "name": "api-doc-gen",
+  "name": "api-docs-generator",
   "version": "1.0.0",
   "type": "module",
   "description": "Auto-generates API documentation from JavaScript/TypeScript source code",
@@ -11,14 +11,20 @@
     "start": "node src/cli.js",
     "test:sample": "node src/cli.js generate --dir ./examples --output ./examples/docs --formats markdown,html,json"
   },
-  "keywords": ["api", "documentation", "generator", "jsdoc", "cli"],
+  "keywords": [
+    "api",
+    "documentation",
+    "generator",
+    "jsdoc",
+    "cli"
+  ],
   "author": "Adrian Jiga",
   "license": "MIT",
   "dependencies": {
     "commander": "^14.0.2",
-    "fs-extra": "^11.3.3",
     "comment-parser": "^1.4.5",
-    "espree": "^11.1.0"
+    "espree": "^11.1.0",
+    "fs-extra": "^11.3.3"
   },
   "devDependencies": {
     "express": "^5.2.1"
