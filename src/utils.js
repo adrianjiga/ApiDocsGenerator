@@ -1,0 +1,59 @@
+/**
+ * Sanitize filename for use as HTML id attribute
+ * @param {string} str - String to sanitize
+ * @returns {string} Sanitized string safe for HTML id
+ */
+function sanitizeHtmlId(str) {
+  return str.replace(/\W+/g, '-').toLowerCase();
+}
+
+/**
+ * Extract variable/parameter name from complex destructuring
+ * @param {Object} param - Parameter node from AST
+ * @returns {string} Parameter name
+ */
+function getParamName(param) {
+  if (typeof param === 'string') return param;
+  if (param.name) return param.name;
+  if (param.type === 'RestElement') return '...' + getParamName(param.argument);
+  if (param.type === 'ObjectPattern') return '{...}';
+  if (param.type === 'ArrayPattern') return '[...]';
+  return 'arg';
+}
+
+/**
+ * Truncate long strings with ellipsis
+ * @param {string} str - String to truncate
+ * @param {number} maxLength - Maximum length
+ * @returns {string} Truncated string
+ */
+function truncate(str, maxLength = 100) {
+  if (str.length <= maxLength) return str;
+  return str.substring(0, maxLength) + '...';
+}
+
+/**
+ * Capitalize first letter of string
+ * @param {string} str - String to capitalize
+ * @returns {string} Capitalized string
+ */
+function capitalize(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+/**
+ * Format timestamp for display
+ * @param {Date} date - Date object
+ * @returns {string} Formatted date string
+ */
+function formatTimestamp(date = new Date()) {
+  return date.toISOString();
+}
+
+export {
+  sanitizeHtmlId,
+  getParamName,
+  truncate,
+  capitalize,
+  formatTimestamp
+};
