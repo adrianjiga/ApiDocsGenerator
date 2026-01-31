@@ -9,9 +9,14 @@
   },
   "scripts": {
     "start": "node src/cli.js",
-    "start:audit": "node src/cli.js audit --dir ./examples --output ./examples/audit-report.json",
-    "start:generate": "node src/cli.js generate --dir ./examples --output ./examples/docs --formats markdown,html,json",
-    "test:sample": "node src/cli.js generate --dir ./examples --output ./examples/docs --formats markdown,html,json"
+    "generate": "node src/cli.js generate --dir ./examples --output ./examples/docs --formats markdown,html,json",
+    "generate:markdown": "node src/cli.js generate --dir ./examples --output ./examples/docs --formats markdown",
+    "generate:html": "node src/cli.js generate --dir ./examples --output ./examples/docs --formats html",
+    "generate:json": "node src/cli.js generate --dir ./examples --output ./examples/docs --formats json",
+    "scan": "node src/cli.js scan ./examples",
+    "audit": "node src/cli.js audit --dir ./examples",
+    "audit:json": "node src/cli.js audit --dir ./examples --format json",
+    "audit:dashboard": "node src/cli.js audit --dir ./examples --format dashboard --output ./examples/docs/coverage-dashboard.html"
   },
   "keywords": [
     "api",
