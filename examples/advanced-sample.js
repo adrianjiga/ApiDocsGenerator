@@ -11,6 +11,7 @@ function safeParseJSON(jsonStr) {
   try {
     return JSON.parse(jsonStr);
   } catch (err) {
+    console.error('Failed to parse JSON:', err);
     return null;
   }
 }

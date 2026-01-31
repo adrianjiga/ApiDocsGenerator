@@ -14,8 +14,6 @@ function parseJSDoc(sourceCode) {
   try {
     // Use regex to find JSDoc comments in the source code
     const jsdocRegex = /\/\*\*\s*([\s\S]*?)\*\//g;
-    const lines = sourceCode.split('\n');
-    let currentLine = 0;
     let match;
 
     while ((match = jsdocRegex.exec(sourceCode)) !== null) {
@@ -40,6 +38,9 @@ function parseJSDoc(sourceCode) {
         }
       } catch (parseErr) {
         // JSDoc parse error - continue
+        console.warn(
+          `Warning: Failed to parse JSDoc at line ${lineNumber}: ${parseErr.message}`,
+        );
       }
     }
   } catch (err) {
@@ -177,7 +178,6 @@ function parseFile(filePath) {
   const fileName = path.basename(filePath);
   const jsdocs = parseJSDoc(sourceCode);
   const functions = extractFunctions(sourceCode);
-  const lines = sourceCode.split('\n');
 
   const api = {
     file: filePath,

@@ -366,7 +366,7 @@ function generateHTML(apiData) {
                 <h5>📥 Parameters</h5>`;
               params.forEach((param) => {
                 const cleanDesc = (param.description || '').replace(
-                  /^[\s\-]+/,
+                  /^[\s-]+/,
                   '',
                 );
                 html += `<div class="param-item"><span class="param-name">${param.name}</span> <code>${param.type || 'any'}</code> — ${cleanDesc}</div>`;
@@ -382,7 +382,7 @@ function generateHTML(apiData) {
                 <h5>📤 Returns</h5>`;
               returns.forEach((ret) => {
                 const cleanDesc = (ret.description || '').replace(
-                  /^[\s\-]+/,
+                  /^[\s-]+/,
                   '',
                 );
                 html += `<div class="param-item"><code>${ret.type || 'any'}</code> — ${cleanDesc}</div>`;

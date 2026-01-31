@@ -45,7 +45,7 @@ function generateMarkdown(apiData) {
               md += '**Parameters:**\n\n';
               params.forEach((param) => {
                 const cleanDesc = (param.description || '').replace(
-                  /^[\s\-]+/,
+                  /^[\s-]+/,
                   '',
                 );
                 md += `- \`${param.name}\` (\`${param.type || 'any'}\`): ${cleanDesc}\n`;
@@ -61,7 +61,7 @@ function generateMarkdown(apiData) {
               md += '**Returns:**\n\n';
               returns.forEach((ret) => {
                 const cleanDesc = (ret.description || '').replace(
-                  /^[\s\-]+/,
+                  /^[\s-]+/,
                   '',
                 );
                 md += `- \`${ret.type || 'any'}\`: ${cleanDesc}\n`;
