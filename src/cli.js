@@ -1,6 +1,8 @@
 import path from "path";
 import { program } from "commander";
 import * as generator from "./generator.js";
+import * as parser from "./parser.js";
+import { analyzeCoverage } from "./analyzer.js";
 
 program
   .name("api-docs-generator")
@@ -68,6 +70,49 @@ program
     console.log(
       `\n✅ Found ${apiData.length} file(s) with ${apiData.reduce((s, f) => s + f.functions.length, 0)} function(s) and ${apiData.reduce((s, f) => s + f.routes.length, 0)} route(s)\n`,
     );
+  });
+
+program
+  .command("audit")
+  .alias("a")
+  .description("Audit documentation coverage")
+  .option("-d, --dir <directory>", "Source directory to scan", ".")
+  .option("-t, --threshold <number>", "Coverage threshold percentage", "80")
+  .option("-f, --format <format>", "Output format (terminal or json)", "terminal")
+  .action(async (options) => {
+    const sourceDir = path.resolve(options.dir);
+    const threshold = parseInt(options.threshold, 10);
+    const format = options.format.toLowerCase();
+
+    console.log(`\n📊 Auditing documentation coverage...\n`);
+
+    const apiData = parser.parseDirectory(sourceDir);
+
+    if (apiData.length === 0) {
+      console.log("⚠️  No JavaScript/TypeScript files found");
+      return;
+    }
+
+    const result = analyzeCoverage(apiData);
+
+    if (format === "json") {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      console.log(result.summary);
+    }
+
+    const coverage = result.summary.coveragePercentage;
+
+    if (coverage < threshold) {
+      console.log(
+        `\n❌ Coverage ${coverage}% is below threshold ${threshold}%\n`,
+      );
+      process.exit(1);
+    } else {
+      console.log(
+        `\n✅ Coverage ${coverage}% meets threshold ${threshold}%\n`,
+      );
+    }
   });
 
 // Default command
