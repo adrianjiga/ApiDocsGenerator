@@ -1,0 +1,5 @@
+node_modules
+examples/docs
+coverage-dashboard.html
+package-lock.json
+reports/
