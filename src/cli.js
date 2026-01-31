@@ -1,9 +1,11 @@
 import path from "path";
+import fs from "fs";
 import { program } from "commander";
 import * as generator from "./generator.js";
 import * as parser from "./parser.js";
 import { analyzeCoverage } from "./analyzer.js";
 import { formatTerminalReport } from "./formatters/terminal.js";
+import { generateDashboard } from "./formatters/dashboard.js";
 
 program
   .name("api-docs-generator")
@@ -79,7 +81,8 @@ program
   .description("Audit documentation coverage")
   .option("-d, --dir <directory>", "Source directory to scan", ".")
   .option("-t, --threshold <number>", "Coverage threshold percentage", "80")
-  .option("-f, --format <format>", "Output format (terminal or json)", "terminal")
+  .option("-f, --format <format>", "Output format (terminal, json, or dashboard)", "terminal")
+  .option("-o, --output <file>", "Output file for dashboard format (default: coverage-dashboard.html)")
   .action(async (options) => {
     const sourceDir = path.resolve(options.dir);
     const threshold = parseInt(options.threshold, 10);
@@ -98,6 +101,14 @@ program
 
     if (format === "json") {
       console.log(JSON.stringify(result, null, 2));
+    } else if (format === "dashboard") {
+      const outputFile = options.output || "coverage-dashboard.html";
+      const outputPath = path.resolve(outputFile);
+      const outputDir = path.dirname(outputPath);
+      fs.mkdirSync(outputDir, { recursive: true });
+      const dashboardHtml = generateDashboard(result);
+      fs.writeFileSync(outputPath, dashboardHtml);
+      console.log(`✅ Dashboard written to: ${outputPath}\n`);
     } else {
       formatTerminalReport(result, threshold);
     }
