@@ -1,6 +1,6 @@
 {
   "name": "api-docs-generator",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "type": "module",
   "description": "Auto-generates API documentation from JavaScript/TypeScript source code",
   "main": "src/index.js",
@@ -9,6 +9,8 @@
   },
   "scripts": {
     "start": "node src/cli.js",
+    "start:audit": "node src/cli.js audit --dir ./examples --output ./examples/audit-report.json",
+    "start:generate": "node src/cli.js generate --dir ./examples --output ./examples/docs --formats markdown,html,json",
     "test:sample": "node src/cli.js generate --dir ./examples --output ./examples/docs --formats markdown,html,json"
   },
   "keywords": [
