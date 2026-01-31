@@ -71,6 +71,8 @@ Output files: API.md, index.html, api.json, GENERATION_REPORT.md
   - `markdown.js` - Generates API.md with TOC, function signatures, JSDoc details
   - `html.js` - Generates self-contained index.html with styling
   - `json.js` - Generates api.json with structured data
+  - `terminal.js` - Formats coverage reports for terminal output
+  - `dashboard.js` - Generates self-contained HTML coverage dashboard
 
 - **`src/utils.js`** - Helper utilities for sanitization, truncation, formatting
 
@@ -272,6 +274,22 @@ Exit codes for audit command:
 - **0** - Coverage meets or exceeds threshold
 - **1** - Coverage below threshold
 
+## UI/UX Design
+
+The HTML formatters (dashboard and API docs) feature **production-ready design** with:
+
+- **Rich dark theme**: `#0a0a0f` primary background, `#f8fafc` text
+- **Vibrant accent colors**: Indigo (#6366f1), Purple (#8b5cf6), Emerald (#10b981), Amber (#f59e0b)
+- **Animated gradient orbs**: Floating background elements for visual depth (8s-12s animations)
+- **Golden ratio typography**: Scientifically scaled font sizes from 0.75rem to 4.236rem
+- **Micro-interactions**: Smooth card hover effects, badge glows, transitions (0.3s)
+- **8px grid spacing**: Consistent, proportional spacing throughout
+- **Entrance animations**: fadeInDown/fadeInUp with staggered timing
+- **Accessibility**: Respects `prefers-reduced-motion`, proper color contrast (4.5:1+)
+- **Responsive**: Mobile-first design works on all device sizes
+
+All CSS is inline with zero external dependencies. Design follows the frontend-design skill principles.
+
 ## Important Notes
 
 - **No configuration file** - All options are command-line flags; environment variables for exclusion patterns only
@@ -279,3 +297,4 @@ Exit codes for audit command:
 - **JSDoc format requirement** - Must use `/** */` block comment format immediately before function
 - **Route detection limitation** - Only detects routes with string literal paths, not dynamic/template paths
 - **Error handling** - Parser warns on individual file parse failures but continues processing
+- **Dashboard output** - Automatically creates parent directories as needed

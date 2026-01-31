@@ -62,6 +62,38 @@ Output:
 ✅ Found 1 file(s) with 3 function(s) and 3 route(s)
 ```
 
+## Audit Documentation Coverage
+
+Check how well your code is documented:
+
+```bash
+api-docs-generator audit --dir ./src
+```
+
+This generates a beautiful terminal report showing:
+- Overall coverage percentage
+- Function vs route coverage
+- List of undocumented/partially documented items
+
+### Generate Interactive Dashboard
+
+```bash
+api-docs-generator audit --dir ./src --format dashboard
+```
+
+Opens `coverage-dashboard.html` in your browser with:
+- Color-coded progress gauge
+- Summary statistics
+- Per-file breakdown
+- Detailed gaps table
+
+### Use in CI/CD
+
+```bash
+# Fail if coverage drops below 80%
+api-docs-generator audit --dir ./src --threshold 80
+```
+
 ## Common Commands
 
 ### Generate Markdown Only
@@ -80,6 +112,12 @@ api-docs-generator generate --dir ./api --output ./public/docs --formats html
 
 ```bash
 api-docs-generator generate --formats markdown,html,json
+```
+
+### Audit with Custom Threshold
+
+```bash
+api-docs-generator audit --dir ./src --threshold 90 --format terminal
 ```
 
 ## Working with Express/Fastify
@@ -113,6 +151,9 @@ docs/
 ├── index.html             # Share with team - open in browser
 ├── api.json               # Use with tools and integrations
 └── GENERATION_REPORT.md   # Summary of generation
+
+# Coverage audit outputs:
+coverage-dashboard.html    # Interactive coverage dashboard
 ```
 
 ## Tips
@@ -120,7 +161,8 @@ docs/
 1. **Keep JSDoc updated** - Tool uses JSDoc for detailed info
 2. **Use consistent patterns** - Helps AST parsing work better
 3. **Export functions** - Both `function` and `const fn = () => {}` work
-4. **Exclude directories** - Use `.gitignore` patterns (e.g., exclude `node_modules`, `dist`, `build` automatically)
+4. **Exclude directories** - `node_modules`, `dist`, `build` automatically excluded
+5. **Audit regularly** - Monitor documentation coverage as code grows
 
 ## Supported File Types
 
@@ -129,11 +171,20 @@ docs/
 - `.jsx` React
 - `.tsx` React TypeScript
 
+## Documentation Coverage Levels
+
+✅ **Fully Documented** - Has JSDoc, description, @param for all params, and @returns tag
+
+⚠️ **Partially Documented** - Has JSDoc but missing required elements
+
+❌ **Undocumented** - No JSDoc comment
+
 ## Need Help?
 
 ```bash
 api-docs-generator --help
 api-docs-generator generate --help
+api-docs-generator audit --help
 api-docs-generator scan --help
 ```
 

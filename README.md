@@ -1,6 +1,6 @@
 # api-docs-generator
 
-A powerful Node.js CLI tool that auto-generates API documentation from JavaScript/TypeScript source code. Extracts function signatures, JSDoc comments, and Express/Fastify routes to produce beautiful documentation in multiple formats.
+A powerful Node.js CLI tool that auto-generates API documentation from JavaScript/TypeScript source code and analyzes documentation coverage. Extracts function signatures, JSDoc comments, and Express/Fastify routes to produce beautiful documentation in multiple formats.
 
 ## Features
 
@@ -9,6 +9,14 @@ A powerful Node.js CLI tool that auto-generates API documentation from JavaScrip
 - Markdown (`.md`) - For GitHub/documentation sites
 - HTML (`.html`) - Self-contained with built-in styling
 - JSON (`.json`) - Machine-readable for tool integration
+
+📊 **Documentation Coverage Analysis**
+
+- Audit documentation completeness across your codebase
+- Generate interactive HTML dashboards
+- Terminal reports with visual progress bars
+- JSON output for CI/CD integration
+- Threshold-based exit codes for automation
 
 🔍 **Smart Code Analysis**
 
@@ -44,6 +52,12 @@ npm run start -- generate --dir ./src --output ./docs
 
 ```bash
 api-docs-generator generate --dir ./src --output ./docs --formats markdown,html,json
+```
+
+### Audit Documentation Coverage
+
+```bash
+api-docs-generator audit --dir ./src --format dashboard
 ```
 
 ### Scan for APIs (Preview)
@@ -84,6 +98,52 @@ api-docs-generator generate --dir ./src --formats markdown
 # Multiple formats
 api-docs-generator generate --formats markdown,html,json
 ```
+
+### Command: `audit` (alias: `a`)
+
+Audit documentation coverage and generate coverage reports.
+
+```bash
+api-docs-generator audit [options]
+```
+
+**Options:**
+
+- `-d, --dir <directory>` - Source directory to scan (default: `.`)
+- `-t, --threshold <number>` - Coverage threshold percentage (default: `80`)
+- `-f, --format <format>` - Output format: `terminal`, `json`, or `dashboard` (default: `terminal`)
+- `-o, --output <file>` - Output file for dashboard format (default: `coverage-dashboard.html`)
+
+**Exit Codes:**
+
+- `0` - Coverage meets or exceeds threshold
+- `1` - Coverage below threshold
+
+**Examples:**
+
+```bash
+# Terminal report with default 80% threshold
+api-docs-generator audit --dir ./src
+
+# Generate interactive HTML dashboard
+api-docs-generator audit --dir ./src --format dashboard
+
+# Generate dashboard to custom location
+api-docs-generator audit --dir ./src --format dashboard --output ./reports/coverage.html
+
+# Set custom threshold and output JSON
+api-docs-generator audit --dir ./src --threshold 90 --format json
+
+# Use in CI/CD - fail if coverage below 75%
+api-docs-generator audit --dir ./src --threshold 75 --format terminal
+```
+
+**Coverage Metrics:**
+
+- **Fully Documented**: Function has JSDoc, description, @param for all params, and @returns tag
+- **Partially Documented**: Function has JSDoc but missing required elements
+- **Undocumented**: No JSDoc comment
+- **Coverage Percentage**: (Fully documented items) / (Total items) × 100
 
 ### Command: `scan`
 
@@ -176,6 +236,7 @@ Beautiful, self-contained HTML with:
 - Interactive navigation
 - Code syntax highlighting
 - Professional styling
+- Dark theme with rich color palette
 
 ### JSON Output (`api.json`)
 
@@ -194,6 +255,18 @@ Summary of the documentation generation including:
 - Function and route counts
 - Generated file list
 - Output directory location
+
+### Coverage Dashboard (`coverage-dashboard.html`)
+
+Interactive HTML dashboard showing:
+
+- Circular progress gauge (color-coded: green ≥80%, yellow 50-80%, red <50%)
+- Summary stat cards (function coverage, route coverage, gaps count)
+- Per-file coverage breakdown with progress bars
+- Detailed table of all documentation gaps
+- Per-file coverage table
+- Responsive design with dark theme
+- Self-contained with inline CSS (no external dependencies)
 
 ## Example Project Structure
 
@@ -300,6 +373,74 @@ The tool scans and parses:
 ### Command Line Options
 
 All options can be specified via command line flags. No configuration file is required.
+
+## Documentation Coverage Analysis
+
+The built-in coverage analyzer helps you maintain high documentation quality across your codebase.
+
+### How Coverage is Calculated
+
+**Fully Documented Items** have:
+- ✅ JSDoc comment block
+- ✅ Description text
+- ✅ @param tags for all parameters
+- ✅ @returns/@return tag
+
+**Partially Documented Items** have:
+- ⚠️ JSDoc comment block
+- ⚠️ Missing one or more required elements
+
+**Undocumented Items**:
+- ❌ No JSDoc comment
+
+### Coverage Report Formats
+
+**Terminal Format** (default):
+```
+[████████████░░░░░░░░░] 65.2%
+Function Coverage: 65.2% (15/23)
+Route Coverage: 0% (0/0)
+Documentation Gaps: 8
+```
+Perfect for local development and CI/CD pipelines.
+
+**Dashboard Format**:
+- Interactive HTML dashboard
+- Color-coded gauge (green/yellow/red)
+- Summary stat cards
+- Per-file breakdown with progress bars
+- Detailed gaps table
+- Responsive design
+
+**JSON Format**:
+- Machine-readable output
+- Complete analysis data
+- Easy integration with other tools
+
+### CI/CD Integration
+
+Use the audit command in your build pipeline:
+
+```bash
+# Fail if coverage drops below 80%
+api-docs-generator audit --dir ./src --threshold 80
+
+# Generate dashboard for build artifacts
+api-docs-generator audit --dir ./src --format dashboard --output ./artifacts/coverage.html
+```
+
+## Visual Design
+
+The HTML formatters feature a **bold, production-ready design** with:
+
+- **Rich dark theme** with sophisticated color palette
+- **Animated gradient orbs** for visual depth
+- **Golden ratio typography** for readability
+- **Micro-interactions** on hover and focus states
+- **Responsive design** for mobile, tablet, and desktop
+- **Accessibility support** including reduced-motion preferences
+
+All styling is inline with zero external dependencies.
 
 ## Troubleshooting
 
