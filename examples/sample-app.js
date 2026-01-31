@@ -1,4 +1,4 @@
-const express = require('express');
+import express from "express";
 
 const app = express();
 
@@ -20,7 +20,7 @@ function sum(a, b) {
 function getUserById(userId) {
   return {
     id: userId,
-    name: 'John Doe'
+    name: "John Doe",
   };
 }
 
@@ -33,25 +33,25 @@ function greet(name) {
   return `Hello, ${name}!`;
 }
 
-app.get('/users/:id', (req, res) => {
+app.get("/users/:id", (req, res) => {
   const user = getUserById(req.params.id);
   res.json(user);
 });
 
-app.post('/users', (req, res) => {
-  res.json({ created: true, id: 'new-id' });
+app.post("/users", (req, res) => {
+  res.json({ created: true, id: "new-id" });
 });
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
+app.get("/health", (req, res) => {
+  res.json({ status: "ok" });
 });
 
-app.put('/users/:id', (req, res) => {
+app.put("/users/:id", (req, res) => {
   res.json({ updated: true, id: req.params.id });
 });
 
-app.delete('/users/:id', (req, res) => {
+app.delete("/users/:id", (req, res) => {
   res.json({ deleted: true, id: req.params.id });
 });
 
-module.exports = { app, sum, getUserById, greet };
+export default { app, sum, getUserById, greet };

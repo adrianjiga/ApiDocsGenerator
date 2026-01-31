@@ -21,7 +21,7 @@ function safeParseJSON(jsonStr) {
  * @param {string} currency - Currency code (USD, EUR, etc)
  * @returns {string} Formatted currency string
  */
-function formatCurrency(amount, currency = 'USD') {
+function formatCurrency(amount, currency = "USD") {
   return `${currency} ${amount.toFixed(2)}`;
 }
 
@@ -35,8 +35,8 @@ function isValidEmail(email) {
   return emailRegex.test(email);
 }
 
-module.exports = {
+export default {
   safeParseJSON,
   formatCurrency,
-  isValidEmail
+  isValidEmail,
 };
