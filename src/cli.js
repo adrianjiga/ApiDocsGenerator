@@ -3,6 +3,7 @@ import { program } from "commander";
 import * as generator from "./generator.js";
 import * as parser from "./parser.js";
 import { analyzeCoverage } from "./analyzer.js";
+import { formatTerminalReport } from "./formatters/terminal.js";
 
 program
   .name("api-docs-generator")
@@ -98,20 +99,13 @@ program
     if (format === "json") {
       console.log(JSON.stringify(result, null, 2));
     } else {
-      console.log(result.summary);
+      formatTerminalReport(result, threshold);
     }
 
     const coverage = result.summary.coveragePercentage;
 
     if (coverage < threshold) {
-      console.log(
-        `\n❌ Coverage ${coverage}% is below threshold ${threshold}%\n`,
-      );
       process.exit(1);
-    } else {
-      console.log(
-        `\n✅ Coverage ${coverage}% meets threshold ${threshold}%\n`,
-      );
     }
   });
 
