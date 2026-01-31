@@ -20,7 +20,9 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [
     "api",
@@ -42,6 +44,7 @@
     "eslint": "9.39.2",
     "express": "^5.2.1",
     "globals": "17.0.0",
-    "prettier": "3.8.1"
+    "prettier": "3.8.1",
+    "vitest": "4.0.18"
   }
 }
