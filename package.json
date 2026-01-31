@@ -16,7 +16,11 @@
     "scan": "node src/cli.js scan ./examples",
     "audit": "node src/cli.js audit --dir ./examples",
     "audit:json": "node src/cli.js audit --dir ./examples --format json",
-    "audit:dashboard": "node src/cli.js audit --dir ./examples --format dashboard --output ./examples/docs/coverage-dashboard.html"
+    "audit:dashboard": "node src/cli.js audit --dir ./examples --format dashboard --output ./examples/docs/coverage-dashboard.html",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "keywords": [
     "api",
@@ -34,6 +38,10 @@
     "fs-extra": "^11.3.3"
   },
   "devDependencies": {
-    "express": "^5.2.1"
+    "@eslint/js": "9.39.2",
+    "eslint": "9.39.2",
+    "express": "^5.2.1",
+    "globals": "17.0.0",
+    "prettier": "3.8.1"
   }
 }
