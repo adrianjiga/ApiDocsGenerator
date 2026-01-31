@@ -40,7 +40,7 @@ For best results, document your functions with JSDoc:
  * @returns {Object} User object
  */
 function getUser(userId) {
-  return { id: userId, name: "John Doe" };
+  return { id: userId, name: 'John Doe' };
 }
 ```
 
@@ -71,6 +71,7 @@ api-docs-generator audit --dir ./src
 ```
 
 This generates a beautiful terminal report showing:
+
 - Overall coverage percentage
 - Function vs route coverage
 - List of undocumented/partially documented items
@@ -82,6 +83,7 @@ api-docs-generator audit --dir ./src --format dashboard
 ```
 
 Opens `coverage-dashboard.html` in your browser with:
+
 - Color-coded progress gauge
 - Summary statistics
 - Per-file breakdown
@@ -125,20 +127,20 @@ api-docs-generator audit --dir ./src --threshold 90 --format terminal
 The tool automatically detects routes:
 
 ```javascript
-const express = require("express");
+const express = require('express');
 const app = express();
 
 // These routes are auto-detected!
-app.get("/users/:id", (req, res) => {
+app.get('/users/:id', (req, res) => {
   /* ... */
 });
-app.post("/users", (req, res) => {
+app.post('/users', (req, res) => {
   /* ... */
 });
-app.put("/users/:id", (req, res) => {
+app.put('/users/:id', (req, res) => {
   /* ... */
 });
-app.delete("/users/:id", (req, res) => {
+app.delete('/users/:id', (req, res) => {
   /* ... */
 });
 ```

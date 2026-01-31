@@ -12,28 +12,34 @@ import { generateJSON } from './formatters/json.js';
  * @param {Array} formats - Array of formats: ['markdown', 'html', 'json']
  * @returns {Object} Generation result with summary
  */
-async function generate(sourceDir, outputDir, formats = ['markdown', 'html', 'json']) {
+async function generate(
+  sourceDir,
+  outputDir,
+  formats = ['markdown', 'html', 'json'],
+) {
   try {
     console.log(`\n📂 Scanning directory: ${sourceDir}`);
-    
+
     // Parse all files in directory
     const apiData = parser.parseDirectory(sourceDir);
-    
+
     if (apiData.length === 0) {
-      console.warn('⚠️  No JavaScript/TypeScript files found or no API documentation detected.');
+      console.warn(
+        '⚠️  No JavaScript/TypeScript files found or no API documentation detected.',
+      );
       return { success: false, message: 'No files processed' };
     }
 
     console.log(`✅ Parsed ${apiData.length} file(s)`);
-    
+
     // Ensure output directory exists
     await fs.ensureDir(outputDir);
-    
+
     const results = {
       success: true,
       filesProcessed: apiData.length,
       outputDir: path.resolve(outputDir),
-      generated: []
+      generated: [],
     };
 
     // Generate each format
@@ -66,15 +72,18 @@ async function generate(sourceDir, outputDir, formats = ['markdown', 'html', 'js
       results.generated.push({
         format: lowerFormat,
         file: filename,
-        path: outputPath
+        path: outputPath,
       });
       console.log(`✅ Generated: ${filename}`);
     }
 
     // Generate summary report
-    const functionCount = apiData.reduce((sum, f) => sum + f.functions.length, 0);
+    const functionCount = apiData.reduce(
+      (sum, f) => sum + f.functions.length,
+      0,
+    );
     const routeCount = apiData.reduce((sum, f) => sum + f.routes.length, 0);
-    
+
     const summary = `# Documentation Generation Summary
 
 Generated: ${new Date().toISOString()}
@@ -86,18 +95,22 @@ Generated: ${new Date().toISOString()}
 - Output Formats: ${formats.join(', ')}
 
 ## Generated Files
-${results.generated.map(g => `- ${g.format.toUpperCase()}: \`${g.file}\``).join('\n')}
+${results.generated.map((g) => `- ${g.format.toUpperCase()}: \`${g.file}\``).join('\n')}
 
 ## Location
 All files generated in: \`${outputDir}\`
 `;
 
-    await fs.writeFile(path.join(outputDir, 'GENERATION_REPORT.md'), summary, 'utf8');
+    await fs.writeFile(
+      path.join(outputDir, 'GENERATION_REPORT.md'),
+      summary,
+      'utf8',
+    );
     console.log(`\n📊 Generation Report: GENERATION_REPORT.md`);
 
     console.log(`\n✨ Documentation generated successfully!`);
     console.log(`📁 Output directory: ${path.resolve(outputDir)}`);
-    
+
     return results;
   } catch (err) {
     console.error(`❌ Error generating documentation: ${err.message}`);

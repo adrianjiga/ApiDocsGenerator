@@ -12,6 +12,7 @@ npm run test:sample
 ```
 
 **Available Commands:**
+
 - `generate` (alias `gen`) - Generate API documentation in multiple formats
 - `audit` (alias `a`) - Audit documentation coverage against a threshold
 - `scan` - Preview APIs without generating files
@@ -132,21 +133,26 @@ Generated files always use these exact names:
 The `analyzeCoverage()` function evaluates documentation completeness:
 
 **Function Coverage Rules:**
+
 - **Fully documented**: JSDoc exists + non-empty description + @param for all params + @returns/@return tag
 - **Partially documented**: JSDoc exists but missing required elements
 - **Undocumented**: No JSDoc (jsdoc is null)
 
 **Route Coverage Rules:**
+
 - **Documented**: jsdoc is not null (currently routes rarely have docs)
 - **Undocumented**: jsdoc is null
 
 **Coverage Percentage Calculation:**
+
 ```
 coverage % = (fully documented items) / (total items) * 100
 ```
+
 Rounded to 1 decimal place.
 
 **Return Object Structure:**
+
 ```javascript
 {
   summary: {
@@ -266,11 +272,13 @@ ls -la ./docs/
 ```
 
 **Audit Command Options:**
+
 - `-d, --dir <directory>` - Source directory to scan (default: `.`)
 - `-t, --threshold <number>` - Coverage threshold percentage (default: `80`)
 - `-f, --format <format>` - Output format: `terminal` or `json` (default: `terminal`)
 
 Exit codes for audit command:
+
 - **0** - Coverage meets or exceeds threshold
 - **1** - Coverage below threshold
 

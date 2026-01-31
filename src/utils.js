@@ -50,10 +50,4 @@ function formatTimestamp(date = new Date()) {
   return date.toISOString();
 }
 
-export {
-  sanitizeHtmlId,
-  getParamName,
-  truncate,
-  capitalize,
-  formatTimestamp
-};
+export { sanitizeHtmlId, getParamName, truncate, capitalize, formatTimestamp };

@@ -12,7 +12,7 @@ function formatTerminalReport(report, threshold) {
     cyan: '\x1b[36m',
     bold: '\x1b[1m',
     dim: '\x1b[2m',
-    reset: '\x1b[0m'
+    reset: '\x1b[0m',
   };
 
   const { summary, files, gaps } = report;
@@ -31,22 +31,22 @@ function formatTerminalReport(report, threshold) {
   const barColor = meetsThreshold ? colors.green : colors.red;
 
   console.log(
-    `${barColor}[${filledBar}${emptyBar}] ${coverage}%${colors.reset}`
+    `${barColor}[${filledBar}${emptyBar}] ${coverage}%${colors.reset}`,
   );
 
   // Summary stats
   console.log(`\n${colors.cyan}Summary${colors.reset}`);
   console.log(
-    `  Function Coverage:  ${summary.functionCoverage}% (${summary.documentedFunctions}/${summary.totalFunctions})`
+    `  Function Coverage:  ${summary.functionCoverage}% (${summary.documentedFunctions}/${summary.totalFunctions})`,
   );
   console.log(
-    `  Route Coverage:     ${summary.routeCoverage}% (${summary.documentedRoutes}/${summary.totalRoutes})`
+    `  Route Coverage:     ${summary.routeCoverage}% (${summary.documentedRoutes}/${summary.totalRoutes})`,
   );
   console.log(
-    `  Total Items:        ${summary.totalFunctions + summary.totalRoutes}`
+    `  Total Items:        ${summary.totalFunctions + summary.totalRoutes}`,
   );
   console.log(
-    `  Documented Items:   ${summary.documentedFunctions + summary.documentedRoutes}`
+    `  Documented Items:   ${summary.documentedFunctions + summary.documentedRoutes}`,
   );
   console.log(`  Documentation Gaps: ${gaps.length}`);
 
@@ -54,18 +54,26 @@ function formatTerminalReport(report, threshold) {
   if (files.length > 0) {
     console.log(`\n${colors.cyan}Per-File Breakdown${colors.reset}`);
 
-    files.forEach(file => {
-      const fileColor = file.coveragePercentage === 100 ? colors.green : file.coveragePercentage >= threshold ? colors.blue : colors.red;
+    files.forEach((file) => {
+      const fileColor =
+        file.coveragePercentage === 100
+          ? colors.green
+          : file.coveragePercentage >= threshold
+            ? colors.blue
+            : colors.red;
       console.log(
-        `\n  ${fileColor}${file.fileName}${colors.reset} ${colors.dim}(${file.coveragePercentage}%)${colors.reset}`
+        `\n  ${fileColor}${file.fileName}${colors.reset} ${colors.dim}(${file.coveragePercentage}%)${colors.reset}`,
       );
 
       if (file.gaps.length > 0) {
-        file.gaps.forEach(gap => {
-          const severityIcon = gap.severity === 'error' ? `${colors.red}✗${colors.reset}` : `${colors.yellow}⚠${colors.reset}`;
+        file.gaps.forEach((gap) => {
+          const severityIcon =
+            gap.severity === 'error'
+              ? `${colors.red}✗${colors.reset}`
+              : `${colors.yellow}⚠${colors.reset}`;
           const missingStr = gap.missing.join(', ');
           console.log(
-            `    ${severityIcon} ${gap.name} ${colors.dim}(line ${gap.line})${colors.reset} - missing: ${missingStr}`
+            `    ${severityIcon} ${gap.name} ${colors.dim}(line ${gap.line})${colors.reset} - missing: ${missingStr}`,
           );
         });
       } else {
@@ -77,13 +85,15 @@ function formatTerminalReport(report, threshold) {
   // Footer
   if (gaps.length > 0) {
     console.log(
-      `\n${colors.yellow}${gaps.length} documentation gap${gaps.length !== 1 ? 's' : ''} found.${colors.reset}`
+      `\n${colors.yellow}${gaps.length} documentation gap${gaps.length !== 1 ? 's' : ''} found.${colors.reset}`,
     );
     console.log(
-      `${colors.dim}(Auto-documentation feature coming soon)${colors.reset}\n`
+      `${colors.dim}(Auto-documentation feature coming soon)${colors.reset}\n`,
     );
   } else {
-    console.log(`\n${colors.green}✓ Perfect documentation coverage!${colors.reset}\n`);
+    console.log(
+      `\n${colors.green}✓ Perfect documentation coverage!${colors.reset}\n`,
+    );
   }
 }
 

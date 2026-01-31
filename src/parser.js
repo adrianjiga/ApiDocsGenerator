@@ -10,19 +10,19 @@ import * as espree from 'espree';
  */
 function parseJSDoc(sourceCode) {
   const comments = [];
-  
+
   try {
     // Use regex to find JSDoc comments in the source code
     const jsdocRegex = /\/\*\*\s*([\s\S]*?)\*\//g;
     const lines = sourceCode.split('\n');
     let currentLine = 0;
     let match;
-    
+
     while ((match = jsdocRegex.exec(sourceCode)) !== null) {
       // Calculate line number by counting newlines before this match
       const beforeMatch = sourceCode.substring(0, match.index);
       const lineNumber = beforeMatch.split('\n').length;
-      
+
       try {
         const parsed = parse('/*' + match[1] + '*/');
         if (parsed && parsed.length > 0) {
@@ -31,8 +31,11 @@ function parseJSDoc(sourceCode) {
             parsed: parsed[0],
             loc: {
               start: { line: lineNumber, column: 0 },
-              end: { line: lineNumber + match[0].split('\n').length - 1, column: 0 }
-            }
+              end: {
+                line: lineNumber + match[0].split('\n').length - 1,
+                column: 0,
+              },
+            },
           });
         }
       } catch (parseErr) {
@@ -59,7 +62,7 @@ function extractFunctions(sourceCode) {
       ecmaVersion: 2022,
       sourceType: 'module',
       range: true,
-      loc: true
+      loc: true,
     });
 
     const walk = (node, visited = new Set()) => {
@@ -67,26 +70,38 @@ function extractFunctions(sourceCode) {
       visited.add(node);
 
       if (node.type === 'FunctionDeclaration') {
-        const params = node.params.map(p => p.name || (p.type === 'RestElement' ? '...' + p.argument.name : 'arg'));
-        
+        const params = node.params.map(
+          (p) =>
+            p.name ||
+            (p.type === 'RestElement' ? '...' + p.argument.name : 'arg'),
+        );
+
         functions.push({
           type: 'function',
           name: node.id?.name || 'anonymous',
           params,
           line: node.loc?.start.line || 0,
-          nodeType: node.type
+          nodeType: node.type,
         });
       }
 
-      if (node.type === 'VariableDeclarator' && (node.init?.type === 'ArrowFunctionExpression' || node.init?.type === 'FunctionExpression')) {
-        const params = node.init.params.map(p => p.name || (p.type === 'RestElement' ? '...' + p.argument.name : 'arg'));
-        
+      if (
+        node.type === 'VariableDeclarator' &&
+        (node.init?.type === 'ArrowFunctionExpression' ||
+          node.init?.type === 'FunctionExpression')
+      ) {
+        const params = node.init.params.map(
+          (p) =>
+            p.name ||
+            (p.type === 'RestElement' ? '...' + p.argument.name : 'arg'),
+        );
+
         functions.push({
           type: 'function',
           name: node.id?.name || 'anonymous',
           params,
           line: node.loc?.start.line || 0,
-          nodeType: node.init.type
+          nodeType: node.init.type,
         });
       }
 
@@ -96,14 +111,14 @@ function extractFunctions(sourceCode) {
           const method = methodName.toUpperCase();
           const pathArg = node.arguments[0];
           const routePath = pathArg?.value || '';
-          
+
           if (routePath) {
             functions.push({
               type: 'route',
               method,
               path: routePath,
               line: node.loc?.start.line || 0,
-              params: extractRouteParams(routePath)
+              params: extractRouteParams(routePath),
             });
           }
         }
@@ -115,7 +130,7 @@ function extractFunctions(sourceCode) {
         const child = node[key];
         if (child !== null && typeof child === 'object') {
           if (Array.isArray(child)) {
-            child.forEach(item => {
+            child.forEach((item) => {
               if (item && typeof item === 'object') {
                 walk(item, visited);
               }
@@ -144,11 +159,11 @@ function extractRouteParams(routePath) {
   const paramRegex = /:(\w+)/g;
   const params = [];
   let match;
-  
+
   while ((match = paramRegex.exec(routePath)) !== null) {
     params.push(match[1]);
   }
-  
+
   return params;
 }
 
@@ -168,23 +183,24 @@ function parseFile(filePath) {
     file: filePath,
     fileName,
     functions: [],
-    routes: []
+    routes: [],
   };
 
   // Create a better JSDoc matching using source line positions
   const jsdocMap = new Map();
-  
+
   functions.forEach((fn) => {
     let closestJsdoc = null;
     let closestDistance = Infinity;
-    
+
     // Find the JSDoc comment that appears closest to this function
-    jsdocs.forEach(jsdoc => {
+    jsdocs.forEach((jsdoc) => {
       if (jsdoc.loc) {
         const jsdocEndLine = jsdoc.loc.end.line;
         // Calculate the distance - prefer JSDoc immediately before
-        const distance = fn.line >= jsdocEndLine ? (fn.line - jsdocEndLine) : Infinity;
-        
+        const distance =
+          fn.line >= jsdocEndLine ? fn.line - jsdocEndLine : Infinity;
+
         // If this is closer and still reasonable, use it
         if (distance < closestDistance && distance >= 0 && distance <= 2) {
           closestDistance = distance;
@@ -192,7 +208,7 @@ function parseFile(filePath) {
         }
       }
     });
-    
+
     if (closestJsdoc) {
       jsdocMap.set(`${fn.name}:${fn.line}`, closestJsdoc);
     }
@@ -201,14 +217,15 @@ function parseFile(filePath) {
   functions.forEach((fn) => {
     if (fn.type === 'function') {
       const jsdoc = jsdocMap.get(`${fn.name}:${fn.line}`);
-      const description = jsdoc?.parsed?.description || 'No description provided';
-      
+      const description =
+        jsdoc?.parsed?.description || 'No description provided';
+
       api.functions.push({
         name: fn.name,
         params: fn.params,
         line: fn.line,
         jsdoc: jsdoc?.parsed || null,
-        description: description
+        description: description,
       });
     } else if (fn.type === 'route') {
       api.routes.push({
@@ -216,7 +233,7 @@ function parseFile(filePath) {
         path: fn.path,
         params: fn.params,
         line: fn.line,
-        jsdoc: null
+        jsdoc: null,
       });
     }
   });
@@ -232,13 +249,13 @@ function parseFile(filePath) {
  */
 function scanDirectory(dir, excludePattern = 'node_modules|dist|build') {
   const files = [];
-  
+
   try {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
-    
-    entries.forEach(entry => {
+
+    entries.forEach((entry) => {
       const fullPath = path.join(dir, entry.name);
-      
+
       if (entry.isDirectory()) {
         if (!new RegExp(excludePattern).test(fullPath)) {
           files.push(...scanDirectory(fullPath, excludePattern));
@@ -250,7 +267,7 @@ function scanDirectory(dir, excludePattern = 'node_modules|dist|build') {
   } catch (err) {
     console.warn(`Warning: Could not read directory ${dir}: ${err.message}`);
   }
-  
+
   return files;
 }
 
@@ -262,8 +279,8 @@ function scanDirectory(dir, excludePattern = 'node_modules|dist|build') {
 function parseDirectory(dir) {
   const files = scanDirectory(dir);
   const results = [];
-  
-  files.forEach(file => {
+
+  files.forEach((file) => {
     try {
       const metadata = parseFile(file);
       results.push(metadata);
@@ -271,7 +288,7 @@ function parseDirectory(dir) {
       console.warn(`Error parsing ${file}: ${err.message}`);
     }
   });
-  
+
   return results;
 }
 
@@ -280,5 +297,5 @@ export {
   extractFunctions,
   parseFile,
   scanDirectory,
-  parseDirectory
+  parseDirectory,
 };

@@ -8,10 +8,10 @@ function generateDashboard(report) {
   const coverage = summary.coveragePercentage;
 
   // Determine gauge color based on coverage
-  let gaugeColor = "#ff4444"; // red < 50
+  let gaugeColor = '#ff4444'; // red < 50
   if (coverage >= 80)
-    gaugeColor = "#44bb44"; // green >= 80
-  else if (coverage >= 50) gaugeColor = "#ffaa44"; // yellow 50-80
+    gaugeColor = '#44bb44'; // green >= 80
+  else if (coverage >= 50) gaugeColor = '#ffaa44'; // yellow 50-80
 
   /**
    * Generate documentation gap rows
@@ -26,11 +26,11 @@ function generateDashboard(report) {
         <td class="gap-name">${escapeHtml(gap.name)}</td>
         <td class="gap-line">${gap.line}</td>
         <td class="gap-severity"><span class="severity-${gap.severity}">${gap.severity}</span></td>
-        <td class="gap-missing">${gap.missing.join(", ")}</td>
+        <td class="gap-missing">${gap.missing.join(', ')}</td>
       </tr>
     `,
     )
-    .join("");
+    .join('');
 
   /**
    * Generate per-file coverage rows
@@ -52,7 +52,7 @@ function generateDashboard(report) {
       </tr>
     `,
     )
-    .join("");
+    .join('');
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -539,22 +539,22 @@ function generateDashboard(report) {
       </div>
 
       <div class="stats-grid">
-        <div class="stat-card ${summary.functionCoverage >= 80 ? "" : summary.functionCoverage >= 50 ? "warning" : "error"}">
+        <div class="stat-card ${summary.functionCoverage >= 80 ? '' : summary.functionCoverage >= 50 ? 'warning' : 'error'}">
           <div class="stat-label">Function Coverage</div>
           <div class="stat-value">${summary.functionCoverage}%</div>
           <div class="stat-detail">${summary.documentedFunctions} of ${summary.totalFunctions}</div>
         </div>
 
-        <div class="stat-card ${summary.routeCoverage >= 80 ? "" : summary.routeCoverage >= 50 ? "warning" : "error"}">
+        <div class="stat-card ${summary.routeCoverage >= 80 ? '' : summary.routeCoverage >= 50 ? 'warning' : 'error'}">
           <div class="stat-label">Route Coverage</div>
           <div class="stat-value">${summary.routeCoverage}%</div>
           <div class="stat-detail">${summary.documentedRoutes} of ${summary.totalRoutes}</div>
         </div>
 
-        <div class="stat-card ${gaps.length === 0 ? "" : "error"}">
+        <div class="stat-card ${gaps.length === 0 ? '' : 'error'}">
           <div class="stat-label">Documentation Gaps</div>
           <div class="stat-value">${gaps.length}</div>
-          <div class="stat-detail">${gaps.length === 0 ? "Perfect coverage!" : "items need attention"}</div>
+          <div class="stat-detail">${gaps.length === 0 ? 'Perfect coverage!' : 'items need attention'}</div>
         </div>
       </div>
     </div>
@@ -612,7 +612,7 @@ function generateDashboard(report) {
       </table>
     </div>
     `
-        : ""
+        : ''
     }
 
     <footer>
@@ -629,9 +629,9 @@ function generateDashboard(report) {
  * @returns {string} Hex color code
  */
 function getCoverageColor(percentage) {
-  if (percentage >= 80) return "#44bb44"; // green
-  if (percentage >= 50) return "#ffaa44"; // yellow
-  return "#ff4444"; // red
+  if (percentage >= 80) return '#44bb44'; // green
+  if (percentage >= 50) return '#ffaa44'; // yellow
+  return '#ff4444'; // red
 }
 
 /**
@@ -641,11 +641,11 @@ function getCoverageColor(percentage) {
  */
 function escapeHtml(text) {
   const map = {
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#039;",
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
   };
   return text.replace(/[&<>"']/g, (m) => map[m]);
 }

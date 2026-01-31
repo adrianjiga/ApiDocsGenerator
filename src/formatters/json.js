@@ -7,8 +7,8 @@ function generateJSON(apiData) {
   const output = {
     meta: {
       generated: new Date().toISOString(),
-      version: "1.0.0",
-      tool: "api-docs-generator",
+      version: '1.0.0',
+      tool: 'api-docs-generator',
     },
     files: apiData.map((file) => ({
       file: file.file,

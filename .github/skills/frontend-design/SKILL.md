@@ -13,12 +13,14 @@ You are a frontend design expert that creates **polished, production-ready user 
 ## Design Philosophy
 
 ### Reject Generic AI Aesthetics
+
 - No bland gradients with teal-to-purple
 - No generic rounded corners on everything
 - No sterile white backgrounds with gray text
 - No cookie-cutter card layouts
 
 ### Embrace Bold Choices
+
 - Strong visual hierarchy with purposeful contrast
 - Distinctive color palettes that match brand personality
 - Typography that communicates tone (playful, professional, elegant)
@@ -27,6 +29,7 @@ You are a frontend design expert that creates **polished, production-ready user 
 ## Design Principles
 
 ### 1. Visual Hierarchy
+
 ```
 Primary Action    → Largest, most contrasted, prominent position
 Secondary Action  → Visible but subordinate
@@ -34,15 +37,16 @@ Tertiary Content  → Subtle, discovered on exploration
 ```
 
 ### 2. Typography System
+
 ```css
 /* Heading Scale - Golden Ratio (1.618) */
---font-size-xs: 0.75rem;    /* 12px */
---font-size-sm: 0.875rem;   /* 14px */
---font-size-base: 1rem;     /* 16px */
---font-size-lg: 1.25rem;    /* 20px */
---font-size-xl: 1.618rem;   /* 26px */
---font-size-2xl: 2.618rem;  /* 42px */
---font-size-3xl: 4.236rem;  /* 68px */
+--font-size-xs: 0.75rem; /* 12px */
+--font-size-sm: 0.875rem; /* 14px */
+--font-size-base: 1rem; /* 16px */
+--font-size-lg: 1.25rem; /* 20px */
+--font-size-xl: 1.618rem; /* 26px */
+--font-size-2xl: 2.618rem; /* 42px */
+--font-size-3xl: 4.236rem; /* 68px */
 
 /* Font Pairing Examples */
 /* Professional: Inter + Source Serif Pro */
@@ -54,56 +58,62 @@ Tertiary Content  → Subtle, discovered on exploration
 ### 3. Color Systems
 
 **Dark Mode First**
+
 ```css
 /* Deep, rich backgrounds - not pure black */
---bg-primary: #0a0a0f;      /* Near black with blue tint */
---bg-secondary: #13131a;     /* Elevated surfaces */
---bg-tertiary: #1a1a24;      /* Cards, modals */
+--bg-primary: #0a0a0f; /* Near black with blue tint */
+--bg-secondary: #13131a; /* Elevated surfaces */
+--bg-tertiary: #1a1a24; /* Cards, modals */
 
 /* Vibrant accents that pop */
---accent-primary: #6366f1;   /* Indigo */
+--accent-primary: #6366f1; /* Indigo */
 --accent-secondary: #8b5cf6; /* Purple */
---accent-success: #10b981;   /* Emerald */
---accent-warning: #f59e0b;   /* Amber */
---accent-error: #ef4444;     /* Red */
+--accent-success: #10b981; /* Emerald */
+--accent-warning: #f59e0b; /* Amber */
+--accent-error: #ef4444; /* Red */
 
 /* Text with proper contrast */
---text-primary: #f8fafc;     /* High contrast */
---text-secondary: #94a3b8;   /* Muted */
---text-tertiary: #64748b;    /* Subtle */
+--text-primary: #f8fafc; /* High contrast */
+--text-secondary: #94a3b8; /* Muted */
+--text-tertiary: #64748b; /* Subtle */
 ```
 
 **Light Mode Alternative**
+
 ```css
 /* Warm whites - not sterile */
---bg-primary: #faf9f7;       /* Warm off-white */
---bg-secondary: #ffffff;      /* Pure white for contrast */
---bg-tertiary: #f5f4f0;       /* Subtle warmth */
+--bg-primary: #faf9f7; /* Warm off-white */
+--bg-secondary: #ffffff; /* Pure white for contrast */
+--bg-tertiary: #f5f4f0; /* Subtle warmth */
 
 /* Deeper accents for light backgrounds */
---accent-primary: #4f46e5;    /* Deeper indigo */
+--accent-primary: #4f46e5; /* Deeper indigo */
 ```
 
 ### 4. Spacing System (8px Grid)
+
 ```css
---space-1: 0.25rem;  /* 4px - tight */
---space-2: 0.5rem;   /* 8px - base */
---space-3: 0.75rem;  /* 12px */
---space-4: 1rem;     /* 16px - comfortable */
---space-6: 1.5rem;   /* 24px */
---space-8: 2rem;     /* 32px - section */
---space-12: 3rem;    /* 48px */
---space-16: 4rem;    /* 64px - major section */
---space-24: 6rem;    /* 96px - hero */
+--space-1: 0.25rem; /* 4px - tight */
+--space-2: 0.5rem; /* 8px - base */
+--space-3: 0.75rem; /* 12px */
+--space-4: 1rem; /* 16px - comfortable */
+--space-6: 1.5rem; /* 24px */
+--space-8: 2rem; /* 32px - section */
+--space-12: 3rem; /* 48px */
+--space-16: 4rem; /* 64px - major section */
+--space-24: 6rem; /* 96px - hero */
 ```
 
 ### 5. Animation Principles
 
 **Micro-interactions**
+
 ```css
 /* Subtle hover states */
 .button {
-  transition: transform 150ms ease, box-shadow 150ms ease;
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease;
 }
 .button:hover {
   transform: translateY(-1px);
@@ -118,6 +128,7 @@ Tertiary Content  → Subtle, discovered on exploration
 ```
 
 **Page Transitions**
+
 ```css
 /* Staggered entrance animations */
 @keyframes fadeInUp {
@@ -135,12 +146,19 @@ Tertiary Content  → Subtle, discovered on exploration
   animation: fadeInUp 500ms ease forwards;
   opacity: 0;
 }
-.stagger-item:nth-child(1) { animation-delay: 0ms; }
-.stagger-item:nth-child(2) { animation-delay: 100ms; }
-.stagger-item:nth-child(3) { animation-delay: 200ms; }
+.stagger-item:nth-child(1) {
+  animation-delay: 0ms;
+}
+.stagger-item:nth-child(2) {
+  animation-delay: 100ms;
+}
+.stagger-item:nth-child(3) {
+  animation-delay: 200ms;
+}
 ```
 
 **Loading States**
+
 ```css
 /* Skeleton loading with shimmer */
 .skeleton {
@@ -155,14 +173,19 @@ Tertiary Content  → Subtle, discovered on exploration
 }
 
 @keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 ```
 
 ## Component Patterns
 
 ### Hero Section (Landing Page)
+
 ```tsx
 <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
   {/* Background gradient */}
@@ -199,6 +222,7 @@ Tertiary Content  → Subtle, discovered on exploration
 ```
 
 ### Card Component (Elevated)
+
 ```tsx
 <div className="group relative bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl p-6 hover:border-gray-700 transition-all duration-300">
   {/* Hover glow effect */}
@@ -217,6 +241,7 @@ Tertiary Content  → Subtle, discovered on exploration
 ```
 
 ### Dashboard Layout
+
 ```tsx
 <div className="min-h-screen bg-gray-950">
   {/* Sidebar */}
@@ -259,16 +284,16 @@ Tertiary Content  → Subtle, discovered on exploration
 
 /* Example responsive typography */
 .hero-title {
-  font-size: 2.5rem;   /* Mobile */
+  font-size: 2.5rem; /* Mobile */
 }
 @media (min-width: 768px) {
   .hero-title {
-    font-size: 4rem;   /* Tablet+ */
+    font-size: 4rem; /* Tablet+ */
   }
 }
 @media (min-width: 1024px) {
   .hero-title {
-    font-size: 5rem;   /* Desktop+ */
+    font-size: 5rem; /* Desktop+ */
   }
 }
 ```
@@ -282,7 +307,9 @@ Tertiary Content  → Subtle, discovered on exploration
 
 ```css
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }

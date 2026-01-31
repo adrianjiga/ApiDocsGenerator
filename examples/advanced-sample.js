@@ -21,7 +21,7 @@ function safeParseJSON(jsonStr) {
  * @param {string} currency - Currency code (USD, EUR, etc)
  * @returns {string} Formatted currency string
  */
-function formatCurrency(amount, currency = "USD") {
+function formatCurrency(amount, currency = 'USD') {
   return `${currency} ${amount.toFixed(2)}`;
 }
 

@@ -6,7 +6,7 @@
 function analyzeCoverage(apiData) {
   const gaps = [];
   const files = [];
-  
+
   let totalFunctions = 0;
   let documentedFunctions = 0;
   let totalRoutes = 0;
@@ -14,18 +14,18 @@ function analyzeCoverage(apiData) {
   let partiallyDocumented = 0;
 
   // Process each file
-  apiData.forEach(fileData => {
+  apiData.forEach((fileData) => {
     const fileGaps = [];
     let fileDocumentedItems = 0;
     let fileTotalItems = 0;
 
     // Analyze functions
-    fileData.functions?.forEach(func => {
+    fileData.functions?.forEach((func) => {
       fileTotalItems++;
       totalFunctions++;
 
       const docStatus = checkFunctionDocumentation(func);
-      
+
       if (docStatus.isFullyDocumented) {
         fileDocumentedItems++;
         documentedFunctions++;
@@ -43,7 +43,7 @@ function analyzeCoverage(apiData) {
           severity: docStatus.isPartiallyDocumented ? 'warning' : 'error',
           missing: docStatus.missing,
           existing: docStatus.existing,
-          functionSignature: `${func.name}(${func.params.join(', ')})`
+          functionSignature: `${func.name}(${func.params.join(', ')})`,
         };
         fileGaps.push(gap);
         gaps.push(gap);
@@ -51,7 +51,7 @@ function analyzeCoverage(apiData) {
     });
 
     // Analyze routes
-    fileData.routes?.forEach(route => {
+    fileData.routes?.forEach((route) => {
       fileTotalItems++;
       totalRoutes++;
 
@@ -68,9 +68,9 @@ function analyzeCoverage(apiData) {
           existing: {
             description: null,
             params: [],
-            returns: false
+            returns: false,
           },
-          functionSignature: `${route.method} ${route.path}`
+          functionSignature: `${route.method} ${route.path}`,
         };
         fileGaps.push(gap);
         gaps.push(gap);
@@ -82,7 +82,7 @@ function analyzeCoverage(apiData) {
     // Build per-file breakdown
     if (fileTotalItems > 0) {
       const fileCoveragePercentage = parseFloat(
-        ((fileDocumentedItems / fileTotalItems) * 100).toFixed(1)
+        ((fileDocumentedItems / fileTotalItems) * 100).toFixed(1),
       );
 
       files.push({
@@ -91,7 +91,7 @@ function analyzeCoverage(apiData) {
         totalItems: fileTotalItems,
         documentedItems: fileDocumentedItems,
         coveragePercentage: fileCoveragePercentage,
-        gaps: fileGaps
+        gaps: fileGaps,
       });
     }
   });
@@ -101,17 +101,20 @@ function analyzeCoverage(apiData) {
   const totalDocumentedItems = documentedFunctions + documentedRoutes;
   const undocumentedFunctions = totalFunctions - documentedFunctions;
 
-  const coveragePercentage = totalItems > 0 
-    ? parseFloat(((totalDocumentedItems / totalItems) * 100).toFixed(1))
-    : 0;
+  const coveragePercentage =
+    totalItems > 0
+      ? parseFloat(((totalDocumentedItems / totalItems) * 100).toFixed(1))
+      : 0;
 
-  const functionCoverage = totalFunctions > 0
-    ? parseFloat(((documentedFunctions / totalFunctions) * 100).toFixed(1))
-    : 0;
+  const functionCoverage =
+    totalFunctions > 0
+      ? parseFloat(((documentedFunctions / totalFunctions) * 100).toFixed(1))
+      : 0;
 
-  const routeCoverage = totalRoutes > 0
-    ? parseFloat(((documentedRoutes / totalRoutes) * 100).toFixed(1))
-    : 0;
+  const routeCoverage =
+    totalRoutes > 0
+      ? parseFloat(((documentedRoutes / totalRoutes) * 100).toFixed(1))
+      : 0;
 
   return {
     summary: {
@@ -123,10 +126,10 @@ function analyzeCoverage(apiData) {
       documentedRoutes,
       coveragePercentage,
       functionCoverage,
-      routeCoverage
+      routeCoverage,
     },
     files,
-    gaps
+    gaps,
   };
 }
 
@@ -139,7 +142,7 @@ function checkFunctionDocumentation(func) {
   const existing = {
     description: null,
     params: [],
-    returns: false
+    returns: false,
   };
 
   const missing = [];
@@ -150,7 +153,7 @@ function checkFunctionDocumentation(func) {
       isFullyDocumented: false,
       isPartiallyDocumented: false,
       missing: ['description', 'params', 'returns'],
-      existing
+      existing,
     };
   }
 
@@ -162,12 +165,14 @@ function checkFunctionDocumentation(func) {
   }
 
   // Check params
-  const paramTags = (func.jsdoc.tags || []).filter(tag => tag.tag === 'param');
-  const documentedParamNames = paramTags.map(tag => tag.name);
-  
+  const paramTags = (func.jsdoc.tags || []).filter(
+    (tag) => tag.tag === 'param',
+  );
+  const documentedParamNames = paramTags.map((tag) => tag.name);
+
   existing.params = documentedParamNames;
 
-  func.params.forEach(paramName => {
+  func.params.forEach((paramName) => {
     if (!documentedParamNames.includes(paramName)) {
       if (!missing.includes('params')) {
         missing.push('params');
@@ -177,7 +182,7 @@ function checkFunctionDocumentation(func) {
 
   // Check returns
   const hasReturnsTag = (func.jsdoc.tags || []).some(
-    tag => tag.tag === 'returns' || tag.tag === 'return'
+    (tag) => tag.tag === 'returns' || tag.tag === 'return',
   );
 
   if (hasReturnsTag) {
@@ -193,7 +198,7 @@ function checkFunctionDocumentation(func) {
     isFullyDocumented,
     isPartiallyDocumented,
     missing,
-    existing
+    existing,
   };
 }
 

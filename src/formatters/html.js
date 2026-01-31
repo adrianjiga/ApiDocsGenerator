@@ -353,39 +353,39 @@ function generateHTML(apiData) {
       file.functions.forEach((fn) => {
         html += `
         <div class="item">
-          <h4>${fn.name}(${fn.params.join(", ")})</h4>
+          <h4>${fn.name}(${fn.params.join(', ')})</h4>
           <div class="meta">📍 Line ${fn.line}</div>`;
 
         if (fn.jsdoc) {
           html += `<div class="description">${fn.jsdoc.description}</div>`;
 
           if (fn.jsdoc.tags && fn.jsdoc.tags.length > 0) {
-            const params = fn.jsdoc.tags.filter((t) => t.tag === "param");
+            const params = fn.jsdoc.tags.filter((t) => t.tag === 'param');
             if (params.length > 0) {
               html += `<div class="params">
                 <h5>📥 Parameters</h5>`;
               params.forEach((param) => {
-                const cleanDesc = (param.description || "").replace(
+                const cleanDesc = (param.description || '').replace(
                   /^[\s\-]+/,
-                  "",
+                  '',
                 );
-                html += `<div class="param-item"><span class="param-name">${param.name}</span> <code>${param.type || "any"}</code> — ${cleanDesc}</div>`;
+                html += `<div class="param-item"><span class="param-name">${param.name}</span> <code>${param.type || 'any'}</code> — ${cleanDesc}</div>`;
               });
               html += `</div>`;
             }
 
             const returns = fn.jsdoc.tags.filter(
-              (t) => t.tag === "returns" || t.tag === "return",
+              (t) => t.tag === 'returns' || t.tag === 'return',
             );
             if (returns.length > 0) {
               html += `<div class="returns">
                 <h5>📤 Returns</h5>`;
               returns.forEach((ret) => {
-                const cleanDesc = (ret.description || "").replace(
+                const cleanDesc = (ret.description || '').replace(
                   /^[\s\-]+/,
-                  "",
+                  '',
                 );
-                html += `<div class="param-item"><code>${ret.type || "any"}</code> — ${cleanDesc}</div>`;
+                html += `<div class="param-item"><code>${ret.type || 'any'}</code> — ${cleanDesc}</div>`;
               });
               html += `</div>`;
             }
@@ -396,7 +396,7 @@ function generateHTML(apiData) {
 
         html += `
           <h5 style="margin-top: 15px;">💡 Usage Example</h5>
-          <div class="code-block">${fn.name}(${fn.params.map((p) => `arg_${p}`).join(", ")});</div>
+          <div class="code-block">${fn.name}(${fn.params.map((p) => `arg_${p}`).join(', ')});</div>
         </div>`;
       });
 
@@ -417,7 +417,7 @@ function generateHTML(apiData) {
         if (route.params.length > 0) {
           html += `<div class="params">
             <h5>📥 Route Parameters</h5>
-            <div class="param-item">${route.params.join(", ")}</div>
+            <div class="param-item">${route.params.join(', ')}</div>
           </div>`;
         }
 
@@ -450,7 +450,7 @@ function generateHTML(apiData) {
  * @returns {string} Sanitized string
  */
 function sanitizeId(str) {
-  return str.replace(/\W+/g, "-").toLowerCase();
+  return str.replace(/\W+/g, '-').toLowerCase();
 }
 
 export { generateHTML };

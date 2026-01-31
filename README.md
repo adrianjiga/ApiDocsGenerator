@@ -198,11 +198,11 @@ function sum(a, b) {
 The tool automatically detects Express and Fastify route definitions:
 
 ```javascript
-app.get("/users/:id", (req, res) => {
+app.get('/users/:id', (req, res) => {
   // route handler
 });
 
-app.post("/users", (req, res) => {
+app.post('/users', (req, res) => {
   // route handler
 });
 ```
@@ -312,21 +312,21 @@ async function getUserById(userId) {
   // implementation
 }
 
-const express = require("express");
+const express = require('express');
 const app = express();
 
 /**
  * Get all users
  */
-app.get("/users", (req, res) => {
+app.get('/users', (req, res) => {
   res.json([]);
 });
 
 /**
  * Create a new user
  */
-app.post("/users", (req, res) => {
-  res.json({ id: "new-id" });
+app.post('/users', (req, res) => {
+  res.json({ id: 'new-id' });
 });
 ```
 
@@ -381,30 +381,36 @@ The built-in coverage analyzer helps you maintain high documentation quality acr
 ### How Coverage is Calculated
 
 **Fully Documented Items** have:
+
 - ✅ JSDoc comment block
 - ✅ Description text
 - ✅ @param tags for all parameters
 - ✅ @returns/@return tag
 
 **Partially Documented Items** have:
+
 - ⚠️ JSDoc comment block
 - ⚠️ Missing one or more required elements
 
 **Undocumented Items**:
+
 - ❌ No JSDoc comment
 
 ### Coverage Report Formats
 
 **Terminal Format** (default):
+
 ```
 [████████████░░░░░░░░░] 65.2%
 Function Coverage: 65.2% (15/23)
 Route Coverage: 0% (0/0)
 Documentation Gaps: 8
 ```
+
 Perfect for local development and CI/CD pipelines.
 
 **Dashboard Format**:
+
 - Interactive HTML dashboard
 - Color-coded gauge (green/yellow/red)
 - Summary stat cards
@@ -413,6 +419,7 @@ Perfect for local development and CI/CD pipelines.
 - Responsive design
 
 **JSON Format**:
+
 - Machine-readable output
 - Complete analysis data
 - Easy integration with other tools
