@@ -2,13 +2,38 @@
 
 ## Quick Reference
 
-**Run the CLI:**
+**Run the CLI directly:**
 
 ```bash
 npm run start -- generate --dir ./src --output ./docs --formats markdown,html,json
 npm run start -- audit --dir ./src --threshold 80 --format terminal
 npm run start -- scan ./src
-npm run test:sample
+```
+
+**Available npm scripts:**
+
+```bash
+# Documentation generation (from examples directory)
+npm run generate              # All formats (markdown, html, json)
+npm run generate:markdown     # Markdown only
+npm run generate:html         # HTML only
+npm run generate:json         # JSON only
+
+# Scanning & auditing (examples directory)
+npm run scan                  # Preview APIs without generating files
+npm run audit                 # Terminal coverage report
+npm run audit:json            # JSON coverage report
+npm run audit:dashboard       # HTML coverage dashboard
+
+# Testing & linting
+npm test                      # Run vitest test suite
+npm run test:watch            # Run vitest in watch mode
+npm run lint                  # Run ESLint
+npm run lint:fix              # Run ESLint with auto-fix
+
+# Formatting
+npm run format                # Run Prettier (write)
+npm run format:check          # Run Prettier (check only)
 ```
 
 **Available Commands:**
@@ -70,12 +95,12 @@ Output files: API.md, index.html, api.json, GENERATION_REPORT.md
 
 - **`src/formatters/`** - Format-specific generators:
   - `markdown.js` - Generates API.md with TOC, function signatures, JSDoc details
-  - `html.js` - Generates self-contained index.html with styling
+  - `html.js` - Generates self-contained index.html with styling; escapes all dynamic content via `escapeHtml` to prevent XSS
   - `json.js` - Generates api.json with structured data
   - `terminal.js` - Formats coverage reports for terminal output
-  - `dashboard.js` - Generates self-contained HTML coverage dashboard
+  - `dashboard.js` - Generates self-contained HTML coverage dashboard; imports `escapeHtml` from utils
 
-- **`src/utils.js`** - Helper utilities for sanitization, truncation, formatting
+- **`src/utils.js`** - Helper utilities: `sanitizeHtmlId`, `getParamName`, `truncate`, `capitalize`, `formatTimestamp`, `escapeHtml`
 
 ## Key Conventions
 
@@ -94,10 +119,10 @@ Uses a `visited` Set during tree walk to prevent processing the same node twice.
 JSDoc comments are matched to functions by **line proximity**:
 
 1. Extract all JSDoc blocks with their line numbers
-2. For each function, find the closest JSDoc comment that appears **before** it
+2. For each function, find the closest JSDoc comment that appears **before** it within **2 lines** (distance ≤ 2)
 3. If JSDoc exists, attach parsed JSDoc data to the function object
 
-This means JSDoc must appear immediately before the function it documents (no blank lines recommended).
+This means JSDoc must appear immediately before the function it documents (at most one blank line between the closing `*/` and the function).
 
 ### Route Detection Pattern
 
@@ -134,7 +159,7 @@ The `analyzeCoverage()` function evaluates documentation completeness:
 
 **Function Coverage Rules:**
 
-- **Fully documented**: JSDoc exists + non-empty description + @param for all params + @returns/@return tag
+- **Fully documented**: JSDoc exists + non-empty description + @param for all params + @returns tag (or @return alias)
 - **Partially documented**: JSDoc exists but missing required elements
 - **Undocumented**: No JSDoc (jsdoc is null)
 
@@ -246,8 +271,21 @@ The generator.js then writes the returned string to disk.
 
 **Available Scripts:**
 
+- `npm test` - Run the full vitest test suite
 - `npm run start` - Run CLI manually
-- `npm run test:sample` - Generate docs from examples directory (quick sanity check)
+- `npm run generate` - Generate docs from examples directory (quick sanity check)
+- `npm run lint` - Run ESLint
+
+**Test Framework:** vitest (ESM-native, uses `describe`, `it`, `expect`, `vi` for mocking)
+
+**Shared Fixtures:** `tests/fixtures.js` exports reusable helpers to avoid mock data duplication:
+
+- `makeFunction(name, params, jsdoc)` - Creates a mock function object
+- `makeRoute(method, path, params, jsdoc?)` - Creates a mock route object
+- `fullyDocumentedJsdoc(params)` - Creates a complete JSDoc object with @param tags for all params and @returns
+- `mockApiData` - A standard parsed file array used across formatter tests (html, markdown, json)
+
+**Console Suppression:** Tests that exercise code paths which call `console.log`/`console.warn`/`console.error` use `vi.spyOn(console, '<method>').mockImplementation(() => {})` in `beforeEach` and `vi.restoreAllMocks()` in `afterEach` to keep test output clean while still allowing assertions on what was logged.
 
 **Manual Testing:**
 
@@ -302,7 +340,9 @@ All CSS is inline with zero external dependencies. Design follows the frontend-d
 
 - **No configuration file** - All options are command-line flags; environment variables for exclusion patterns only
 - **AST parsing scope** - Limited to ES2022 syntax (see espree config in parser.js)
-- **JSDoc format requirement** - Must use `/** */` block comment format immediately before function
+- **JSDoc format requirement** - Must use `/** */` block comment format within 2 lines above the function
+- **JSDoc tag aliases** - Both `@returns` and `@return` are recognized as the returns tag
 - **Route detection limitation** - Only detects routes with string literal paths, not dynamic/template paths
+- **XSS protection** - HTML and dashboard formatters escape all dynamic content via `escapeHtml` (from `src/utils.js`) to prevent injection
 - **Error handling** - Parser warns on individual file parse failures but continues processing
 - **Dashboard output** - Automatically creates parent directories as needed

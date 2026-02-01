@@ -18,7 +18,7 @@ api-docs-generator generate --dir ./src --output ./docs
 
 This will:
 
-- Scan `./src` for all `.js` and `.ts` files
+- Scan `./src` for all `.js`, `.ts`, `.jsx`, and `.tsx` files
 - Extract functions and API routes
 - Generate documentation in `./docs` folder with:
   - `API.md` (Markdown)
@@ -175,7 +175,7 @@ coverage-dashboard.html    # Interactive coverage dashboard
 
 ## Documentation Coverage Levels
 
-✅ **Fully Documented** - Has JSDoc, description, @param for all params, and @returns tag
+✅ **Fully Documented** - Has JSDoc, description, @param for all params, and @returns (or @return) tag
 
 ⚠️ **Partially Documented** - Has JSDoc but missing required elements
 

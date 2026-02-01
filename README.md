@@ -140,7 +140,7 @@ api-docs-generator audit --dir ./src --threshold 75 --format terminal
 
 **Coverage Metrics:**
 
-- **Fully Documented**: Function has JSDoc, description, @param for all params, and @returns tag
+- **Fully Documented**: Function has JSDoc, description, @param for all params, and @returns (or @return) tag
 - **Partially Documented**: Function has JSDoc but missing required elements
 - **Undocumented**: No JSDoc comment
 - **Coverage Percentage**: (Fully documented items) / (Total items) × 100
@@ -178,6 +178,8 @@ function myFunction(paramName, paramName2) {
   // implementation
 }
 ```
+
+Both `@returns` and `@return` are recognized.
 
 **Example:**
 
@@ -237,6 +239,7 @@ Beautiful, self-contained HTML with:
 - Code syntax highlighting
 - Professional styling
 - Dark theme with rich color palette
+- XSS-safe: all dynamic content is escaped
 
 ### JSON Output (`api.json`)
 
@@ -385,7 +388,7 @@ The built-in coverage analyzer helps you maintain high documentation quality acr
 - ✅ JSDoc comment block
 - ✅ Description text
 - ✅ @param tags for all parameters
-- ✅ @returns/@return tag
+- ✅ @returns tag (or @return alias)
 
 **Partially Documented Items** have:
 
@@ -464,7 +467,7 @@ Make sure:
 JSDoc comments must:
 
 - Use the `/** */` block comment format
-- Appear immediately before the function declaration
+- Appear within 2 lines above the function declaration (at most one blank line between `*/` and the function)
 - Be valid JSDoc syntax
 
 ### Routes not detected
@@ -485,22 +488,24 @@ Express/Fastify routes must:
 ## Limitations
 
 - Does not analyze runtime behavior
-- JSDoc linking is proximity-based (closest comment before function)
+- JSDoc linking is proximity-based (closest comment within 2 lines before function)
 - Routes with dynamic paths may not be detected
 - Comments must be in standard JSDoc format
 
 ## Development
 
 ```bash
-# Run tests
+# Run the full test suite (vitest)
 npm test
 
-# Generate docs for the sample app
-npm run test:sample
+# Generate docs for the examples directory
+npm run generate
 
 # Run linter
 npm run lint
 ```
+
+Tests use [vitest](https://vitest.dev/) with shared fixtures in `tests/fixtures.js`.
 
 ## License
 
