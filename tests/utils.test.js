@@ -5,6 +5,7 @@ import {
   truncate,
   capitalize,
   formatTimestamp,
+  escapeHtml,
 } from '../src/utils.js';
 
 describe('sanitizeHtmlId', () => {
@@ -95,5 +96,33 @@ describe('formatTimestamp', () => {
   it('returns a valid ISO string when called with no argument', () => {
     const result = formatTimestamp();
     expect(() => new Date(result).toISOString()).not.toThrow();
+  });
+});
+
+describe('escapeHtml', () => {
+  it('escapes ampersands', () => {
+    expect(escapeHtml('a & b')).toBe('a &amp; b');
+  });
+
+  it('escapes angle brackets', () => {
+    expect(escapeHtml('<script>')).toBe('&lt;script&gt;');
+  });
+
+  it('escapes double quotes', () => {
+    expect(escapeHtml('"hello"')).toBe('&quot;hello&quot;');
+  });
+
+  it('escapes single quotes', () => {
+    expect(escapeHtml("it's")).toBe('it&#039;s');
+  });
+
+  it('passes clean strings through unchanged', () => {
+    expect(escapeHtml('hello world')).toBe('hello world');
+  });
+
+  it('escapes all special characters together', () => {
+    expect(escapeHtml('<a href="x">&\'</a>')).toBe(
+      '&lt;a href=&quot;x&quot;&gt;&amp;&#039;&lt;/a&gt;',
+    );
   });
 });
