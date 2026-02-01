@@ -1,3 +1,5 @@
+import { escapeHtml } from '../utils.js';
+
 /**
  * Generate HTML documentation
  * @param {Array} apiData - Array of parsed API metadata
@@ -330,7 +332,7 @@ function generateHTML(apiData) {
       <ul>`;
 
     fileSections.forEach((file) => {
-      html += `<li><a href="#${sanitizeId(file.fileName)}">${file.fileName}</a></li>`;
+      html += `<li><a href="#${sanitizeId(file.fileName)}">${escapeHtml(file.fileName)}</a></li>`;
     });
 
     html += `
@@ -342,8 +344,8 @@ function generateHTML(apiData) {
   fileSections.forEach((file) => {
     html += `
     <div class="file-section" id="${sanitizeId(file.fileName)}">
-      <h2>${file.fileName}</h2>
-      <div class="file-path">📁 ${file.file}</div>`;
+      <h2>${escapeHtml(file.fileName)}</h2>
+      <div class="file-path">📁 ${escapeHtml(file.file)}</div>`;
 
     // Functions
     if (file.functions.length > 0) {
@@ -353,11 +355,11 @@ function generateHTML(apiData) {
       file.functions.forEach((fn) => {
         html += `
         <div class="item">
-          <h4>${fn.name}(${fn.params.join(', ')})</h4>
+          <h4>${escapeHtml(fn.name)}(${fn.params.map((p) => escapeHtml(p)).join(', ')})</h4>
           <div class="meta">📍 Line ${fn.line}</div>`;
 
         if (fn.jsdoc) {
-          html += `<div class="description">${fn.jsdoc.description}</div>`;
+          html += `<div class="description">${escapeHtml(fn.jsdoc.description)}</div>`;
 
           if (fn.jsdoc.tags && fn.jsdoc.tags.length > 0) {
             const params = fn.jsdoc.tags.filter((t) => t.tag === 'param');
@@ -369,7 +371,7 @@ function generateHTML(apiData) {
                   /^[\s-]+/,
                   '',
                 );
-                html += `<div class="param-item"><span class="param-name">${param.name}</span> <code>${param.type || 'any'}</code> — ${cleanDesc}</div>`;
+                html += `<div class="param-item"><span class="param-name">${escapeHtml(param.name)}</span> <code>${escapeHtml(param.type || 'any')}</code> — ${escapeHtml(cleanDesc)}</div>`;
               });
               html += `</div>`;
             }
@@ -385,18 +387,18 @@ function generateHTML(apiData) {
                   /^[\s-]+/,
                   '',
                 );
-                html += `<div class="param-item"><code>${ret.type || 'any'}</code> — ${cleanDesc}</div>`;
+                html += `<div class="param-item"><code>${escapeHtml(ret.type || 'any')}</code> — ${escapeHtml(cleanDesc)}</div>`;
               });
               html += `</div>`;
             }
           }
         } else {
-          html += `<div class="description">${fn.description}</div>`;
+          html += `<div class="description">${escapeHtml(fn.description)}</div>`;
         }
 
         html += `
           <h5 style="margin-top: 15px;">💡 Usage Example</h5>
-          <div class="code-block">${fn.name}(${fn.params.map((p) => `arg_${p}`).join(', ')});</div>
+          <div class="code-block">${escapeHtml(fn.name)}(${fn.params.map((p) => `arg_${escapeHtml(p)}`).join(', ')});</div>
         </div>`;
       });
 
@@ -411,19 +413,19 @@ function generateHTML(apiData) {
       file.routes.forEach((route) => {
         html += `
         <div class="item">
-          <h4><span class="method-badge">${route.method}</span> ${route.path}</h4>
+          <h4><span class="method-badge">${escapeHtml(route.method)}</span> ${escapeHtml(route.path)}</h4>
           <div class="meta">📍 Line ${route.line}</div>`;
 
         if (route.params.length > 0) {
           html += `<div class="params">
             <h5>📥 Route Parameters</h5>
-            <div class="param-item">${route.params.join(', ')}</div>
+            <div class="param-item">${route.params.map((p) => escapeHtml(p)).join(', ')}</div>
           </div>`;
         }
 
         html += `
           <h5 style="margin-top: 15px;">💡 Example Request</h5>
-          <div class="code-block">curl -X ${route.method} http://localhost:3000${route.path}</div>
+          <div class="code-block">curl -X ${escapeHtml(route.method)} http://localhost:3000${escapeHtml(route.path)}</div>
         </div>`;
       });
 

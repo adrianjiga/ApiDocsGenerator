@@ -1,3 +1,5 @@
+import { escapeHtml } from '../utils.js';
+
 /**
  * Generate a self-contained HTML dashboard showing documentation coverage
  * @param {Object} report - Coverage analysis report from analyzeCoverage()
@@ -632,22 +634,6 @@ function getCoverageColor(percentage) {
   if (percentage >= 80) return '#44bb44'; // green
   if (percentage >= 50) return '#ffaa44'; // yellow
   return '#ff4444'; // red
-}
-
-/**
- * Escape HTML special characters
- * @param {string} text - Text to escape
- * @returns {string} Escaped text
- */
-function escapeHtml(text) {
-  const map = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#039;',
-  };
-  return text.replace(/[&<>"']/g, (m) => map[m]);
 }
 
 export { generateDashboard };
