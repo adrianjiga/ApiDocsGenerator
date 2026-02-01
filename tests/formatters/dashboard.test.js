@@ -224,4 +224,25 @@ describe('generateDashboard', () => {
     const html = generateDashboard(report);
     expect(html).toContain('#ff4444');
   });
+
+  it('omits per-file section when files array is empty', () => {
+    const report = makeReport({ files: [], gaps: [] });
+    const html = generateDashboard(report);
+    expect(html).not.toContain('Per-File Coverage');
+  });
+
+  it('uses correct per-file progress bar colors at boundaries', () => {
+    const report = makeReport({
+      files: [
+        { fileName: 'low.js', totalItems: 10, documentedItems: 4, coveragePercentage: 40 },
+        { fileName: 'mid.js', totalItems: 10, documentedItems: 5, coveragePercentage: 50 },
+        { fileName: 'high.js', totalItems: 10, documentedItems: 8, coveragePercentage: 80 },
+      ],
+      gaps: [],
+    });
+    const html = generateDashboard(report);
+    expect(html).toContain('background-color: #ff4444;');
+    expect(html).toContain('background-color: #ffaa44;');
+    expect(html).toContain('background-color: #44bb44;');
+  });
 });

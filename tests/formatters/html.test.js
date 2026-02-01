@@ -1,37 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateHTML } from '../../src/formatters/html.js';
-
-/**
- * Mock API data for testing.
- * @type {Array}
- */
-const mockApiData = [
-  {
-    file: '/src/app.js',
-    fileName: 'app.js',
-    functions: [
-      {
-        name: 'greet',
-        params: ['name'],
-        description: 'Greets a user',
-        line: 10,
-        jsdoc: {
-          description: 'Greets a user',
-          tags: [
-            {
-              tag: 'param',
-              name: 'name',
-              type: 'string',
-              description: 'The name',
-            },
-            { tag: 'returns', type: 'string', description: 'Greeting' },
-          ],
-        },
-      },
-    ],
-    routes: [{ method: 'GET', path: '/users/:id', params: ['id'], line: 20 }],
-  },
-];
+import { mockApiData } from '../fixtures.js';
 
 describe('generateHTML', () => {
   it('returns valid HTML document', () => {
@@ -222,5 +191,88 @@ describe('generateHTML', () => {
     expect(html).toContain('POST');
     expect(html).toContain('/items');
     expect(html).not.toContain('Route Parameters');
+  });
+
+  it('renders multiple files in table of contents', () => {
+    const data = [
+      ...mockApiData,
+      {
+        file: '/src/utils.js',
+        fileName: 'utils.js',
+        functions: [
+          { name: 'helper', params: [], description: 'Helper', line: 1, jsdoc: null },
+        ],
+        routes: [],
+      },
+    ];
+    const html = generateHTML(data);
+    expect(html).toContain('app.js</a>');
+    expect(html).toContain('utils.js</a>');
+  });
+
+  it('omits params and returns sections when JSDoc has no @param or @returns tags', () => {
+    const data = [
+      {
+        file: '/src/a.js',
+        fileName: 'a.js',
+        functions: [
+          {
+            name: 'fn',
+            params: [],
+            description: 'test',
+            line: 1,
+            jsdoc: {
+              description: 'A function',
+              tags: [{ tag: 'deprecated', description: 'Use other fn' }],
+            },
+          },
+        ],
+        routes: [],
+      },
+    ];
+    const html = generateHTML(data);
+    expect(html).toContain('A function');
+    expect(html).not.toContain('Parameters');
+    expect(html).not.toContain('Returns');
+  });
+
+  it('escapes HTML in param and return tag values', () => {
+    const data = [
+      {
+        file: '/src/a.js',
+        fileName: 'a.js',
+        functions: [
+          {
+            name: 'fn',
+            params: ['x'],
+            description: 'test',
+            line: 1,
+            jsdoc: {
+              description: 'A function',
+              tags: [
+                {
+                  tag: 'param',
+                  name: '<b>x</b>',
+                  type: 'Array<string>',
+                  description: 'the <em>value</em>',
+                },
+                {
+                  tag: 'returns',
+                  type: 'Map<K,V>',
+                  description: 'a <b>map</b>',
+                },
+              ],
+            },
+          },
+        ],
+        routes: [],
+      },
+    ];
+    const html = generateHTML(data);
+    expect(html).toContain('&lt;b&gt;x&lt;/b&gt;');
+    expect(html).toContain('Array&lt;string&gt;');
+    expect(html).toContain('the &lt;em&gt;value&lt;/em&gt;');
+    expect(html).toContain('Map&lt;K,V&gt;');
+    expect(html).toContain('a &lt;b&gt;map&lt;/b&gt;');
   });
 });

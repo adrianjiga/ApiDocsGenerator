@@ -1,37 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateJSON } from '../../src/formatters/json.js';
-
-/**
- * Mock API data for testing.
- * @type {Array}
- */
-const mockApiData = [
-  {
-    file: '/src/app.js',
-    fileName: 'app.js',
-    functions: [
-      {
-        name: 'greet',
-        params: ['name'],
-        description: 'Greets a user',
-        line: 10,
-        jsdoc: {
-          description: 'Greets a user',
-          tags: [
-            {
-              tag: 'param',
-              name: 'name',
-              type: 'string',
-              description: 'The name',
-            },
-            { tag: 'returns', type: 'string', description: 'Greeting' },
-          ],
-        },
-      },
-    ],
-    routes: [{ method: 'GET', path: '/users/:id', params: ['id'], line: 20 }],
-  },
-];
+import { mockApiData } from '../fixtures.js';
 
 describe('generateJSON', () => {
   it('returns valid JSON', () => {
@@ -98,5 +67,23 @@ describe('generateJSON', () => {
     const parsed = JSON.parse(generateJSON([]));
     expect(parsed.files).toHaveLength(0);
     expect(parsed.meta).toBeDefined();
+  });
+
+  it('handles multiple files', () => {
+    const data = [
+      ...mockApiData,
+      {
+        file: '/src/utils.js',
+        fileName: 'utils.js',
+        functions: [
+          { name: 'helper', params: [], description: 'Helper', line: 1, jsdoc: null },
+        ],
+        routes: [],
+      },
+    ];
+    const parsed = JSON.parse(generateJSON(data));
+    expect(parsed.files).toHaveLength(2);
+    expect(parsed.files[0].fileName).toBe('app.js');
+    expect(parsed.files[1].fileName).toBe('utils.js');
   });
 });

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import fs from 'fs-extra';
 import path from 'path';
 import { generate } from '../src/generator.js';
@@ -8,10 +8,14 @@ const examplesDir = path.resolve('examples');
 
 beforeEach(async () => {
   await fs.remove(outputDir);
+  vi.spyOn(console, 'log').mockImplementation(() => {});
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
 afterEach(async () => {
   await fs.remove(outputDir);
+  vi.restoreAllMocks();
 });
 
 describe('generate', () => {
@@ -97,5 +101,13 @@ describe('generate', () => {
     const result = await generate(examplesDir, outputDir, []);
     expect(result.success).toBe(true);
     expect(result.generated).toHaveLength(0);
+  });
+
+  it('normalizes format names with different casing and whitespace', async () => {
+    const result = await generate(examplesDir, outputDir, [' HTML ', 'JSON']);
+    expect(result.success).toBe(true);
+    expect(result.generated).toHaveLength(2);
+    expect(result.generated[0].file).toBe('index.html');
+    expect(result.generated[1].file).toBe('api.json');
   });
 });

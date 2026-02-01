@@ -1,33 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateMarkdown } from '../../src/formatters/markdown.js';
-
-const mockApiData = [
-  {
-    file: '/src/app.js',
-    fileName: 'app.js',
-    functions: [
-      {
-        name: 'greet',
-        params: ['name'],
-        description: 'Greets a user',
-        line: 10,
-        jsdoc: {
-          description: 'Greets a user',
-          tags: [
-            {
-              tag: 'param',
-              name: 'name',
-              type: 'string',
-              description: 'The name',
-            },
-            { tag: 'returns', type: 'string', description: 'Greeting message' },
-          ],
-        },
-      },
-    ],
-    routes: [{ method: 'GET', path: '/users/:id', params: ['id'], line: 20 }],
-  },
-];
+import { mockApiData } from '../fixtures.js';
 
 describe('generateMarkdown', () => {
   it('includes a title header', () => {
@@ -133,5 +106,70 @@ describe('generateMarkdown', () => {
     const md = generateMarkdown(data);
     expect(md).toContain('POST /items');
     expect(md).not.toContain('**Route Parameters:**');
+  });
+
+  it('renders multiple files in table of contents', () => {
+    const data = [
+      ...mockApiData,
+      {
+        file: '/src/utils.js',
+        fileName: 'utils.js',
+        functions: [
+          { name: 'helper', params: [], description: 'Helper', line: 1, jsdoc: null },
+        ],
+        routes: [],
+      },
+    ];
+    const md = generateMarkdown(data);
+    expect(md).toContain('[app.js]');
+    expect(md).toContain('[utils.js]');
+  });
+
+  it('omits params and returns when JSDoc has empty tags array', () => {
+    const data = [
+      {
+        file: '/src/a.js',
+        fileName: 'a.js',
+        functions: [
+          {
+            name: 'fn',
+            params: [],
+            description: 'test',
+            line: 1,
+            jsdoc: { description: 'A function', tags: [] },
+          },
+        ],
+        routes: [],
+      },
+    ];
+    const md = generateMarkdown(data);
+    expect(md).toContain('A function');
+    expect(md).not.toContain('**Parameters:**');
+    expect(md).not.toContain('**Returns:**');
+  });
+
+  it('renders @return alias the same as @returns', () => {
+    const data = [
+      {
+        file: '/src/a.js',
+        fileName: 'a.js',
+        functions: [
+          {
+            name: 'fn',
+            params: [],
+            description: 'test',
+            line: 1,
+            jsdoc: {
+              description: 'A function',
+              tags: [{ tag: 'return', type: 'string', description: 'result' }],
+            },
+          },
+        ],
+        routes: [],
+      },
+    ];
+    const md = generateMarkdown(data);
+    expect(md).toContain('**Returns:**');
+    expect(md).toContain('result');
   });
 });

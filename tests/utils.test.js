@@ -71,6 +71,10 @@ describe('truncate', () => {
     const str = 'a'.repeat(101);
     expect(truncate(str)).toBe('a'.repeat(100) + '...');
   });
+
+  it('handles empty string', () => {
+    expect(truncate('')).toBe('');
+  });
 });
 
 describe('capitalize', () => {
@@ -84,6 +88,10 @@ describe('capitalize', () => {
 
   it('handles single character', () => {
     expect(capitalize('a')).toBe('A');
+  });
+
+  it('handles empty string', () => {
+    expect(capitalize('')).toBe('');
   });
 });
 
@@ -124,5 +132,9 @@ describe('escapeHtml', () => {
     expect(escapeHtml('<a href="x">&\'</a>')).toBe(
       '&lt;a href=&quot;x&quot;&gt;&amp;&#039;&lt;/a&gt;',
     );
+  });
+
+  it('handles empty string', () => {
+    expect(escapeHtml('')).toBe('');
   });
 });

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -9,6 +9,14 @@ import {
   scanDirectory,
   parseDirectory,
 } from '../src/parser.js';
+
+beforeEach(() => {
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('parseJSDoc', () => {
   it('extracts a single JSDoc block', () => {
@@ -169,6 +177,13 @@ describe('extractFunctions', () => {
     expect(extractFunctions(source)).toHaveLength(0);
   });
 
+  it('uses "arg" fallback for destructured parameters', () => {
+    const source = 'function test({a, b}) {}';
+    const result = extractFunctions(source);
+    expect(result).toHaveLength(1);
+    expect(result[0].params).toEqual(['arg']);
+  });
+
   it('extracts routes with multiple params', () => {
     const source = 'app.get("/orgs/:orgId/users/:userId", (req, res) => {});';
     const result = extractFunctions(source);
@@ -252,6 +267,21 @@ describe('parseFile', () => {
       fs.unlinkSync(tmpFile);
     }
   });
+
+  it('always sets jsdoc to null on routes', () => {
+    const tmpFile = path.join(os.tmpdir(), 'route-jsdoc.js');
+    fs.writeFileSync(
+      tmpFile,
+      '/** @description Get users */\napp.get("/users", (req, res) => {});\n',
+    );
+    try {
+      const result = parseFile(tmpFile);
+      expect(result.routes).toHaveLength(1);
+      expect(result.routes[0].jsdoc).toBeNull();
+    } finally {
+      fs.unlinkSync(tmpFile);
+    }
+  });
 });
 
 describe('scanDirectory', () => {
@@ -275,6 +305,14 @@ describe('scanDirectory', () => {
     files.forEach((f) => {
       expect(f).not.toContain('examples');
     });
+  });
+
+  it('returns empty array and warns for unreadable directory', () => {
+    const files = scanDirectory('/nonexistent/path/xyz');
+    expect(files).toHaveLength(0);
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Could not read directory'),
+    );
   });
 });
 

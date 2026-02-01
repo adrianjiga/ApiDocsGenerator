@@ -1,52 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { analyzeCoverage } from '../src/analyzer.js';
-
-/**
- * Mock function representation
- * @param {string} name
- * @param {string[]} params
- * @param {Object|null} jsdoc
- * @returns {Object}
- */
-function makeFunction(name, params, jsdoc) {
-  return {
-    name,
-    params,
-    line: 1,
-    jsdoc,
-    description: jsdoc?.description || 'No description',
-  };
-}
-
-/**
- * Mock route representation
- * @param {string} method
- * @param {string} routePath
- * @param {string[]} params
- * @returns {Object}
- */
-function makeRoute(method, routePath, params) {
-  return { method, path: routePath, params, line: 1, jsdoc: null };
-}
-
-/**Generate fully documented jsdoc object
- * @param {string[]} params
- * @returns {Object}
- */
-function fullyDocumentedJsdoc(params) {
-  return {
-    description: 'A documented function',
-    tags: [
-      ...params.map((p) => ({
-        tag: 'param',
-        name: p,
-        type: 'string',
-        description: `The ${p}`,
-      })),
-      { tag: 'returns', type: 'string', description: 'result' },
-    ],
-  };
-}
+import {
+  makeFunction,
+  makeRoute,
+  fullyDocumentedJsdoc,
+} from './fixtures.js';
 
 describe('analyzeCoverage', () => {
   it('returns 100% coverage for fully documented functions', () => {
@@ -251,6 +209,63 @@ describe('analyzeCoverage', () => {
         file: '/src/a.js',
         fileName: 'a.js',
         functions: [makeFunction('fn', ['x'], jsdocWithReturn)],
+        routes: [],
+      },
+    ];
+    const result = analyzeCoverage(apiData);
+    expect(result.summary.documentedFunctions).toBe(1);
+    expect(result.gaps).toHaveLength(0);
+  });
+
+  it('counts documented routes toward coverage', () => {
+    const apiData = [
+      {
+        file: '/src/a.js',
+        fileName: 'a.js',
+        functions: [],
+        routes: [
+          makeRoute('GET', '/users', [], { description: 'Get users', tags: [] }),
+        ],
+      },
+    ];
+    const result = analyzeCoverage(apiData);
+    expect(result.summary.totalRoutes).toBe(1);
+    expect(result.summary.documentedRoutes).toBe(1);
+    expect(result.summary.routeCoverage).toBe(100);
+    expect(result.gaps).toHaveLength(0);
+  });
+
+  it('flags whitespace-only description as missing', () => {
+    const jsdoc = {
+      description: '   ',
+      tags: [
+        { tag: 'param', name: 'x', type: 'number', description: '' },
+        { tag: 'returns', type: 'void', description: '' },
+      ],
+    };
+    const apiData = [
+      {
+        file: '/src/a.js',
+        fileName: 'a.js',
+        functions: [makeFunction('fn', ['x'], jsdoc)],
+        routes: [],
+      },
+    ];
+    const result = analyzeCoverage(apiData);
+    expect(result.gaps[0].missing).toContain('description');
+    expect(result.gaps[0].severity).toBe('warning');
+  });
+
+  it('fully documents zero-param function with only @returns', () => {
+    const jsdoc = {
+      description: 'Does something',
+      tags: [{ tag: 'returns', type: 'void', description: '' }],
+    };
+    const apiData = [
+      {
+        file: '/src/a.js',
+        fileName: 'a.js',
+        functions: [makeFunction('fn', [], jsdoc)],
         routes: [],
       },
     ];
