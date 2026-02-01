@@ -237,4 +237,25 @@ describe('analyzeCoverage', () => {
     const result = analyzeCoverage(apiData);
     expect(result.files).toHaveLength(0);
   });
+
+  it('treats @return the same as @returns', () => {
+    const jsdocWithReturn = {
+      description: 'A function',
+      tags: [
+        { tag: 'param', name: 'x', type: 'number', description: '' },
+        { tag: 'return', type: 'number', description: 'result' },
+      ],
+    };
+    const apiData = [
+      {
+        file: '/src/a.js',
+        fileName: 'a.js',
+        functions: [makeFunction('fn', ['x'], jsdocWithReturn)],
+        routes: [],
+      },
+    ];
+    const result = analyzeCoverage(apiData);
+    expect(result.summary.documentedFunctions).toBe(1);
+    expect(result.gaps).toHaveLength(0);
+  });
 });

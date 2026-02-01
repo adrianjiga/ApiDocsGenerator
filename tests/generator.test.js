@@ -87,4 +87,15 @@ describe('generate', () => {
     expect(report).toContain('Functions Documented');
     expect(report).toContain('API Routes Found');
   });
+
+  it('returns failure for nonexistent source directory', async () => {
+    const result = await generate('/nonexistent/path/xyz', outputDir, ['json']);
+    expect(result.success).toBe(false);
+  });
+
+  it('succeeds with empty formats array', async () => {
+    const result = await generate(examplesDir, outputDir, []);
+    expect(result.success).toBe(true);
+    expect(result.generated).toHaveLength(0);
+  });
 });

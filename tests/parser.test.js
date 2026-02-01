@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import {
   parseJSDoc,
@@ -162,6 +164,11 @@ describe('extractFunctions', () => {
     expect(extractFunctions(source)).toHaveLength(0);
   });
 
+  it('returns empty array for malformed JavaScript', () => {
+    const source = 'function %%% invalid {{{';
+    expect(extractFunctions(source)).toHaveLength(0);
+  });
+
   it('extracts routes with multiple params', () => {
     const source = 'app.get("/orgs/:orgId/users/:userId", (req, res) => {});';
     const result = extractFunctions(source);
@@ -215,6 +222,36 @@ describe('parseFile', () => {
       expect(route).toHaveProperty('path');
     });
   });
+
+  it('matches JSDoc exactly 1 line away from function', () => {
+    const tmpFile = path.join(os.tmpdir(), 'jsdoc-close.js');
+    fs.writeFileSync(
+      tmpFile,
+      '/**\n * My func\n * @param {string} x\n */\nfunction close(x) {}\n',
+    );
+    try {
+      const result = parseFile(tmpFile);
+      const fn = result.functions.find((f) => f.name === 'close');
+      expect(fn.jsdoc).not.toBeNull();
+    } finally {
+      fs.unlinkSync(tmpFile);
+    }
+  });
+
+  it('does not match JSDoc 3+ lines away from function', () => {
+    const tmpFile = path.join(os.tmpdir(), 'jsdoc-far.js');
+    fs.writeFileSync(
+      tmpFile,
+      '/** @param {string} x */\n\n\n\nfunction far(x) {}\n',
+    );
+    try {
+      const result = parseFile(tmpFile);
+      const fn = result.functions.find((f) => f.name === 'far');
+      expect(fn.jsdoc).toBeNull();
+    } finally {
+      fs.unlinkSync(tmpFile);
+    }
+  });
 });
 
 describe('scanDirectory', () => {
@@ -230,6 +267,13 @@ describe('scanDirectory', () => {
     const files = scanDirectory(path.resolve('.'));
     files.forEach((f) => {
       expect(f).not.toContain('node_modules');
+    });
+  });
+
+  it('excludes directories matching custom excludePattern', () => {
+    const files = scanDirectory(path.resolve('.'), 'node_modules|examples');
+    files.forEach((f) => {
+      expect(f).not.toContain('examples');
     });
   });
 });
