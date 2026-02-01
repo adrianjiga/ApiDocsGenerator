@@ -86,20 +86,20 @@ async function generate(
 
     const summary = `# Documentation Generation Summary
 
-Generated: ${new Date().toISOString()}
+      Generated: ${new Date().toISOString()}
 
-## Statistics
-- Files Scanned: ${apiData.length}
-- Functions Documented: ${functionCount}
-- API Routes Found: ${routeCount}
-- Output Formats: ${formats.join(', ')}
+      ## Statistics
+      - Files Scanned: ${apiData.length}
+      - Functions Documented: ${functionCount}
+      - API Routes Found: ${routeCount}
+      - Output Formats: ${formats.join(', ')}
 
-## Generated Files
-${results.generated.map((g) => `- ${g.format.toUpperCase()}: \`${g.file}\``).join('\n')}
+      ## Generated Files
+      ${results.generated.map((g) => `- ${g.format.toUpperCase()}: \`${g.file}\``).join('\n')}
 
-## Location
-All files generated in: \`${outputDir}\`
-`;
+      ## Location
+      All files generated in: \`${outputDir}\`
+      `;
 
     await fs.writeFile(
       path.join(outputDir, 'GENERATION_REPORT.md'),
