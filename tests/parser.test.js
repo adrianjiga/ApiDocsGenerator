@@ -22,6 +22,21 @@ describe('parseJSDoc', () => {
     const result = parseJSDoc(source);
     expect(result).toHaveLength(1);
     expect(result[0].parsed.description).toContain('Adds two numbers');
+    expect(result[0].parsed.tags).toHaveLength(3);
+    expect(result[0].parsed.tags[0]).toMatchObject({
+      description: '- First',
+      name: 'a',
+      type: 'number',
+    });
+    expect(result[0].parsed.tags[1]).toMatchObject({
+      description: '- Second',
+      name: 'b',
+      type: 'number',
+    });
+    expect(result[0].parsed.tags[2]).toMatchObject({
+      description: '',
+      type: 'number',
+    });
   });
 
   it('extracts multiple JSDoc blocks', () => {
@@ -38,6 +53,14 @@ describe('parseJSDoc', () => {
       `;
     const result = parseJSDoc(source);
     expect(result).toHaveLength(2);
+    expect(result[0].parsed.description).toContain('First function');
+    expect(result[1].parsed.description).toContain('Second function');
+    expect(result[0].loc.start.line).toBe(2);
+    expect(result[1].loc.start.line).toBe(7);
+    expect(result[0].loc.end.line).toBe(4);
+    expect(result[1].loc.end.line).toBe(9);
+    expect(result[0].parsed.tags).toHaveLength(0);
+    expect(result[1].parsed.tags).toHaveLength(0);
   });
 
   it('returns empty array for code without JSDoc', () => {
@@ -151,7 +174,7 @@ describe('extractFunctions', () => {
       const y = 2;
       function myFunc() {}`;
     const result = extractFunctions(source);
-    expect(result[0].line).toBe(3);
+    expect(result[0].line).toBe(4);
   });
 });
 
