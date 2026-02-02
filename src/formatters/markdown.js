@@ -89,6 +89,10 @@ function generateMarkdown(apiData) {
         md += `#### \`${route.method} ${route.path}\`\n\n`;
         md += `**Line:** ${route.line}\n\n`;
 
+        if (route.jsdoc?.description) {
+          md += `${route.jsdoc.description}\n\n`;
+        }
+
         if (route.params.length > 0) {
           md += `**Route Parameters:** ${route.params.join(', ')}\n\n`;
         }

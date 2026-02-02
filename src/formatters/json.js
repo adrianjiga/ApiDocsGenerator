@@ -30,6 +30,12 @@ function generateJSON(apiData) {
         path: route.path,
         params: route.params,
         line: route.line,
+        jsdoc: route.jsdoc
+          ? {
+              description: route.jsdoc.description,
+              tags: route.jsdoc.tags || [],
+            }
+          : null,
       })),
     })),
   };

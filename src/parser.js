@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { parse } from 'comment-parser';
 import * as espree from 'espree';
+import { getParamName } from './utils.js';
 
 /**
  * Parse JSDoc comments from source code
@@ -71,11 +72,7 @@ function extractFunctions(sourceCode) {
       visited.add(node);
 
       if (node.type === 'FunctionDeclaration') {
-        const params = node.params.map(
-          (p) =>
-            p.name ||
-            (p.type === 'RestElement' ? '...' + p.argument.name : 'arg'),
-        );
+        const params = node.params.map((p) => getParamName(p));
 
         functions.push({
           type: 'function',
@@ -91,11 +88,7 @@ function extractFunctions(sourceCode) {
         (node.init?.type === 'ArrowFunctionExpression' ||
           node.init?.type === 'FunctionExpression')
       ) {
-        const params = node.init.params.map(
-          (p) =>
-            p.name ||
-            (p.type === 'RestElement' ? '...' + p.argument.name : 'arg'),
-        );
+        const params = node.init.params.map((p) => getParamName(p));
 
         functions.push({
           type: 'function',
@@ -189,6 +182,11 @@ function parseFile(filePath) {
   // Create a better JSDoc matching using source line positions
   const jsdocMap = new Map();
 
+  const fnKey = (fn) =>
+    fn.type === 'route'
+      ? `route:${fn.method}:${fn.path}:${fn.line}`
+      : `fn:${fn.name}:${fn.line}`;
+
   functions.forEach((fn) => {
     let closestJsdoc = null;
     let closestDistance = Infinity;
@@ -210,13 +208,13 @@ function parseFile(filePath) {
     });
 
     if (closestJsdoc) {
-      jsdocMap.set(`${fn.name}:${fn.line}`, closestJsdoc);
+      jsdocMap.set(fnKey(fn), closestJsdoc);
     }
   });
 
   functions.forEach((fn) => {
     if (fn.type === 'function') {
-      const jsdoc = jsdocMap.get(`${fn.name}:${fn.line}`);
+      const jsdoc = jsdocMap.get(fnKey(fn));
       const description =
         jsdoc?.parsed?.description || 'No description provided';
 
@@ -228,12 +226,13 @@ function parseFile(filePath) {
         description: description,
       });
     } else if (fn.type === 'route') {
+      const jsdoc = jsdocMap.get(fnKey(fn));
       api.routes.push({
         method: fn.method,
         path: fn.path,
         params: fn.params,
         line: fn.line,
-        jsdoc: null,
+        jsdoc: jsdoc?.parsed || null,
       });
     }
   });

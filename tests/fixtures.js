@@ -85,7 +85,7 @@ export const mockApiData = [
       },
     ],
     routes: [
-      { method: 'GET', path: '/users/:id', params: ['id'], line: 20 },
+      { method: 'GET', path: '/users/:id', params: ['id'], line: 20, jsdoc: null },
     ],
   },
 ];
