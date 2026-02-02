@@ -4,6 +4,7 @@ import * as parser from './parser.js';
 import { generateMarkdown } from './formatters/markdown.js';
 import { generateHTML } from './formatters/html.js';
 import { generateJSON } from './formatters/json.js';
+import { generateOpenAPI } from './formatters/openapi.js';
 
 /**
  * Generate documentation in specified formats
@@ -61,6 +62,11 @@ async function generate(
         case 'json':
           content = generateJSON(apiData);
           filename = 'api.json';
+          break;
+        case 'openapi':
+        case 'swagger':
+          content = generateOpenAPI(apiData);
+          filename = 'openapi.yaml';
           break;
         default:
           console.warn(`⚠️  Unknown format: ${format}`);
