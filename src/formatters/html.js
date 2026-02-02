@@ -1,4 +1,4 @@
-import { escapeHtml } from '../utils.js';
+import { escapeHtml, sanitizeHtmlId } from '../utils.js';
 
 /**
  * Generate HTML documentation
@@ -332,7 +332,7 @@ function generateHTML(apiData) {
       <ul>`;
 
     fileSections.forEach((file) => {
-      html += `<li><a href="#${sanitizeId(file.fileName)}">${escapeHtml(file.fileName)}</a></li>`;
+      html += `<li><a href="#${sanitizeHtmlId(file.fileName)}">${escapeHtml(file.fileName)}</a></li>`;
     });
 
     html += `
@@ -343,7 +343,7 @@ function generateHTML(apiData) {
   // Detailed documentation
   fileSections.forEach((file) => {
     html += `
-    <div class="file-section" id="${sanitizeId(file.fileName)}">
+    <div class="file-section" id="${sanitizeHtmlId(file.fileName)}">
       <h2>${escapeHtml(file.fileName)}</h2>
       <div class="file-path">📁 ${escapeHtml(file.file)}</div>`;
 
@@ -444,15 +444,6 @@ function generateHTML(apiData) {
 </html>`;
 
   return html;
-}
-
-/**
- * Sanitize filename for use as HTML id
- * @param {string} str - String to sanitize
- * @returns {string} Sanitized string
- */
-function sanitizeId(str) {
-  return str.replace(/\W+/g, '-').toLowerCase();
 }
 
 export { generateHTML };
