@@ -101,7 +101,7 @@ Output files: API.md, index.html, api.json, openapi.yaml, GENERATION_REPORT.md
   - `terminal.js` - Formats coverage reports for terminal output
   - `dashboard.js` - Generates self-contained HTML coverage dashboard; imports `escapeHtml` from utils
 
-- **`src/utils.js`** - Helper utilities: `sanitizeHtmlId`, `getParamName`, `truncate`, `capitalize`, `formatTimestamp`, `escapeHtml`
+- **`src/utils.js`** - Helper utilities: `sanitizeHtmlId`, `getParamName` (supports destructured `{a, b}` and `[x, y]` patterns), `truncate`, `capitalize`, `formatTimestamp`, `escapeHtml`
 
 ## Key Conventions
 
@@ -250,7 +250,7 @@ Each file parsed returns:
       path: "/users/:id",
       params: ["id"],
       line: 55,
-      jsdoc: { /* parsed JSDoc object */ }  // Optional
+      jsdoc: { /* parsed JSDoc object */ }  // Populated when JSDoc is found within 2 lines above the route
     }
   ]
 }

@@ -493,6 +493,8 @@ Express/Fastify routes must:
 - Have a string literal as the first argument
 - Follow standard Express route syntax
 
+JSDoc comments placed within 2 lines above a route definition are automatically captured and displayed in generated documentation.
+
 ## Performance
 
 - **Fast AST parsing** with espree
