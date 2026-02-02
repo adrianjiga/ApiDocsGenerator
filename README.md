@@ -9,6 +9,7 @@ A powerful Node.js CLI tool that auto-generates API documentation from JavaScrip
 - Markdown (`.md`) - For GitHub/documentation sites
 - HTML (`.html`) - Self-contained with built-in styling
 - JSON (`.json`) - Machine-readable for tool integration
+- OpenAPI/Swagger (`.yaml`) - Standard API specification format
 
 📊 **Documentation Coverage Analysis**
 
@@ -81,7 +82,7 @@ api-docs-generator generate [options]
 - `-d, --dir <directory>` - Source directory to scan (default: `.`)
 - `-o, --output <directory>` - Output directory for generated docs (default: `./docs`)
 - `-f, --formats <formats>` - Output formats as comma-separated list (default: `markdown,html,json`)
-  - Supported: `markdown`, `html`, `json`
+  - Supported: `markdown`, `html`, `json`, `openapi` (alias: `swagger`)
 
 **Examples:**
 
@@ -97,6 +98,9 @@ api-docs-generator generate --dir ./src --formats markdown
 
 # Multiple formats
 api-docs-generator generate --formats markdown,html,json
+
+# OpenAPI/Swagger spec
+api-docs-generator generate --dir ./src --formats openapi
 ```
 
 ### Command: `audit` (alias: `a`)
@@ -250,6 +254,16 @@ Machine-readable structured data with:
 - JSDoc information
 - Route parameters
 
+### OpenAPI Output (`openapi.yaml`)
+
+OpenAPI 3.0.3 specification with:
+
+- Standard spec structure compatible with Swagger UI and other tools
+- Automatic conversion of Express `:param` to `{param}` syntax
+- Routes grouped by path with proper HTTP method keys
+- Path parameters with schema definitions
+- Tags derived from source file names
+
 ### Generation Report (`GENERATION_REPORT.md`)
 
 Summary of the documentation generation including:
@@ -298,6 +312,7 @@ docs/
 ├── API.md                    # Markdown documentation
 ├── index.html                # HTML documentation
 ├── api.json                  # JSON data
+├── openapi.yaml              # OpenAPI 3.0.3 spec
 └── GENERATION_REPORT.md      # Generation summary
 ```
 

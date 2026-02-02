@@ -110,6 +110,12 @@ api-docs-generator generate --dir ./src --formats markdown
 api-docs-generator generate --dir ./api --output ./public/docs --formats html
 ```
 
+### Generate OpenAPI Spec
+
+```bash
+api-docs-generator generate --dir ./src --formats openapi
+```
+
 ### Multiple Format Output
 
 ```bash
@@ -152,6 +158,7 @@ docs/
 ├── API.md                 # Read on GitHub or your wiki
 ├── index.html             # Share with team - open in browser
 ├── api.json               # Use with tools and integrations
+├── openapi.yaml           # OpenAPI 3.0.3 spec for Swagger UI
 └── GENERATION_REPORT.md   # Summary of generation
 
 # Coverage audit outputs:

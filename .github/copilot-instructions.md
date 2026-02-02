@@ -63,9 +63,9 @@ parser.parseDirectory() → Scans .js, .ts, .jsx, .tsx files recursively
     ↓
 Array of parsed file objects: { fileName, file, functions[], routes[] }
     ↓
-Format Generators (Markdown, HTML, JSON)
+Format Generators (Markdown, HTML, JSON, OpenAPI)
     ↓
-Output files: API.md, index.html, api.json, GENERATION_REPORT.md
+Output files: API.md, index.html, api.json, openapi.yaml, GENERATION_REPORT.md
 ```
 
 ### Module Structure
@@ -97,6 +97,7 @@ Output files: API.md, index.html, api.json, GENERATION_REPORT.md
   - `markdown.js` - Generates API.md with TOC, function signatures, JSDoc details
   - `html.js` - Generates self-contained index.html with styling; escapes all dynamic content via `escapeHtml` to prevent XSS
   - `json.js` - Generates api.json with structured data
+  - `openapi.js` - Generates OpenAPI 3.0.3 spec as YAML via js-yaml; converts Express `:param` to `{param}` syntax
   - `terminal.js` - Formats coverage reports for terminal output
   - `dashboard.js` - Generates self-contained HTML coverage dashboard; imports `escapeHtml` from utils
 
@@ -151,6 +152,7 @@ Generated files always use these exact names:
 - `API.md` - Markdown documentation
 - `index.html` - HTML documentation
 - `api.json` - JSON structured data
+- `openapi.yaml` - OpenAPI 3.0.3 specification (YAML)
 - `GENERATION_REPORT.md` - Summary report
 
 ### Documentation Coverage Analysis
