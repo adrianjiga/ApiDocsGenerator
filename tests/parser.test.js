@@ -177,11 +177,32 @@ describe('extractFunctions', () => {
     expect(extractFunctions(source)).toHaveLength(0);
   });
 
-  it('uses "arg" fallback for destructured parameters', () => {
+  it('extracts property names from destructured parameters', () => {
     const source = 'function test({a, b}) {}';
     const result = extractFunctions(source);
     expect(result).toHaveLength(1);
-    expect(result[0].params).toEqual(['arg']);
+    expect(result[0].params).toEqual(['{a, b}']);
+  });
+
+  it('extracts array destructured parameters', () => {
+    const source = 'function test([x, y]) {}';
+    const result = extractFunctions(source);
+    expect(result).toHaveLength(1);
+    expect(result[0].params).toEqual(['[x, y]']);
+  });
+
+  it('extracts rest inside object destructuring', () => {
+    const source = 'function test({a, ...rest}) {}';
+    const result = extractFunctions(source);
+    expect(result).toHaveLength(1);
+    expect(result[0].params).toEqual(['{a, ...rest}']);
+  });
+
+  it('extracts destructured params in arrow functions', () => {
+    const source = 'const fn = ({name, id}) => {};';
+    const result = extractFunctions(source);
+    expect(result).toHaveLength(1);
+    expect(result[0].params).toEqual(['{name, id}']);
   });
 
   it('extracts routes with multiple params', () => {
@@ -268,11 +289,39 @@ describe('parseFile', () => {
     }
   });
 
-  it('always sets jsdoc to null on routes', () => {
+  it('attaches JSDoc to routes when present', () => {
     const tmpFile = path.join(os.tmpdir(), 'route-jsdoc.js');
     fs.writeFileSync(
       tmpFile,
-      '/** @description Get users */\napp.get("/users", (req, res) => {});\n',
+      '/**\n * Get all users\n */\napp.get("/users", (req, res) => {});\n',
+    );
+    try {
+      const result = parseFile(tmpFile);
+      expect(result.routes).toHaveLength(1);
+      expect(result.routes[0].jsdoc).not.toBeNull();
+      expect(result.routes[0].jsdoc.description).toContain('Get all users');
+    } finally {
+      fs.unlinkSync(tmpFile);
+    }
+  });
+
+  it('sets jsdoc to null on routes without JSDoc', () => {
+    const tmpFile = path.join(os.tmpdir(), 'route-no-jsdoc.js');
+    fs.writeFileSync(tmpFile, 'app.get("/users", (req, res) => {});\n');
+    try {
+      const result = parseFile(tmpFile);
+      expect(result.routes).toHaveLength(1);
+      expect(result.routes[0].jsdoc).toBeNull();
+    } finally {
+      fs.unlinkSync(tmpFile);
+    }
+  });
+
+  it('does not match JSDoc 3+ lines away from route', () => {
+    const tmpFile = path.join(os.tmpdir(), 'route-far-jsdoc.js');
+    fs.writeFileSync(
+      tmpFile,
+      '/**\n * Get users\n */\n\n\n\napp.get("/users", (req, res) => {});\n',
     );
     try {
       const result = parseFile(tmpFile);

@@ -40,6 +40,46 @@ describe('generateJSON', () => {
     expect(route.path).toBe('/users/:id');
     expect(route.params).toEqual(['id']);
     expect(route.line).toBe(20);
+    expect(route.jsdoc).toBeNull();
+  });
+
+  it('includes route jsdoc in JSON output when present', () => {
+    const data = [
+      {
+        file: '/src/a.js',
+        fileName: 'a.js',
+        functions: [],
+        routes: [
+          {
+            method: 'GET',
+            path: '/items',
+            params: [],
+            line: 5,
+            jsdoc: { description: 'List items', tags: [{ tag: 'returns', type: 'Array', description: 'items' }] },
+          },
+        ],
+      },
+    ];
+    const parsed = JSON.parse(generateJSON(data));
+    const route = parsed.files[0].routes[0];
+    expect(route.jsdoc).not.toBeNull();
+    expect(route.jsdoc.description).toBe('List items');
+    expect(route.jsdoc.tags).toHaveLength(1);
+  });
+
+  it('sets route jsdoc to null in JSON output when absent', () => {
+    const data = [
+      {
+        file: '/src/a.js',
+        fileName: 'a.js',
+        functions: [],
+        routes: [
+          { method: 'POST', path: '/items', params: [], line: 10, jsdoc: null },
+        ],
+      },
+    ];
+    const parsed = JSON.parse(generateJSON(data));
+    expect(parsed.files[0].routes[0].jsdoc).toBeNull();
   });
 
   it('handles functions without jsdoc', () => {

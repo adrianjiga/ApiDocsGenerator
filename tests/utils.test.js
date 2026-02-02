@@ -41,12 +41,45 @@ describe('getParamName', () => {
     ).toBe('...args');
   });
 
-  it('handles ObjectPattern nodes', () => {
+  it('handles ObjectPattern nodes without properties', () => {
     expect(getParamName({ type: 'ObjectPattern' })).toBe('{...}');
   });
 
-  it('handles ArrayPattern nodes', () => {
+  it('handles ObjectPattern nodes with properties', () => {
+    expect(
+      getParamName({
+        type: 'ObjectPattern',
+        properties: [
+          { type: 'Property', key: { name: 'a' } },
+          { type: 'Property', key: { name: 'b' } },
+        ],
+      }),
+    ).toBe('{a, b}');
+  });
+
+  it('handles ObjectPattern nodes with rest element', () => {
+    expect(
+      getParamName({
+        type: 'ObjectPattern',
+        properties: [
+          { type: 'Property', key: { name: 'a' } },
+          { type: 'RestElement', argument: { name: 'rest' } },
+        ],
+      }),
+    ).toBe('{a, ...rest}');
+  });
+
+  it('handles ArrayPattern nodes without elements', () => {
     expect(getParamName({ type: 'ArrayPattern' })).toBe('[...]');
+  });
+
+  it('handles ArrayPattern nodes with elements', () => {
+    expect(
+      getParamName({
+        type: 'ArrayPattern',
+        elements: [{ name: 'x' }, { name: 'y' }],
+      }),
+    ).toBe('[x, y]');
   });
 
   it('returns "arg" for unknown node types', () => {
