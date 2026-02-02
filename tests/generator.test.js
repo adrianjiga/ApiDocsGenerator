@@ -110,4 +110,18 @@ describe('generate', () => {
     expect(result.generated[0].file).toBe('index.html');
     expect(result.generated[1].file).toBe('api.json');
   });
+
+  it('generates openapi format', async () => {
+    const result = await generate(examplesDir, outputDir, ['openapi']);
+    expect(result.success).toBe(true);
+    expect(result.generated).toHaveLength(1);
+    expect(result.generated[0].format).toBe('openapi');
+    expect(await fs.pathExists(path.join(outputDir, 'openapi.yaml'))).toBe(true);
+  });
+
+  it('accepts "swagger" as alias for openapi', async () => {
+    const result = await generate(examplesDir, outputDir, ['swagger']);
+    expect(result.success).toBe(true);
+    expect(result.generated[0].file).toBe('openapi.yaml');
+  });
 });
