@@ -13,6 +13,7 @@
     "generate:markdown": "node src/cli.js generate --dir ./examples --output ./examples/docs --formats markdown",
     "generate:html": "node src/cli.js generate --dir ./examples --output ./examples/docs --formats html",
     "generate:json": "node src/cli.js generate --dir ./examples --output ./examples/docs --formats json",
+    "generate:openapi": "node src/cli.js generate --dir ./examples --output ./examples/docs --formats openapi",
     "scan": "node src/cli.js scan ./examples",
     "audit": "node src/cli.js audit --dir ./examples",
     "audit:json": "node src/cli.js audit --dir ./examples --format json",
@@ -37,7 +38,8 @@
     "commander": "^14.0.2",
     "comment-parser": "^1.4.5",
     "espree": "^11.1.0",
-    "fs-extra": "^11.3.3"
+    "fs-extra": "^11.3.3",
+    "js-yaml": "^4.1.1"
   },
   "devDependencies": {
     "@eslint/js": "9.39.2",
