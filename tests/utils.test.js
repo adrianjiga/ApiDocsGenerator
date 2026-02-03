@@ -2,9 +2,6 @@ import { describe, it, expect } from 'vitest';
 import {
   sanitizeHtmlId,
   getParamName,
-  truncate,
-  capitalize,
-  formatTimestamp,
   escapeHtml,
   calcPercentage,
   getParamTags,
@@ -88,59 +85,6 @@ describe('getParamName', () => {
 
   it('returns "arg" for unknown node types', () => {
     expect(getParamName({ type: 'Unknown' })).toBe('arg');
-  });
-});
-
-describe('truncate', () => {
-  it('returns string unchanged if within limit', () => {
-    expect(truncate('short', 100)).toBe('short');
-  });
-
-  it('truncates and appends ellipsis when over limit', () => {
-    expect(truncate('abcdefghij', 5)).toBe('abcde...');
-  });
-
-  it('returns string unchanged if exactly at limit', () => {
-    expect(truncate('12345', 5)).toBe('12345');
-  });
-
-  it('uses default maxLength of 100', () => {
-    const str = 'a'.repeat(101);
-    expect(truncate(str)).toBe('a'.repeat(100) + '...');
-  });
-
-  it('handles empty string', () => {
-    expect(truncate('')).toBe('');
-  });
-});
-
-describe('capitalize', () => {
-  it('capitalizes first letter', () => {
-    expect(capitalize('hello')).toBe('Hello');
-  });
-
-  it('leaves already capitalized strings unchanged', () => {
-    expect(capitalize('Hello')).toBe('Hello');
-  });
-
-  it('handles single character', () => {
-    expect(capitalize('a')).toBe('A');
-  });
-
-  it('handles empty string', () => {
-    expect(capitalize('')).toBe('');
-  });
-});
-
-describe('formatTimestamp', () => {
-  it('returns ISO string for a given date', () => {
-    const date = new Date('2025-06-15T12:00:00Z');
-    expect(formatTimestamp(date)).toBe('2025-06-15T12:00:00.000Z');
-  });
-
-  it('returns a valid ISO string when called with no argument', () => {
-    const result = formatTimestamp();
-    expect(() => new Date(result).toISOString()).not.toThrow();
   });
 });
 

@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { parse } from 'comment-parser';
 import * as espree from 'espree';
-import { getParamName } from './utils.js';
+import { getParamName, DEFAULT_EXCLUDE_PATTERN } from './utils.js';
 
 /**
  * Parse JSDoc comments from source code
@@ -280,7 +280,7 @@ async function parseFile(filePath) {
  * @param {string} excludePattern - Glob pattern to exclude
  * @returns {Array} Array of file paths
  */
-async function scanDirectory(dir, excludePattern = 'node_modules|dist|build') {
+async function scanDirectory(dir, excludePattern = DEFAULT_EXCLUDE_PATTERN) {
   const files = [];
 
   try {
@@ -316,7 +316,7 @@ async function scanDirectory(dir, excludePattern = 'node_modules|dist|build') {
  * @returns {Array} Array of file metadata objects
  */
 async function parseDirectory(dir, config = {}) {
-  const excludePattern = config.excludePattern || 'node_modules|dist|build';
+  const excludePattern = config.excludePattern || DEFAULT_EXCLUDE_PATTERN;
   const files = await scanDirectory(dir, excludePattern);
   const results = await Promise.all(
     files.map(async (file) => {

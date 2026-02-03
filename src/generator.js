@@ -3,13 +3,14 @@ import fsStd from 'fs/promises';
 import path from 'path';
 import * as parser from './parser.js';
 import { formatters } from './formatters/registry.js';
+import { DEFAULT_EXCLUDE_PATTERN } from './utils.js';
 
 /**
  * Default configuration for the documentation generator
  * @type {Object}
  */
 const defaultConfig = {
-  excludePattern: 'node_modules|dist|build',
+  excludePattern: DEFAULT_EXCLUDE_PATTERN,
   serverUrl: 'http://localhost:3000',
   apiTitle: 'API Documentation',
   apiVersion: '1.0.0',
