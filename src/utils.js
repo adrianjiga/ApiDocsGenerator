@@ -43,6 +43,8 @@ function getParamName(param) {
     }
     return '[...]';
   }
+  if (param.type === 'TSParameterProperty') return getParamName(param.parameter);
+  if (param.type === 'AssignmentPattern') return getParamName(param.left);
   return 'arg';
 }
 
