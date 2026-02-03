@@ -37,7 +37,8 @@
   "dependencies": {
     "commander": "^14.0.2",
     "comment-parser": "^1.4.5",
-    "espree": "^11.1.0",
+    "@typescript-eslint/typescript-estree": "^8.54.0",
+    "typescript": "^5.9.3",
     "fs-extra": "^11.3.3",
     "js-yaml": "^4.1.1"
   },
