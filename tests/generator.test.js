@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import fs from 'fs-extra';
 import path from 'path';
 import { generate } from '../src/generator.js';
+import { formatters } from '../src/formatters/registry.js';
 
 const outputDir = path.resolve('tests/.tmp-generator-output');
 const examplesDir = path.resolve('examples');
@@ -116,12 +117,51 @@ describe('generate', () => {
     expect(result.success).toBe(true);
     expect(result.generated).toHaveLength(1);
     expect(result.generated[0].format).toBe('openapi');
-    expect(await fs.pathExists(path.join(outputDir, 'openapi.yaml'))).toBe(true);
+    expect(await fs.pathExists(path.join(outputDir, 'openapi.yaml'))).toBe(
+      true,
+    );
   });
 
   it('accepts "swagger" as alias for openapi', async () => {
     const result = await generate(examplesDir, outputDir, ['swagger']);
     expect(result.success).toBe(true);
     expect(result.generated[0].file).toBe('openapi.yaml');
+  });
+
+  it('continues generating other formats when one formatter throws', async () => {
+    const original = formatters.json.generate;
+    formatters.json.generate = () => {
+      throw new Error('boom');
+    };
+    try {
+      const result = await generate(examplesDir, outputDir, [
+        'json',
+        'markdown',
+      ]);
+      expect(result.success).toBe(true);
+      expect(result.generated).toHaveLength(1);
+      expect(result.generated[0].format).toBe('markdown');
+      expect(result.failed).toHaveLength(1);
+      expect(result.failed[0].format).toBe('json');
+    } finally {
+      formatters.json.generate = original;
+    }
+  });
+
+  it('includes failed format details in results', async () => {
+    const original = formatters.html.generate;
+    formatters.html.generate = () => {
+      throw new Error('render failed');
+    };
+    try {
+      const result = await generate(examplesDir, outputDir, ['html']);
+      expect(result.failed).toHaveLength(1);
+      expect(result.failed[0]).toEqual({
+        format: 'html',
+        error: 'render failed',
+      });
+    } finally {
+      formatters.html.generate = original;
+    }
   });
 });

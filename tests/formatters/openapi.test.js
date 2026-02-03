@@ -71,7 +71,12 @@ describe('generateOpenAPI – path conversion', () => {
         file: '/src/app.js',
         fileName: 'app.js',
         functions: [],
-        routes: [makeRoute('GET', '/users/:userId/posts/:postId', ['userId', 'postId'])],
+        routes: [
+          makeRoute('GET', '/users/:userId/posts/:postId', [
+            'userId',
+            'postId',
+          ]),
+        ],
       },
     ];
     const spec = parse(data);
@@ -182,7 +187,9 @@ describe('generateOpenAPI – parameters', () => {
 
   it('sets parameter schema type to string', () => {
     const spec = parse(mockApiData);
-    expect(spec.paths['/users/{id}'].get.parameters[0].schema.type).toBe('string');
+    expect(spec.paths['/users/{id}'].get.parameters[0].schema.type).toBe(
+      'string',
+    );
   });
 
   it('omits parameters key when route has no params', () => {
@@ -204,7 +211,12 @@ describe('generateOpenAPI – parameters', () => {
         file: '/src/app.js',
         fileName: 'app.js',
         functions: [],
-        routes: [makeRoute('GET', '/users/:userId/posts/:postId', ['userId', 'postId'])],
+        routes: [
+          makeRoute('GET', '/users/:userId/posts/:postId', [
+            'userId',
+            'postId',
+          ]),
+        ],
       },
     ];
     const spec = parse(data);
@@ -261,7 +273,15 @@ describe('generateOpenAPI – edge cases', () => {
       {
         file: '/src/utils.js',
         fileName: 'utils.js',
-        functions: [{ name: 'helper', params: [], description: 'h', line: 1, jsdoc: null }],
+        functions: [
+          {
+            name: 'helper',
+            params: [],
+            description: 'h',
+            line: 1,
+            jsdoc: null,
+          },
+        ],
         routes: [],
       },
     ];
@@ -306,6 +326,23 @@ describe('generateOpenAPI – edge cases', () => {
     ];
     const spec = parse(data);
     expect(spec.paths['/items'].get.summary).toBe('List all items');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Config overrides
+// ---------------------------------------------------------------------------
+describe('generateOpenAPI – config overrides', () => {
+  it('uses custom apiTitle, apiVersion, and serverUrl from config', () => {
+    const config = {
+      apiTitle: 'Custom API',
+      apiVersion: '2.0.0',
+      serverUrl: 'https://api.example.com',
+    };
+    const spec = yaml.load(generateOpenAPI(mockApiData, config));
+    expect(spec.info.title).toBe('Custom API');
+    expect(spec.info.version).toBe('2.0.0');
+    expect(spec.servers[0].url).toBe('https://api.example.com');
   });
 });
 

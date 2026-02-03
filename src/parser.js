@@ -1,4 +1,4 @@
-import fs from 'fs';
+import fs from 'fs/promises';
 import path from 'path';
 import { parse } from 'comment-parser';
 import * as espree from 'espree';
@@ -51,6 +51,64 @@ function parseJSDoc(sourceCode) {
   return comments;
 }
 
+const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch'];
+
+/**
+ * Handle a FunctionDeclaration AST node and push its metadata
+ * @param {Object} node - AST FunctionDeclaration node
+ * @param {Array} functions - Accumulator array for extracted function metadata
+ */
+function handleFunctionDeclaration(node, functions) {
+  const params = node.params.map((p) => getParamName(p));
+  functions.push({
+    type: 'function',
+    name: node.id?.name || 'anonymous',
+    params,
+    line: node.loc?.start.line || 0,
+    nodeType: node.type,
+  });
+}
+
+/**
+ * Handle a VariableDeclarator node whose init is an ArrowFunctionExpression or FunctionExpression
+ * @param {Object} node - AST VariableDeclarator node
+ * @param {Array} functions - Accumulator array for extracted function metadata
+ */
+function handleFunctionExpression(node, functions) {
+  const params = node.init.params.map((p) => getParamName(p));
+  functions.push({
+    type: 'function',
+    name: node.id?.name || 'anonymous',
+    params,
+    line: node.loc?.start.line || 0,
+    nodeType: node.init.type,
+  });
+}
+
+/**
+ * Handle a CallExpression node and push route metadata if it matches an HTTP method
+ * @param {Object} node - AST CallExpression node
+ * @param {Array} functions - Accumulator array for extracted function/route metadata
+ */
+function handleRouteExpression(node, functions) {
+  const methodName = node.callee.property.name;
+  if (!HTTP_METHODS.includes(methodName)) return;
+
+  const method = methodName.toUpperCase();
+  const pathArg = node.arguments[0];
+  const routePath = pathArg?.value || '';
+
+  if (routePath) {
+    functions.push({
+      type: 'route',
+      method,
+      path: routePath,
+      line: node.loc?.start.line || 0,
+      params: extractRouteParams(routePath),
+    });
+  }
+}
+
 /**
  * Extract function information from AST
  * @param {string} sourceCode - JavaScript/TypeScript source code
@@ -72,15 +130,7 @@ function extractFunctions(sourceCode) {
       visited.add(node);
 
       if (node.type === 'FunctionDeclaration') {
-        const params = node.params.map((p) => getParamName(p));
-
-        functions.push({
-          type: 'function',
-          name: node.id?.name || 'anonymous',
-          params,
-          line: node.loc?.start.line || 0,
-          nodeType: node.type,
-        });
+        handleFunctionDeclaration(node, functions);
       }
 
       if (
@@ -88,34 +138,11 @@ function extractFunctions(sourceCode) {
         (node.init?.type === 'ArrowFunctionExpression' ||
           node.init?.type === 'FunctionExpression')
       ) {
-        const params = node.init.params.map((p) => getParamName(p));
-
-        functions.push({
-          type: 'function',
-          name: node.id?.name || 'anonymous',
-          params,
-          line: node.loc?.start.line || 0,
-          nodeType: node.init.type,
-        });
+        handleFunctionExpression(node, functions);
       }
 
       if (node.type === 'CallExpression' && node.callee?.property) {
-        const methodName = node.callee.property.name;
-        if (['get', 'post', 'put', 'delete', 'patch'].includes(methodName)) {
-          const method = methodName.toUpperCase();
-          const pathArg = node.arguments[0];
-          const routePath = pathArg?.value || '';
-
-          if (routePath) {
-            functions.push({
-              type: 'route',
-              method,
-              path: routePath,
-              line: node.loc?.start.line || 0,
-              params: extractRouteParams(routePath),
-            });
-          }
-        }
+        handleRouteExpression(node, functions);
       }
 
       // Walk child nodes
@@ -162,44 +189,29 @@ function extractRouteParams(routePath) {
 }
 
 /**
- * Parse a file and extract all metadata
- * @param {string} filePath - Path to the file
- * @returns {Object} Metadata object with functions, routes, and JSDoc
+ * Match JSDoc comments to code items by proximity
+ * @param {Array} jsdocs - Array of parsed JSDoc objects
+ * @param {Array} items - Array of function/route metadata objects
+ * @returns {Object} Object with jsdocMap and itemKey function
  */
-function parseFile(filePath) {
-  const sourceCode = fs.readFileSync(filePath, 'utf8');
-  const fileName = path.basename(filePath);
-  const jsdocs = parseJSDoc(sourceCode);
-  const functions = extractFunctions(sourceCode);
-
-  const api = {
-    file: filePath,
-    fileName,
-    functions: [],
-    routes: [],
-  };
-
-  // Create a better JSDoc matching using source line positions
+function matchJSDocToItems(jsdocs, items) {
   const jsdocMap = new Map();
 
-  const fnKey = (fn) =>
+  const itemKey = (fn) =>
     fn.type === 'route'
       ? `route:${fn.method}:${fn.path}:${fn.line}`
       : `fn:${fn.name}:${fn.line}`;
 
-  functions.forEach((fn) => {
+  items.forEach((fn) => {
     let closestJsdoc = null;
     let closestDistance = Infinity;
 
-    // Find the JSDoc comment that appears closest to this function
     jsdocs.forEach((jsdoc) => {
       if (jsdoc.loc) {
         const jsdocEndLine = jsdoc.loc.end.line;
-        // Calculate the distance - prefer JSDoc immediately before
         const distance =
           fn.line >= jsdocEndLine ? fn.line - jsdocEndLine : Infinity;
 
-        // If this is closer and still reasonable, use it
         if (distance < closestDistance && distance >= 0 && distance <= 2) {
           closestDistance = distance;
           closestJsdoc = jsdoc;
@@ -208,13 +220,35 @@ function parseFile(filePath) {
     });
 
     if (closestJsdoc) {
-      jsdocMap.set(fnKey(fn), closestJsdoc);
+      jsdocMap.set(itemKey(fn), closestJsdoc);
     }
   });
 
+  return { jsdocMap, itemKey };
+}
+
+/**
+ * Parse a file and extract all metadata
+ * @param {string} filePath - Path to the file
+ * @returns {Object} Metadata object with functions, routes, and JSDoc
+ */
+async function parseFile(filePath) {
+  const sourceCode = await fs.readFile(filePath, 'utf8');
+  const fileName = path.basename(filePath);
+  const jsdocs = parseJSDoc(sourceCode);
+  const functions = extractFunctions(sourceCode);
+  const { jsdocMap, itemKey } = matchJSDocToItems(jsdocs, functions);
+
+  const api = {
+    file: filePath,
+    fileName,
+    functions: [],
+    routes: [],
+  };
+
   functions.forEach((fn) => {
     if (fn.type === 'function') {
-      const jsdoc = jsdocMap.get(fnKey(fn));
+      const jsdoc = jsdocMap.get(itemKey(fn));
       const description =
         jsdoc?.parsed?.description || 'No description provided';
 
@@ -226,7 +260,7 @@ function parseFile(filePath) {
         description: description,
       });
     } else if (fn.type === 'route') {
-      const jsdoc = jsdocMap.get(fnKey(fn));
+      const jsdoc = jsdocMap.get(itemKey(fn));
       api.routes.push({
         method: fn.method,
         path: fn.path,
@@ -246,23 +280,29 @@ function parseFile(filePath) {
  * @param {string} excludePattern - Glob pattern to exclude
  * @returns {Array} Array of file paths
  */
-function scanDirectory(dir, excludePattern = 'node_modules|dist|build') {
+async function scanDirectory(dir, excludePattern = 'node_modules|dist|build') {
   const files = [];
 
   try {
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    const subdirPromises = [];
 
-    entries.forEach((entry) => {
+    for (const entry of entries) {
       const fullPath = path.join(dir, entry.name);
 
       if (entry.isDirectory()) {
         if (!new RegExp(excludePattern).test(fullPath)) {
-          files.push(...scanDirectory(fullPath, excludePattern));
+          subdirPromises.push(scanDirectory(fullPath, excludePattern));
         }
       } else if (entry.isFile() && /\.(js|ts|jsx|tsx)$/.test(entry.name)) {
         files.push(fullPath);
       }
-    });
+    }
+
+    const subdirResults = await Promise.all(subdirPromises);
+    for (const subFiles of subdirResults) {
+      files.push(...subFiles);
+    }
   } catch (err) {
     console.warn(`Warning: Could not read directory ${dir}: ${err.message}`);
   }
@@ -275,25 +315,26 @@ function scanDirectory(dir, excludePattern = 'node_modules|dist|build') {
  * @param {string} dir - Directory path
  * @returns {Array} Array of file metadata objects
  */
-function parseDirectory(dir) {
-  const files = scanDirectory(dir);
-  const results = [];
-
-  files.forEach((file) => {
-    try {
-      const metadata = parseFile(file);
-      results.push(metadata);
-    } catch (err) {
-      console.warn(`Error parsing ${file}: ${err.message}`);
-    }
-  });
-
-  return results;
+async function parseDirectory(dir, config = {}) {
+  const excludePattern = config.excludePattern || 'node_modules|dist|build';
+  const files = await scanDirectory(dir, excludePattern);
+  const results = await Promise.all(
+    files.map(async (file) => {
+      try {
+        return await parseFile(file);
+      } catch (err) {
+        console.warn(`Error parsing ${file}: ${err.message}`);
+        return null;
+      }
+    }),
+  );
+  return results.filter((r) => r !== null);
 }
 
 export {
   parseJSDoc,
   extractFunctions,
+  matchJSDocToItems,
   parseFile,
   scanDirectory,
   parseDirectory,

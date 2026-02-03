@@ -115,7 +115,13 @@ describe('generateMarkdown', () => {
         file: '/src/utils.js',
         fileName: 'utils.js',
         functions: [
-          { name: 'helper', params: [], description: 'Helper', line: 1, jsdoc: null },
+          {
+            name: 'helper',
+            params: [],
+            description: 'Helper',
+            line: 1,
+            jsdoc: null,
+          },
         ],
         routes: [],
       },
@@ -146,6 +152,14 @@ describe('generateMarkdown', () => {
     expect(md).toContain('A function');
     expect(md).not.toContain('**Parameters:**');
     expect(md).not.toContain('**Returns:**');
+  });
+
+  it('uses custom serverUrl from config in curl example', () => {
+    const md = generateMarkdown(mockApiData, {
+      serverUrl: 'https://api.example.com',
+    });
+    expect(md).toContain('curl -X GET https://api.example.com/users/:id');
+    expect(md).not.toContain('http://localhost:3000');
   });
 
   it('renders @return alias the same as @returns', () => {

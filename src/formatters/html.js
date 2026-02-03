@@ -1,4 +1,10 @@
-import { escapeHtml, sanitizeHtmlId } from '../utils.js';
+import {
+  escapeHtml,
+  sanitizeHtmlId,
+  getParamTags,
+  getReturnTags,
+  cleanTagDescription,
+} from '../utils.js';
 import { BASE_CSS } from './shared-styles.js';
 
 /**
@@ -6,7 +12,7 @@ import { BASE_CSS } from './shared-styles.js';
  * @param {Array} apiData - Array of parsed API metadata
  * @returns {string} HTML formatted documentation
  */
-function generateHTML(apiData) {
+function generateHTML(apiData, config = {}) {
   const timestamp = new Date().toISOString();
 
   let html = `<!DOCTYPE html>
@@ -295,32 +301,22 @@ function generateHTML(apiData) {
           html += `<div class="description">${escapeHtml(fn.jsdoc.description)}</div>`;
 
           if (fn.jsdoc.tags && fn.jsdoc.tags.length > 0) {
-            const params = fn.jsdoc.tags.filter((t) => t.tag === 'param');
+            const params = getParamTags(fn.jsdoc.tags);
             if (params.length > 0) {
               html += `<div class="params">
                 <h5>📥 Parameters</h5>`;
               params.forEach((param) => {
-                const cleanDesc = (param.description || '').replace(
-                  /^[\s-]+/,
-                  '',
-                );
-                html += `<div class="param-item"><span class="param-name">${escapeHtml(param.name)}</span> <code>${escapeHtml(param.type || 'any')}</code> — ${escapeHtml(cleanDesc)}</div>`;
+                html += `<div class="param-item"><span class="param-name">${escapeHtml(param.name)}</span> <code>${escapeHtml(param.type || 'any')}</code> — ${escapeHtml(cleanTagDescription(param.description))}</div>`;
               });
               html += `</div>`;
             }
 
-            const returns = fn.jsdoc.tags.filter(
-              (t) => t.tag === 'returns' || t.tag === 'return',
-            );
+            const returns = getReturnTags(fn.jsdoc.tags);
             if (returns.length > 0) {
               html += `<div class="returns">
                 <h5>📤 Returns</h5>`;
               returns.forEach((ret) => {
-                const cleanDesc = (ret.description || '').replace(
-                  /^[\s-]+/,
-                  '',
-                );
-                html += `<div class="param-item"><code>${escapeHtml(ret.type || 'any')}</code> — ${escapeHtml(cleanDesc)}</div>`;
+                html += `<div class="param-item"><code>${escapeHtml(ret.type || 'any')}</code> — ${escapeHtml(cleanTagDescription(ret.description))}</div>`;
               });
               html += `</div>`;
             }
@@ -362,7 +358,7 @@ function generateHTML(apiData) {
 
         html += `
           <h5 style="margin-top: 15px;">💡 Example Request</h5>
-          <div class="code-block">curl -X ${escapeHtml(route.method)} http://localhost:3000${escapeHtml(route.path)}</div>
+          <div class="code-block">curl -X ${escapeHtml(route.method)} ${escapeHtml(config.serverUrl || 'http://localhost:3000')}${escapeHtml(route.path)}</div>
         </div>`;
       });
 

@@ -6,6 +6,10 @@ import {
   capitalize,
   formatTimestamp,
   escapeHtml,
+  calcPercentage,
+  getParamTags,
+  getReturnTags,
+  cleanTagDescription,
 } from '../src/utils.js';
 
 describe('sanitizeHtmlId', () => {
@@ -169,5 +173,96 @@ describe('escapeHtml', () => {
 
   it('handles empty string', () => {
     expect(escapeHtml('')).toBe('');
+  });
+});
+
+describe('calcPercentage', () => {
+  it('calculates 50% correctly', () => {
+    expect(calcPercentage(1, 2)).toBe(50);
+  });
+
+  it('rounds to one decimal place', () => {
+    expect(calcPercentage(1, 3)).toBe(33.3);
+  });
+
+  it('returns 0 when part is 0', () => {
+    expect(calcPercentage(0, 5)).toBe(0);
+  });
+
+  it('returns 100 when part equals total', () => {
+    expect(calcPercentage(5, 5)).toBe(100);
+  });
+
+  it('returns 0 when total is 0', () => {
+    expect(calcPercentage(0, 0)).toBe(0);
+  });
+});
+
+describe('getParamTags', () => {
+  it('returns only @param tags from mixed tags', () => {
+    const tags = [
+      { tag: 'param', name: 'x' },
+      { tag: 'returns', type: 'number' },
+      { tag: 'param', name: 'y' },
+    ];
+    const result = getParamTags(tags);
+    expect(result).toHaveLength(2);
+    expect(result[0].name).toBe('x');
+    expect(result[1].name).toBe('y');
+  });
+
+  it('returns empty array for empty input', () => {
+    expect(getParamTags([])).toEqual([]);
+  });
+
+  it('returns empty array for null input', () => {
+    expect(getParamTags(null)).toEqual([]);
+  });
+});
+
+describe('getReturnTags', () => {
+  it('handles @returns tag', () => {
+    const tags = [{ tag: 'returns', type: 'string' }];
+    expect(getReturnTags(tags)).toHaveLength(1);
+  });
+
+  it('handles @return tag', () => {
+    const tags = [{ tag: 'return', type: 'string' }];
+    expect(getReturnTags(tags)).toHaveLength(1);
+  });
+
+  it('filters from mixed tags', () => {
+    const tags = [
+      { tag: 'param', name: 'x' },
+      { tag: 'returns', type: 'number' },
+      { tag: 'param', name: 'y' },
+    ];
+    expect(getReturnTags(tags)).toHaveLength(1);
+  });
+
+  it('returns empty array for empty input', () => {
+    expect(getReturnTags([])).toEqual([]);
+  });
+
+  it('returns empty array for null input', () => {
+    expect(getReturnTags(null)).toEqual([]);
+  });
+});
+
+describe('cleanTagDescription', () => {
+  it('strips leading dash and space', () => {
+    expect(cleanTagDescription('- The description')).toBe('The description');
+  });
+
+  it('strips leading whitespace', () => {
+    expect(cleanTagDescription('  hello')).toBe('hello');
+  });
+
+  it('handles null input', () => {
+    expect(cleanTagDescription(null)).toBe('');
+  });
+
+  it('passes clean strings through unchanged', () => {
+    expect(cleanTagDescription('already clean')).toBe('already clean');
   });
 });

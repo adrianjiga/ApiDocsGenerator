@@ -6,6 +6,7 @@ import * as parser from './parser.js';
 import { analyzeCoverage } from './analyzer.js';
 import { formatTerminalReport } from './formatters/terminal.js';
 import { generateDashboard } from './formatters/dashboard.js';
+import { loadConfig } from './generator.js';
 
 program
   .name('api-docs-generator')
@@ -13,6 +14,23 @@ program
     'Auto-generates API documentation from JavaScript/TypeScript source code',
   )
   .version('1.0.0');
+
+/**
+ * Build a resolved config by loading the config file and applying CLI overrides.
+ * @param {Object} options - Parsed CLI options
+ * @returns {Promise<Object>} Merged configuration
+ */
+async function resolveConfig(options) {
+  const configPath = options.config ? path.resolve(options.config) : undefined;
+  const config = await loadConfig(configPath);
+
+  if (options.serverUrl) config.serverUrl = options.serverUrl;
+  if (options.apiTitle) config.apiTitle = options.apiTitle;
+  if (options.apiVersion) config.apiVersion = options.apiVersion;
+  if (options.exclude) config.excludePattern = options.exclude;
+
+  return config;
+}
 
 program
   .command('generate')
@@ -29,23 +47,32 @@ program
     'Output formats (comma-separated: markdown,html,json)',
     'markdown,html,json',
   )
+  .option('-c, --config <path>', 'Path to apidocs.config.js')
+  .option('--server-url <url>', 'Server URL for examples')
+  .option('--api-title <title>', 'API title for documentation')
+  .option('--api-version <version>', 'API version string')
+  .option('--exclude <pattern>', 'Directory exclude regex pattern')
   .action(async (options) => {
     const sourceDir = path.resolve(options.dir);
     const outputDir = path.resolve(options.output);
     const formats = options.formats.split(',').map((f) => f.trim());
+    const config = await resolveConfig(options);
 
     console.log('\n🚀 Starting API Documentation Generation...');
-    await generator.generate(sourceDir, outputDir, formats);
+    await generator.generate(sourceDir, outputDir, formats, config);
   });
 
 program
   .command('scan [directory]')
   .description('Scan directory and show found APIs')
-  .action(async (directory) => {
+  .option('-c, --config <path>', 'Path to apidocs.config.js')
+  .option('--exclude <pattern>', 'Directory exclude regex pattern')
+  .action(async (directory, options) => {
     const dir = path.resolve(directory || '.');
+    const config = await resolveConfig(options);
 
     console.log(`\n📂 Scanning: ${dir}\n`);
-    const apiData = parser.parseDirectory(dir);
+    const apiData = await parser.parseDirectory(dir, config);
 
     if (apiData.length === 0) {
       console.log('⚠️  No JavaScript/TypeScript files found');
@@ -90,14 +117,17 @@ program
     '-o, --output <file>',
     'Output file for dashboard format (default: coverage-dashboard.html)',
   )
+  .option('-c, --config <path>', 'Path to apidocs.config.js')
+  .option('--exclude <pattern>', 'Directory exclude regex pattern')
   .action(async (options) => {
     const sourceDir = path.resolve(options.dir);
     const threshold = parseInt(options.threshold, 10);
     const format = options.format.toLowerCase();
+    const config = await resolveConfig(options);
 
     console.log(`\n📊 Auditing documentation coverage...\n`);
 
-    const apiData = parser.parseDirectory(sourceDir);
+    const apiData = await parser.parseDirectory(sourceDir, config);
 
     if (apiData.length === 0) {
       console.log('⚠️  No JavaScript/TypeScript files found');

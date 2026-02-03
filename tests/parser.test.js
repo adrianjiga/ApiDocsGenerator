@@ -5,6 +5,7 @@ import path from 'path';
 import {
   parseJSDoc,
   extractFunctions,
+  matchJSDocToItems,
   parseFile,
   scanDirectory,
   parseDirectory,
@@ -221,34 +222,87 @@ describe('extractFunctions', () => {
   });
 });
 
+describe('matchJSDocToItems', () => {
+  it('matches JSDoc 1 line before item', () => {
+    const jsdocs = [
+      {
+        loc: { start: { line: 1 }, end: { line: 3 } },
+        parsed: { description: 'My func' },
+      },
+    ];
+    const items = [{ type: 'function', name: 'foo', line: 4 }];
+    const { jsdocMap, itemKey } = matchJSDocToItems(jsdocs, items);
+    expect(jsdocMap.get(itemKey(items[0]))).toBe(jsdocs[0]);
+  });
+
+  it('does not match JSDoc 3+ lines away', () => {
+    const jsdocs = [
+      {
+        loc: { start: { line: 1 }, end: { line: 2 } },
+        parsed: { description: 'Far' },
+      },
+    ];
+    const items = [{ type: 'function', name: 'foo', line: 10 }];
+    const { jsdocMap, itemKey } = matchJSDocToItems(jsdocs, items);
+    expect(jsdocMap.get(itemKey(items[0]))).toBeUndefined();
+  });
+
+  it('returns empty map for empty arrays', () => {
+    const { jsdocMap } = matchJSDocToItems([], []);
+    expect(jsdocMap.size).toBe(0);
+  });
+
+  it('pairs multiple items to correct JSDoc', () => {
+    const jsdocs = [
+      {
+        loc: { start: { line: 1 }, end: { line: 2 } },
+        parsed: { description: 'First' },
+      },
+      {
+        loc: { start: { line: 5 }, end: { line: 6 } },
+        parsed: { description: 'Second' },
+      },
+    ];
+    const items = [
+      { type: 'function', name: 'a', line: 3 },
+      { type: 'function', name: 'b', line: 7 },
+    ];
+    const { jsdocMap, itemKey } = matchJSDocToItems(jsdocs, items);
+    expect(jsdocMap.get(itemKey(items[0])).parsed.description).toBe('First');
+    expect(jsdocMap.get(itemKey(items[1])).parsed.description).toBe('Second');
+  });
+});
+
 describe('parseFile', () => {
   const examplesDir = path.resolve('examples');
 
-  it('parses sample-app.js and extracts functions and routes', () => {
-    const result = parseFile(path.join(examplesDir, 'sample-app.js'));
+  it('parses sample-app.js and extracts functions and routes', async () => {
+    const result = await parseFile(path.join(examplesDir, 'sample-app.js'));
     expect(result.fileName).toBe('sample-app.js');
     expect(result.functions.length).toBeGreaterThan(0);
     expect(result.routes.length).toBeGreaterThan(0);
   });
 
-  it('matches JSDoc to the correct function', () => {
-    const result = parseFile(path.join(examplesDir, 'sample-app.js'));
+  it('matches JSDoc to the correct function', async () => {
+    const result = await parseFile(path.join(examplesDir, 'sample-app.js'));
     const sumFn = result.functions.find((f) => f.name === 'sum');
     expect(sumFn).toBeDefined();
     expect(sumFn.jsdoc).not.toBeNull();
     expect(sumFn.description).toContain('sum');
   });
 
-  it('parses advanced-sample.js with fully documented functions', () => {
-    const result = parseFile(path.join(examplesDir, 'advanced-sample.js'));
+  it('parses advanced-sample.js with fully documented functions', async () => {
+    const result = await parseFile(
+      path.join(examplesDir, 'advanced-sample.js'),
+    );
     expect(result.functions.length).toBe(3);
     result.functions.forEach((fn) => {
       expect(fn.jsdoc).not.toBeNull();
     });
   });
 
-  it('separates functions and routes correctly', () => {
-    const result = parseFile(path.join(examplesDir, 'sample-app.js'));
+  it('separates functions and routes correctly', async () => {
+    const result = await parseFile(path.join(examplesDir, 'sample-app.js'));
     result.functions.forEach((fn) => {
       expect(fn).toHaveProperty('name');
       expect(fn).toHaveProperty('params');
@@ -259,14 +313,14 @@ describe('parseFile', () => {
     });
   });
 
-  it('matches JSDoc exactly 1 line away from function', () => {
+  it('matches JSDoc exactly 1 line away from function', async () => {
     const tmpFile = path.join(os.tmpdir(), 'jsdoc-close.js');
     fs.writeFileSync(
       tmpFile,
       '/**\n * My func\n * @param {string} x\n */\nfunction close(x) {}\n',
     );
     try {
-      const result = parseFile(tmpFile);
+      const result = await parseFile(tmpFile);
       const fn = result.functions.find((f) => f.name === 'close');
       expect(fn.jsdoc).not.toBeNull();
     } finally {
@@ -274,14 +328,14 @@ describe('parseFile', () => {
     }
   });
 
-  it('does not match JSDoc 3+ lines away from function', () => {
+  it('does not match JSDoc 3+ lines away from function', async () => {
     const tmpFile = path.join(os.tmpdir(), 'jsdoc-far.js');
     fs.writeFileSync(
       tmpFile,
       '/** @param {string} x */\n\n\n\nfunction far(x) {}\n',
     );
     try {
-      const result = parseFile(tmpFile);
+      const result = await parseFile(tmpFile);
       const fn = result.functions.find((f) => f.name === 'far');
       expect(fn.jsdoc).toBeNull();
     } finally {
@@ -289,14 +343,14 @@ describe('parseFile', () => {
     }
   });
 
-  it('attaches JSDoc to routes when present', () => {
+  it('attaches JSDoc to routes when present', async () => {
     const tmpFile = path.join(os.tmpdir(), 'route-jsdoc.js');
     fs.writeFileSync(
       tmpFile,
       '/**\n * Get all users\n */\napp.get("/users", (req, res) => {});\n',
     );
     try {
-      const result = parseFile(tmpFile);
+      const result = await parseFile(tmpFile);
       expect(result.routes).toHaveLength(1);
       expect(result.routes[0].jsdoc).not.toBeNull();
       expect(result.routes[0].jsdoc.description).toContain('Get all users');
@@ -305,11 +359,11 @@ describe('parseFile', () => {
     }
   });
 
-  it('sets jsdoc to null on routes without JSDoc', () => {
+  it('sets jsdoc to null on routes without JSDoc', async () => {
     const tmpFile = path.join(os.tmpdir(), 'route-no-jsdoc.js');
     fs.writeFileSync(tmpFile, 'app.get("/users", (req, res) => {});\n');
     try {
-      const result = parseFile(tmpFile);
+      const result = await parseFile(tmpFile);
       expect(result.routes).toHaveLength(1);
       expect(result.routes[0].jsdoc).toBeNull();
     } finally {
@@ -317,14 +371,14 @@ describe('parseFile', () => {
     }
   });
 
-  it('does not match JSDoc 3+ lines away from route', () => {
+  it('does not match JSDoc 3+ lines away from route', async () => {
     const tmpFile = path.join(os.tmpdir(), 'route-far-jsdoc.js');
     fs.writeFileSync(
       tmpFile,
       '/**\n * Get users\n */\n\n\n\napp.get("/users", (req, res) => {});\n',
     );
     try {
-      const result = parseFile(tmpFile);
+      const result = await parseFile(tmpFile);
       expect(result.routes).toHaveLength(1);
       expect(result.routes[0].jsdoc).toBeNull();
     } finally {
@@ -334,30 +388,33 @@ describe('parseFile', () => {
 });
 
 describe('scanDirectory', () => {
-  it('finds JS files in the examples directory', () => {
-    const files = scanDirectory(path.resolve('examples'));
+  it('finds JS files in the examples directory', async () => {
+    const files = await scanDirectory(path.resolve('examples'));
     expect(files.length).toBeGreaterThan(0);
     files.forEach((f) => {
       expect(f).toMatch(/\.(js|ts|jsx|tsx)$/);
     });
   });
 
-  it('excludes node_modules by default', () => {
-    const files = scanDirectory(path.resolve('.'));
+  it('excludes node_modules by default', async () => {
+    const files = await scanDirectory(path.resolve('.'));
     files.forEach((f) => {
       expect(f).not.toContain('node_modules');
     });
   });
 
-  it('excludes directories matching custom excludePattern', () => {
-    const files = scanDirectory(path.resolve('.'), 'node_modules|examples');
+  it('excludes directories matching custom excludePattern', async () => {
+    const files = await scanDirectory(
+      path.resolve('.'),
+      'node_modules|examples',
+    );
     files.forEach((f) => {
       expect(f).not.toContain('examples');
     });
   });
 
-  it('returns empty array and warns for unreadable directory', () => {
-    const files = scanDirectory('/nonexistent/path/xyz');
+  it('returns empty array and warns for unreadable directory', async () => {
+    const files = await scanDirectory('/nonexistent/path/xyz');
     expect(files).toHaveLength(0);
     expect(console.warn).toHaveBeenCalledWith(
       expect.stringContaining('Could not read directory'),
@@ -366,8 +423,8 @@ describe('scanDirectory', () => {
 });
 
 describe('parseDirectory', () => {
-  it('returns parsed metadata for all files in a directory', () => {
-    const results = parseDirectory(path.resolve('examples'));
+  it('returns parsed metadata for all files in a directory', async () => {
+    const results = await parseDirectory(path.resolve('examples'));
     expect(results.length).toBeGreaterThan(0);
     results.forEach((result) => {
       expect(result).toHaveProperty('file');

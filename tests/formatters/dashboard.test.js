@@ -234,9 +234,24 @@ describe('generateDashboard', () => {
   it('uses correct per-file progress bar colors at boundaries', () => {
     const report = makeReport({
       files: [
-        { fileName: 'low.js', totalItems: 10, documentedItems: 4, coveragePercentage: 40 },
-        { fileName: 'mid.js', totalItems: 10, documentedItems: 5, coveragePercentage: 50 },
-        { fileName: 'high.js', totalItems: 10, documentedItems: 8, coveragePercentage: 80 },
+        {
+          fileName: 'low.js',
+          totalItems: 10,
+          documentedItems: 4,
+          coveragePercentage: 40,
+        },
+        {
+          fileName: 'mid.js',
+          totalItems: 10,
+          documentedItems: 5,
+          coveragePercentage: 50,
+        },
+        {
+          fileName: 'high.js',
+          totalItems: 10,
+          documentedItems: 8,
+          coveragePercentage: 80,
+        },
       ],
       gaps: [],
     });

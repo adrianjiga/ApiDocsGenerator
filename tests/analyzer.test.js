@@ -1,10 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { analyzeCoverage } from '../src/analyzer.js';
-import {
-  makeFunction,
-  makeRoute,
-  fullyDocumentedJsdoc,
-} from './fixtures.js';
+import { analyzeCoverage, checkRouteDocumentation } from '../src/analyzer.js';
+import { makeFunction, makeRoute, fullyDocumentedJsdoc } from './fixtures.js';
 
 describe('analyzeCoverage', () => {
   it('returns 100% coverage for fully documented functions', () => {
@@ -224,7 +220,10 @@ describe('analyzeCoverage', () => {
         fileName: 'a.js',
         functions: [],
         routes: [
-          makeRoute('GET', '/users', [], { description: 'Get users', tags: [] }),
+          makeRoute('GET', '/users', [], {
+            description: 'Get users',
+            tags: [{ tag: 'returns', type: 'Object', description: 'users' }],
+          }),
         ],
       },
     ];
@@ -272,5 +271,92 @@ describe('analyzeCoverage', () => {
     const result = analyzeCoverage(apiData);
     expect(result.summary.documentedFunctions).toBe(1);
     expect(result.gaps).toHaveLength(0);
+  });
+
+  it('reports partially documented route as warning severity gap', () => {
+    const apiData = [
+      {
+        file: '/src/a.js',
+        fileName: 'a.js',
+        functions: [],
+        routes: [
+          makeRoute('GET', '/users', [], {
+            description: 'Get users',
+            tags: [],
+          }),
+        ],
+      },
+    ];
+    const result = analyzeCoverage(apiData);
+    expect(result.gaps).toHaveLength(1);
+    expect(result.gaps[0].severity).toBe('warning');
+    expect(result.summary.partiallyDocumented).toBe(1);
+  });
+});
+
+describe('checkRouteDocumentation', () => {
+  it('returns all missing when jsdoc is null', () => {
+    const route = makeRoute('GET', '/users', []);
+    const result = checkRouteDocumentation(route);
+    expect(result.isFullyDocumented).toBe(false);
+    expect(result.isPartiallyDocumented).toBe(false);
+    expect(result.missing).toEqual(['description', 'params', 'returns']);
+  });
+
+  it('detects missing @param for path param as partially documented', () => {
+    const route = makeRoute('GET', '/users/:id', ['id'], {
+      description: 'Get user',
+      tags: [{ tag: 'returns', type: 'Object', description: 'user' }],
+    });
+    const result = checkRouteDocumentation(route);
+    expect(result.isFullyDocumented).toBe(false);
+    expect(result.isPartiallyDocumented).toBe(true);
+    expect(result.missing).toContain('params');
+  });
+
+  it('detects description only as partially documented', () => {
+    const route = makeRoute('POST', '/items', [], {
+      description: 'Create item',
+      tags: [],
+    });
+    const result = checkRouteDocumentation(route);
+    expect(result.isFullyDocumented).toBe(false);
+    expect(result.isPartiallyDocumented).toBe(true);
+    expect(result.missing).toContain('returns');
+  });
+
+  it('returns fully documented when description + all params + returns present', () => {
+    const route = makeRoute('PUT', '/users/:id', ['id'], {
+      description: 'Update user',
+      tags: [
+        { tag: 'param', name: 'id', type: 'string', description: 'User ID' },
+        { tag: 'returns', type: 'Object', description: 'updated user' },
+      ],
+    });
+    const result = checkRouteDocumentation(route);
+    expect(result.isFullyDocumented).toBe(true);
+    expect(result.isPartiallyDocumented).toBe(false);
+    expect(result.missing).toHaveLength(0);
+  });
+
+  it('fully documents route with no path params when description and @returns present', () => {
+    const route = makeRoute('GET', '/health', [], {
+      description: 'Health check',
+      tags: [{ tag: 'returns', type: 'Object', description: 'status' }],
+    });
+    const result = checkRouteDocumentation(route);
+    expect(result.isFullyDocumented).toBe(true);
+  });
+
+  it('existing field contains description and documented param names', () => {
+    const route = makeRoute('GET', '/users/:id', ['id'], {
+      description: 'Get user',
+      tags: [
+        { tag: 'param', name: 'id', type: 'string', description: 'User ID' },
+      ],
+    });
+    const result = checkRouteDocumentation(route);
+    expect(result.existing.description).toBe('Get user');
+    expect(result.existing.params).toEqual(['id']);
   });
 });

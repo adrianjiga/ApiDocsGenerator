@@ -1,3 +1,5 @@
+import { calcPercentage, getParamTags, getReturnTags } from './utils.js';
+
 /**
  * Analyze documentation coverage for parsed API data
  * @param {Array} apiData - Array of file objects from parseDirectory()
@@ -55,34 +57,37 @@ function analyzeCoverage(apiData) {
       fileTotalItems++;
       totalRoutes++;
 
-      // Routes are undocumented if jsdoc is null (current behavior)
-      if (route.jsdoc === null) {
+      const docStatus = checkRouteDocumentation(route);
+
+      if (docStatus.isFullyDocumented) {
+        fileDocumentedItems++;
+        documentedRoutes++;
+      } else if (docStatus.isPartiallyDocumented) {
+        partiallyDocumented++;
+      }
+
+      if (!docStatus.isFullyDocumented) {
         const gap = {
           type: 'route',
           name: `${route.method} ${route.path}`,
           fileName: fileData.fileName,
           filePath: fileData.file,
           line: route.line,
-          severity: 'error',
-          missing: ['description'],
-          existing: {
-            description: null,
-            params: [],
-            returns: false,
-          },
+          severity: docStatus.isPartiallyDocumented ? 'warning' : 'error',
+          missing: docStatus.missing,
+          existing: docStatus.existing,
           functionSignature: `${route.method} ${route.path}`,
         };
         fileGaps.push(gap);
         gaps.push(gap);
-      } else {
-        documentedRoutes++;
       }
     });
 
     // Build per-file breakdown
     if (fileTotalItems > 0) {
-      const fileCoveragePercentage = parseFloat(
-        ((fileDocumentedItems / fileTotalItems) * 100).toFixed(1),
+      const fileCoveragePercentage = calcPercentage(
+        fileDocumentedItems,
+        fileTotalItems,
       );
 
       files.push({
@@ -101,20 +106,9 @@ function analyzeCoverage(apiData) {
   const totalDocumentedItems = documentedFunctions + documentedRoutes;
   const undocumentedFunctions = totalFunctions - documentedFunctions;
 
-  const coveragePercentage =
-    totalItems > 0
-      ? parseFloat(((totalDocumentedItems / totalItems) * 100).toFixed(1))
-      : 0;
-
-  const functionCoverage =
-    totalFunctions > 0
-      ? parseFloat(((documentedFunctions / totalFunctions) * 100).toFixed(1))
-      : 0;
-
-  const routeCoverage =
-    totalRoutes > 0
-      ? parseFloat(((documentedRoutes / totalRoutes) * 100).toFixed(1))
-      : 0;
+  const coveragePercentage = calcPercentage(totalDocumentedItems, totalItems);
+  const functionCoverage = calcPercentage(documentedFunctions, totalFunctions);
+  const routeCoverage = calcPercentage(documentedRoutes, totalRoutes);
 
   return {
     summary: {
@@ -165,9 +159,7 @@ function checkFunctionDocumentation(func) {
   }
 
   // Check params
-  const paramTags = (func.jsdoc.tags || []).filter(
-    (tag) => tag.tag === 'param',
-  );
+  const paramTags = getParamTags(func.jsdoc.tags);
   const documentedParamNames = paramTags.map((tag) => tag.name);
 
   existing.params = documentedParamNames;
@@ -181,9 +173,7 @@ function checkFunctionDocumentation(func) {
   });
 
   // Check returns
-  const hasReturnsTag = (func.jsdoc.tags || []).some(
-    (tag) => tag.tag === 'returns' || tag.tag === 'return',
-  );
+  const hasReturnsTag = getReturnTags(func.jsdoc.tags).length > 0;
 
   if (hasReturnsTag) {
     existing.returns = true;
@@ -202,4 +192,61 @@ function checkFunctionDocumentation(func) {
   };
 }
 
-export { analyzeCoverage };
+/**
+ * Check documentation status of a route
+ * @param {Object} route - Route object with method, path, params, jsdoc
+ * @returns {Object} Status object with isFullyDocumented, isPartiallyDocumented, missing, existing
+ */
+function checkRouteDocumentation(route) {
+  const existing = {
+    description: null,
+    params: [],
+    returns: false,
+  };
+
+  const missing = [];
+
+  if (!route.jsdoc) {
+    return {
+      isFullyDocumented: false,
+      isPartiallyDocumented: false,
+      missing: ['description', 'params', 'returns'],
+      existing,
+    };
+  }
+
+  // Check description
+  if (route.jsdoc.description && route.jsdoc.description.trim()) {
+    existing.description = route.jsdoc.description;
+  } else {
+    missing.push('description');
+  }
+
+  // Check path params documented via @param
+  const paramTags = getParamTags(route.jsdoc.tags);
+  const documentedParamNames = paramTags.map((tag) => tag.name);
+  existing.params = documentedParamNames;
+
+  route.params.forEach((paramName) => {
+    if (!documentedParamNames.includes(paramName)) {
+      if (!missing.includes('params')) {
+        missing.push('params');
+      }
+    }
+  });
+
+  // Check returns
+  const hasReturnsTag = getReturnTags(route.jsdoc.tags).length > 0;
+  if (hasReturnsTag) {
+    existing.returns = true;
+  } else {
+    missing.push('returns');
+  }
+
+  const isFullyDocumented = missing.length === 0;
+  const isPartiallyDocumented = !isFullyDocumented && route.jsdoc !== null;
+
+  return { isFullyDocumented, isPartiallyDocumented, missing, existing };
+}
+
+export { analyzeCoverage, checkRouteDocumentation };

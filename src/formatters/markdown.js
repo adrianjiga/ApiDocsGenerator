@@ -1,9 +1,11 @@
+import { getParamTags, getReturnTags, cleanTagDescription } from '../utils.js';
+
 /**
  * Generate Markdown documentation
  * @param {Array} apiData - Array of parsed API metadata
  * @returns {string} Markdown formatted documentation
  */
-function generateMarkdown(apiData) {
+function generateMarkdown(apiData, config = {}) {
   let md = '# API Documentation\n\n';
   md += `Generated: ${new Date().toISOString()}\n\n`;
 
@@ -40,31 +42,21 @@ function generateMarkdown(apiData) {
 
           // Parameters
           if (fn.jsdoc.tags && fn.jsdoc.tags.length > 0) {
-            const params = fn.jsdoc.tags.filter((t) => t.tag === 'param');
+            const params = getParamTags(fn.jsdoc.tags);
             if (params.length > 0) {
               md += '**Parameters:**\n\n';
               params.forEach((param) => {
-                const cleanDesc = (param.description || '').replace(
-                  /^[\s-]+/,
-                  '',
-                );
-                md += `- \`${param.name}\` (\`${param.type || 'any'}\`): ${cleanDesc}\n`;
+                md += `- \`${param.name}\` (\`${param.type || 'any'}\`): ${cleanTagDescription(param.description)}\n`;
               });
               md += '\n';
             }
 
             // Returns
-            const returns = fn.jsdoc.tags.filter(
-              (t) => t.tag === 'returns' || t.tag === 'return',
-            );
+            const returns = getReturnTags(fn.jsdoc.tags);
             if (returns.length > 0) {
               md += '**Returns:**\n\n';
               returns.forEach((ret) => {
-                const cleanDesc = (ret.description || '').replace(
-                  /^[\s-]+/,
-                  '',
-                );
-                md += `- \`${ret.type || 'any'}\`: ${cleanDesc}\n`;
+                md += `- \`${ret.type || 'any'}\`: ${cleanTagDescription(ret.description)}\n`;
               });
               md += '\n';
             }
@@ -99,7 +91,7 @@ function generateMarkdown(apiData) {
 
         md += '**Example Request:**\n\n';
         md += '```bash\n';
-        md += `curl -X ${route.method} http://localhost:3000${route.path}\n`;
+        md += `curl -X ${route.method} ${config.serverUrl || 'http://localhost:3000'}${route.path}\n`;
         md += '```\n\n';
       });
     }

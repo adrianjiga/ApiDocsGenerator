@@ -55,7 +55,10 @@ describe('generateJSON', () => {
             path: '/items',
             params: [],
             line: 5,
-            jsdoc: { description: 'List items', tags: [{ tag: 'returns', type: 'Array', description: 'items' }] },
+            jsdoc: {
+              description: 'List items',
+              tags: [{ tag: 'returns', type: 'Array', description: 'items' }],
+            },
           },
         ],
       },
@@ -109,6 +112,13 @@ describe('generateJSON', () => {
     expect(parsed.meta).toBeDefined();
   });
 
+  it('uses custom apiVersion from config', () => {
+    const parsed = JSON.parse(
+      generateJSON(mockApiData, { apiVersion: '3.0.0' }),
+    );
+    expect(parsed.meta.version).toBe('3.0.0');
+  });
+
   it('handles multiple files', () => {
     const data = [
       ...mockApiData,
@@ -116,7 +126,13 @@ describe('generateJSON', () => {
         file: '/src/utils.js',
         fileName: 'utils.js',
         functions: [
-          { name: 'helper', params: [], description: 'Helper', line: 1, jsdoc: null },
+          {
+            name: 'helper',
+            params: [],
+            description: 'Helper',
+            line: 1,
+            jsdoc: null,
+          },
         ],
         routes: [],
       },

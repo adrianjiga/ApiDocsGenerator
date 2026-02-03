@@ -44,7 +44,7 @@ function extractParams(openApiPath) {
  * @param {Array} apiData - Array of parsed API metadata from parser
  * @returns {string} OpenAPI spec as YAML string
  */
-function generateOpenAPI(apiData) {
+function generateOpenAPI(apiData, config = {}) {
   const paths = new Map();
   const tagSet = new Map();
 
@@ -95,15 +95,15 @@ function generateOpenAPI(apiData) {
   const spec = {
     openapi: '3.0.3',
     info: {
-      title: 'API Documentation',
-      version: '1.0.0',
+      title: config.apiTitle || 'API Documentation',
+      version: config.apiVersion || '1.0.0',
       description: 'Auto-generated API documentation',
       'x-generator': 'api-docs-generator',
       'x-generated-at': new Date().toISOString(),
     },
     servers: [
       {
-        url: 'http://localhost:3000',
+        url: config.serverUrl || 'http://localhost:3000',
         description: 'Default development server',
       },
     ],
@@ -119,7 +119,11 @@ function generateOpenAPI(apiData) {
   }
   spec.paths = pathsObj;
 
-  return yaml.dump(spec, { lineWidth: -1, quotingType: "'", forceQuotes: false });
+  return yaml.dump(spec, {
+    lineWidth: -1,
+    quotingType: "'",
+    forceQuotes: false,
+  });
 }
 
 export { generateOpenAPI };

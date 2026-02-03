@@ -19,7 +19,8 @@ function getParamName(param) {
   if (param.type === 'ObjectPattern') {
     if (param.properties && param.properties.length > 0) {
       const names = param.properties.map((prop) => {
-        if (prop.type === 'RestElement') return '...' + getParamName(prop.argument);
+        if (prop.type === 'RestElement')
+          return '...' + getParamName(prop.argument);
         return prop.key?.name || 'arg';
       });
       return `{${names.join(', ')}}`;
@@ -84,4 +85,53 @@ function escapeHtml(text) {
   return text.replace(/[&<>"']/g, (m) => map[m]);
 }
 
-export { sanitizeHtmlId, getParamName, truncate, capitalize, formatTimestamp, escapeHtml };
+/**
+ * Filter JSDoc tags to only @param tags
+ * @param {Array} tags - Array of JSDoc tag objects
+ * @returns {Array} Only the @param tags
+ */
+function getParamTags(tags) {
+  return (tags || []).filter((t) => t.tag === 'param');
+}
+
+/**
+ * Filter JSDoc tags to only @returns/@return tags
+ * @param {Array} tags - Array of JSDoc tag objects
+ * @returns {Array} Only the @returns or @return tags
+ */
+function getReturnTags(tags) {
+  return (tags || []).filter((t) => t.tag === 'returns' || t.tag === 'return');
+}
+
+/**
+ * Clean leading whitespace and dashes from a tag description
+ * @param {string} description - Tag description string
+ * @returns {string} Cleaned description
+ */
+function cleanTagDescription(description) {
+  return (description || '').replace(/^[\s-]+/, '');
+}
+
+/**
+ * Calculate percentage with one decimal place
+ * @param {number} part - The portion
+ * @param {number} total - The total
+ * @returns {number} Percentage rounded to one decimal place, or 0 if total is 0
+ */
+function calcPercentage(part, total) {
+  if (total === 0) return 0;
+  return parseFloat(((part / total) * 100).toFixed(1));
+}
+
+export {
+  sanitizeHtmlId,
+  getParamName,
+  truncate,
+  capitalize,
+  formatTimestamp,
+  escapeHtml,
+  calcPercentage,
+  getParamTags,
+  getReturnTags,
+  cleanTagDescription,
+};

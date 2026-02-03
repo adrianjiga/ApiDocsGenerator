@@ -200,7 +200,13 @@ describe('generateHTML', () => {
         file: '/src/utils.js',
         fileName: 'utils.js',
         functions: [
-          { name: 'helper', params: [], description: 'Helper', line: 1, jsdoc: null },
+          {
+            name: 'helper',
+            params: [],
+            description: 'Helper',
+            line: 1,
+            jsdoc: null,
+          },
         ],
         routes: [],
       },
@@ -234,6 +240,14 @@ describe('generateHTML', () => {
     expect(html).toContain('A function');
     expect(html).not.toContain('Parameters');
     expect(html).not.toContain('Returns');
+  });
+
+  it('uses custom serverUrl from config in curl example', () => {
+    const html = generateHTML(mockApiData, {
+      serverUrl: 'https://api.example.com',
+    });
+    expect(html).toContain('curl -X GET https://api.example.com/users/:id');
+    expect(html).not.toContain('http://localhost:3000');
   });
 
   it('escapes HTML in param and return tag values', () => {

@@ -3,11 +3,11 @@
  * @param {Array} apiData - Array of parsed API metadata
  * @returns {string} JSON formatted documentation
  */
-function generateJSON(apiData) {
+function generateJSON(apiData, config = {}) {
   const output = {
     meta: {
       generated: new Date().toISOString(),
-      version: '1.0.0',
+      version: config.apiVersion || '1.0.0',
       tool: 'api-docs-generator',
     },
     files: apiData.map((file) => ({
