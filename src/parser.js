@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { parse } from 'comment-parser';
-import * as espree from 'espree';
+import { parse as tsParse } from '@typescript-eslint/typescript-estree';
 import { getParamName, DEFAULT_EXCLUDE_PATTERN } from './utils.js';
 
 /**
@@ -58,7 +58,7 @@ const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch'];
  * @param {Object} node - AST FunctionDeclaration node
  * @param {Array} functions - Accumulator array for extracted function metadata
  */
-function handleFunctionDeclaration(node, functions) {
+function handleFunctionDeclaration(node, functions, exported) {
   const params = node.params.map((p) => getParamName(p));
   functions.push({
     type: 'function',
@@ -66,6 +66,9 @@ function handleFunctionDeclaration(node, functions) {
     params,
     line: node.loc?.start.line || 0,
     nodeType: node.type,
+    async: !!node.async,
+    generator: !!node.generator,
+    exported,
   });
 }
 
@@ -74,7 +77,7 @@ function handleFunctionDeclaration(node, functions) {
  * @param {Object} node - AST VariableDeclarator node
  * @param {Array} functions - Accumulator array for extracted function metadata
  */
-function handleFunctionExpression(node, functions) {
+function handleFunctionExpression(node, functions, exported) {
   const params = node.init.params.map((p) => getParamName(p));
   functions.push({
     type: 'function',
@@ -82,6 +85,9 @@ function handleFunctionExpression(node, functions) {
     params,
     line: node.loc?.start.line || 0,
     nodeType: node.init.type,
+    async: !!node.init.async,
+    generator: !!node.init.generator,
+    exported,
   });
 }
 
@@ -110,6 +116,40 @@ function handleRouteExpression(node, functions) {
 }
 
 /**
+ * Handle a ClassDeclaration or ClassExpression node and extract its methods
+ * @param {Object} node - AST ClassDeclaration or ClassExpression node
+ * @param {Array} functions - Accumulator array for extracted function metadata
+ * @param {boolean} exported - Whether the class is exported
+ */
+function handleClassDeclaration(node, functions, exported) {
+  const className = node.id?.name || 'anonymous';
+  if (!node.body?.body) return;
+
+  for (const member of node.body.body) {
+    if (member.type !== 'MethodDefinition' && member.type !== 'TSAbstractMethodDefinition') continue;
+
+    const methodName = member.key?.name || member.key?.value || 'anonymous';
+    const fnNode = member.value;
+    if (!fnNode) continue;
+
+    const params = fnNode.params.map((p) => getParamName(p));
+    functions.push({
+      type: 'function',
+      name: methodName,
+      params,
+      line: member.loc?.start.line || 0,
+      nodeType: 'MethodDefinition',
+      async: !!fnNode.async,
+      generator: !!fnNode.generator,
+      exported,
+      className,
+      static: !!member.static,
+      methodKind: member.kind || 'method',
+    });
+  }
+}
+
+/**
  * Extract function information from AST
  * @param {string} sourceCode - JavaScript/TypeScript source code
  * @returns {Array} Array of function metadata objects
@@ -118,19 +158,58 @@ function extractFunctions(sourceCode) {
   const functions = [];
 
   try {
-    const ast = espree.parse(sourceCode, {
-      ecmaVersion: 2022,
-      sourceType: 'module',
-      range: true,
+    const ast = tsParse(sourceCode, {
       loc: true,
+      range: true,
+      jsx: true,
+      allowInvalidAST: true,
     });
+
+    // Pre-pass: collect exported declaration nodes
+    const exportedDeclarations = new Set();
+    (function collectExports(node, visited = new Set()) {
+      if (!node || typeof node !== 'object' || visited.has(node)) return;
+      visited.add(node);
+      if (
+        (node.type === 'ExportNamedDeclaration' ||
+          node.type === 'ExportDefaultDeclaration') &&
+        node.declaration
+      ) {
+        exportedDeclarations.add(node.declaration);
+        if (node.declaration.type === 'VariableDeclaration') {
+          node.declaration.declarations?.forEach((d) =>
+            exportedDeclarations.add(d),
+          );
+        }
+      }
+      for (const key in node) {
+        if (key === 'parent') continue;
+        const child = node[key];
+        if (child && typeof child === 'object') {
+          if (Array.isArray(child)) {
+            child.forEach((c) => {
+              if (c && typeof c === 'object') collectExports(c, visited);
+            });
+          } else {
+            collectExports(child, visited);
+          }
+        }
+      }
+    })(ast);
+
+    // Track express.Router() variable names
+    const routerVariables = new Set();
 
     const walk = (node, visited = new Set()) => {
       if (!node || typeof node !== 'object' || visited.has(node)) return;
       visited.add(node);
 
       if (node.type === 'FunctionDeclaration') {
-        handleFunctionDeclaration(node, functions);
+        handleFunctionDeclaration(
+          node,
+          functions,
+          exportedDeclarations.has(node),
+        );
       }
 
       if (
@@ -138,11 +217,52 @@ function extractFunctions(sourceCode) {
         (node.init?.type === 'ArrowFunctionExpression' ||
           node.init?.type === 'FunctionExpression')
       ) {
-        handleFunctionExpression(node, functions);
+        handleFunctionExpression(
+          node,
+          functions,
+          exportedDeclarations.has(node),
+        );
+      }
+
+      // Detect const router = express.Router()
+      if (
+        node.type === 'VariableDeclarator' &&
+        node.init?.type === 'CallExpression' &&
+        node.init.callee?.type === 'MemberExpression' &&
+        node.init.callee.object?.name === 'express' &&
+        node.init.callee.property?.name === 'Router' &&
+        node.id?.name
+      ) {
+        routerVariables.add(node.id.name);
       }
 
       if (node.type === 'CallExpression' && node.callee?.property) {
         handleRouteExpression(node, functions);
+      }
+
+      // Class declarations
+      if (node.type === 'ClassDeclaration') {
+        handleClassDeclaration(
+          node,
+          functions,
+          exportedDeclarations.has(node),
+        );
+      }
+
+      // Class expressions assigned to variables
+      if (
+        node.type === 'VariableDeclarator' &&
+        node.init?.type === 'ClassExpression'
+      ) {
+        const classNode = node.init;
+        if (!classNode.id && node.id?.name) {
+          classNode.id = { name: node.id.name };
+        }
+        handleClassDeclaration(
+          classNode,
+          functions,
+          exportedDeclarations.has(node),
+        );
       }
 
       // Walk child nodes
@@ -200,7 +320,9 @@ function matchJSDocToItems(jsdocs, items) {
   const itemKey = (fn) =>
     fn.type === 'route'
       ? `route:${fn.method}:${fn.path}:${fn.line}`
-      : `fn:${fn.name}:${fn.line}`;
+      : fn.className
+        ? `fn:${fn.className}.${fn.name}:${fn.line}`
+        : `fn:${fn.name}:${fn.line}`;
 
   items.forEach((fn) => {
     let closestJsdoc = null;
@@ -252,13 +374,24 @@ async function parseFile(filePath) {
       const description =
         jsdoc?.parsed?.description || 'No description provided';
 
-      api.functions.push({
+      const item = {
         name: fn.name,
         params: fn.params,
         line: fn.line,
         jsdoc: jsdoc?.parsed || null,
         description: description,
-      });
+        async: fn.async || false,
+        generator: fn.generator || false,
+        exported: fn.exported || false,
+      };
+
+      if (fn.className) {
+        item.className = fn.className;
+        item.static = fn.static || false;
+        item.methodKind = fn.methodKind || 'method';
+      }
+
+      api.functions.push(item);
     } else if (fn.type === 'route') {
       const jsdoc = jsdocMap.get(itemKey(fn));
       api.routes.push({
