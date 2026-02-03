@@ -164,4 +164,11 @@ program.action(() => {
   }
 });
 
-program.parse(process.argv);
+const isMain =
+  process.argv[1] &&
+  import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/'));
+if (isMain) {
+  program.parse(process.argv);
+}
+
+export { program, resolveConfig };
