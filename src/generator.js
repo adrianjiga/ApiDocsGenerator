@@ -120,6 +120,7 @@ async function generate(
       outputDir: path.resolve(outputDir),
       generated: [],
       failed: [],
+      skipped: [],
     };
 
     // Generate each format
@@ -129,6 +130,7 @@ async function generate(
 
       if (!formatter) {
         console.warn(`⚠️  Unknown format: ${format}`);
+        results.skipped.push({ format: lowerFormat, reason: 'Unknown format' });
         continue;
       }
 
@@ -170,4 +172,10 @@ async function generate(
   }
 }
 
-export { defaultConfig, getDefaultConfig, loadConfig, generate, buildSummaryReport };
+export {
+  defaultConfig,
+  getDefaultConfig,
+  loadConfig,
+  generate,
+  buildSummaryReport,
+};

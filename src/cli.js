@@ -4,8 +4,7 @@ import { program } from 'commander';
 import * as generator from './generator.js';
 import * as parser from './parser.js';
 import { analyzeCoverage } from './analyzer.js';
-import { formatTerminalReport } from './formatters/terminal.js';
-import { generateDashboard } from './formatters/dashboard.js';
+import { formatters } from './formatters/registry.js';
 import { loadConfig } from './generator.js';
 
 program
@@ -142,16 +141,21 @@ program
 
     if (format === 'json') {
       console.log(JSON.stringify(result, null, 2));
-    } else if (format === 'dashboard') {
-      const outputFile = options.output || 'coverage-dashboard.html';
-      const outputPath = path.resolve(outputFile);
-      const outputDir = path.dirname(outputPath);
-      await fs.ensureDir(outputDir);
-      const dashboardHtml = generateDashboard(result);
-      await fs.writeFile(outputPath, dashboardHtml);
-      console.log(`✅ Dashboard written to: ${outputPath}\n`);
+    } else if (formatters[format]?.type === 'report') {
+      const formatter = formatters[format];
+      if (formatter.filename) {
+        const outputFile = options.output || formatter.filename;
+        const outputPath = path.resolve(outputFile);
+        const outputDir = path.dirname(outputPath);
+        await fs.ensureDir(outputDir);
+        const content = formatter.generate(result);
+        await fs.writeFile(outputPath, content);
+        console.log(`✅ ${format} written to: ${outputPath}\n`);
+      } else {
+        formatter.generate(result, threshold);
+      }
     } else {
-      formatTerminalReport(result, threshold);
+      formatters.terminal.generate(result, threshold);
     }
 
     const coverage = result.summary.coveragePercentage;
