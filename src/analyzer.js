@@ -35,87 +35,105 @@ function analyzeCoverage(apiData) {
 
   // Process each file
   apiData.forEach((fileData) => {
-    const fileGaps = [];
-    let fileDocumentedItems = 0;
-    let fileTotalItems = 0;
+    try {
+      const fileGaps = [];
+      let fileDocumentedItems = 0;
+      let fileTotalItems = 0;
 
-    // Analyze functions
-    fileData.functions?.forEach((func) => {
-      fileTotalItems++;
-      totalFunctions++;
+      // Analyze functions
+      fileData.functions?.forEach((func) => {
+        try {
+          fileTotalItems++;
+          totalFunctions++;
 
-      const docStatus = checkFunctionDocumentation(func);
+          const docStatus = checkFunctionDocumentation(func);
 
-      if (docStatus.isFullyDocumented) {
-        fileDocumentedItems++;
-        documentedFunctions++;
-      } else if (docStatus.isPartiallyDocumented) {
-        partiallyDocumented++;
-      }
+          if (docStatus.isFullyDocumented) {
+            fileDocumentedItems++;
+            documentedFunctions++;
+          } else if (docStatus.isPartiallyDocumented) {
+            partiallyDocumented++;
+          }
 
-      if (!docStatus.isFullyDocumented) {
-        const gap = {
-          type: 'function',
-          name: func.name,
-          fileName: fileData.fileName,
-          filePath: fileData.file,
-          line: func.line,
-          severity: docStatus.isPartiallyDocumented ? 'warning' : 'error',
-          missing: docStatus.missing,
-          existing: docStatus.existing,
-          functionSignature: `${func.name}(${func.params.join(', ')})`,
-        };
-        fileGaps.push(gap);
-        gaps.push(gap);
-      }
-    });
-
-    // Analyze routes
-    fileData.routes?.forEach((route) => {
-      fileTotalItems++;
-      totalRoutes++;
-
-      const docStatus = checkRouteDocumentation(route);
-
-      if (docStatus.isFullyDocumented) {
-        fileDocumentedItems++;
-        documentedRoutes++;
-      } else if (docStatus.isPartiallyDocumented) {
-        partiallyDocumented++;
-      }
-
-      if (!docStatus.isFullyDocumented) {
-        const gap = {
-          type: 'route',
-          name: `${route.method} ${route.path}`,
-          fileName: fileData.fileName,
-          filePath: fileData.file,
-          line: route.line,
-          severity: docStatus.isPartiallyDocumented ? 'warning' : 'error',
-          missing: docStatus.missing,
-          existing: docStatus.existing,
-          functionSignature: `${route.method} ${route.path}`,
-        };
-        fileGaps.push(gap);
-        gaps.push(gap);
-      }
-    });
-
-    // Build per-file breakdown
-    if (fileTotalItems > 0) {
-      const fileCoveragePercentage = calcPercentage(
-        fileDocumentedItems,
-        fileTotalItems,
-      );
-
-      files.push({
-        fileName: fileData.fileName,
-        filePath: fileData.file,
-        totalItems: fileTotalItems,
-        documentedItems: fileDocumentedItems,
-        coveragePercentage: fileCoveragePercentage,
-        gaps: fileGaps,
+          if (!docStatus.isFullyDocumented) {
+            const gap = {
+              type: 'function',
+              name: func.name,
+              fileName: fileData.fileName,
+              filePath: fileData.file,
+              line: func.line,
+              severity: docStatus.isPartiallyDocumented ? 'warning' : 'error',
+              missing: docStatus.missing,
+              existing: docStatus.existing,
+              functionSignature: `${func.name}(${func.params.join(', ')})`,
+            };
+            fileGaps.push(gap);
+            gaps.push(gap);
+          }
+        } catch (err) {
+          console.warn(
+            `Warning: Error analyzing function ${func?.name || 'unknown'}: ${err.message}`,
+          );
+        }
       });
+
+      // Analyze routes
+      fileData.routes?.forEach((route) => {
+        try {
+          fileTotalItems++;
+          totalRoutes++;
+
+          const docStatus = checkRouteDocumentation(route);
+
+          if (docStatus.isFullyDocumented) {
+            fileDocumentedItems++;
+            documentedRoutes++;
+          } else if (docStatus.isPartiallyDocumented) {
+            partiallyDocumented++;
+          }
+
+          if (!docStatus.isFullyDocumented) {
+            const gap = {
+              type: 'route',
+              name: `${route.method} ${route.path}`,
+              fileName: fileData.fileName,
+              filePath: fileData.file,
+              line: route.line,
+              severity: docStatus.isPartiallyDocumented ? 'warning' : 'error',
+              missing: docStatus.missing,
+              existing: docStatus.existing,
+              functionSignature: `${route.method} ${route.path}`,
+            };
+            fileGaps.push(gap);
+            gaps.push(gap);
+          }
+        } catch (err) {
+          console.warn(
+            `Warning: Error analyzing route ${route?.method || ''} ${route?.path || 'unknown'}: ${err.message}`,
+          );
+        }
+      });
+
+      // Build per-file breakdown
+      if (fileTotalItems > 0) {
+        const fileCoveragePercentage = calcPercentage(
+          fileDocumentedItems,
+          fileTotalItems,
+        );
+
+        files.push({
+          fileName: fileData.fileName,
+          filePath: fileData.file,
+          totalItems: fileTotalItems,
+          documentedItems: fileDocumentedItems,
+          coveragePercentage: fileCoveragePercentage,
+          gaps: fileGaps,
+        });
+      }
+    } catch (err) {
+      console.warn(
+        `Warning: Error analyzing file ${fileData?.fileName || 'unknown'}: ${err.message}`,
+      );
     }
   });
 
