@@ -99,8 +99,8 @@ function handleFunctionExpression(node, functions, exported) {
  * @param {Array} functions - Accumulator array for extracted function/route metadata
  */
 function handleRouteExpression(node, functions) {
-  const methodName = node.callee.property.name;
-  if (!HTTP_METHODS.includes(methodName)) return;
+  const methodName = node.callee?.property?.name;
+  if (!methodName || !HTTP_METHODS.includes(methodName)) return;
 
   const method = methodName.toUpperCase();
   const pathArg = node.arguments[0];
