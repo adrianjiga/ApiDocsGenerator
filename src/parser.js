@@ -4,6 +4,8 @@ import { parse } from 'comment-parser';
 import { parse as tsParse } from '@typescript-eslint/typescript-estree';
 import { getParamName, DEFAULT_EXCLUDE_PATTERN } from './utils.js';
 
+const JSDOC_REGEX = /\/\*\*\s*([\s\S]*?)\*\//g;
+
 /**
  * Parse JSDoc comments from source code
  * @param {string} sourceCode - JavaScript/TypeScript source code
@@ -14,10 +16,10 @@ function parseJSDoc(sourceCode) {
 
   try {
     // Use regex to find JSDoc comments in the source code
-    const jsdocRegex = /\/\*\*\s*([\s\S]*?)\*\//g;
+    JSDOC_REGEX.lastIndex = 0;
     let match;
 
-    while ((match = jsdocRegex.exec(sourceCode)) !== null) {
+    while ((match = JSDOC_REGEX.exec(sourceCode)) !== null) {
       // Calculate line number by counting newlines before this match
       const beforeMatch = sourceCode.substring(0, match.index);
       const lineNumber = beforeMatch.split('\n').length;
@@ -197,9 +199,6 @@ function extractFunctions(sourceCode) {
       }
     })(ast);
 
-    // Track express.Router() variable names
-    const routerVariables = new Set();
-
     const walk = (node, visited = new Set()) => {
       if (!node || typeof node !== 'object' || visited.has(node)) return;
       visited.add(node);
@@ -222,18 +221,6 @@ function extractFunctions(sourceCode) {
           functions,
           exportedDeclarations.has(node),
         );
-      }
-
-      // Detect const router = express.Router()
-      if (
-        node.type === 'VariableDeclarator' &&
-        node.init?.type === 'CallExpression' &&
-        node.init.callee?.type === 'MemberExpression' &&
-        node.init.callee.object?.name === 'express' &&
-        node.init.callee.property?.name === 'Router' &&
-        node.id?.name
-      ) {
-        routerVariables.add(node.id.name);
       }
 
       if (node.type === 'CallExpression' && node.callee?.property) {
@@ -407,13 +394,26 @@ async function parseFile(filePath) {
   return api;
 }
 
+const JS_TS_FILE_REGEX = /\.(js|ts|jsx|tsx)$/;
+
 /**
  * Recursively scan directory for JS/TS files
  * @param {string} dir - Directory path
- * @param {string} excludePattern - Glob pattern to exclude
+ * @param {string} excludePattern - Regex pattern to exclude directories
  * @returns {Array} Array of file paths
  */
 async function scanDirectory(dir, excludePattern = DEFAULT_EXCLUDE_PATTERN) {
+  const excludeRegex = new RegExp(excludePattern);
+  return _scanDirectoryImpl(dir, excludeRegex);
+}
+
+/**
+ * Internal recursive implementation of directory scanning
+ * @param {string} dir - Directory path
+ * @param {RegExp} excludeRegex - Compiled regex for exclusion
+ * @returns {Array} Array of file paths
+ */
+async function _scanDirectoryImpl(dir, excludeRegex) {
   const files = [];
 
   try {
@@ -424,10 +424,10 @@ async function scanDirectory(dir, excludePattern = DEFAULT_EXCLUDE_PATTERN) {
       const fullPath = path.join(dir, entry.name);
 
       if (entry.isDirectory()) {
-        if (!new RegExp(excludePattern).test(fullPath)) {
-          subdirPromises.push(scanDirectory(fullPath, excludePattern));
+        if (!excludeRegex.test(fullPath)) {
+          subdirPromises.push(_scanDirectoryImpl(fullPath, excludeRegex));
         }
-      } else if (entry.isFile() && /\.(js|ts|jsx|tsx)$/.test(entry.name)) {
+      } else if (entry.isFile() && JS_TS_FILE_REGEX.test(entry.name)) {
         files.push(fullPath);
       }
     }

@@ -4,13 +4,15 @@
  */
 const DEFAULT_EXCLUDE_PATTERN = 'node_modules|dist|build';
 
+const NON_WORD_REGEX = /\W+/g;
+
 /**
  * Sanitize filename for use as HTML id attribute
  * @param {string} str - String to sanitize
  * @returns {string} Sanitized string safe for HTML id
  */
 function sanitizeHtmlId(str) {
-  return str.replace(/\W+/g, '-').toLowerCase();
+  return str.replace(NON_WORD_REGEX, '-').toLowerCase();
 }
 
 /**
