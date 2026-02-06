@@ -434,3 +434,40 @@ describe('parseDirectory', () => {
     });
   });
 });
+
+describe('error scenarios', () => {
+  it('parseJSDoc returns empty array for empty string', () => {
+    const result = parseJSDoc('');
+    expect(result).toEqual([]);
+  });
+
+  it('extractFunctions returns empty array for completely invalid syntax', () => {
+    const result = extractFunctions('}{][not valid at all}{');
+    expect(result).toEqual([]);
+  });
+
+  it('scanDirectory returns empty array for non-existent directory', async () => {
+    const result = await scanDirectory('/non/existent/directory');
+    expect(result).toEqual([]);
+  });
+
+  it('parseFile handles non-existent file gracefully', async () => {
+    await expect(parseFile('/non/existent/file.js')).rejects.toThrow();
+  });
+
+  it('parseDirectory returns empty array for non-existent directory', async () => {
+    const result = await parseDirectory('/non/existent/directory');
+    expect(result).toEqual([]);
+  });
+
+  it('extractFunctions handles source with only comments', () => {
+    const result = extractFunctions('// just a comment\n/* block comment */');
+    expect(result).toEqual([]);
+  });
+
+  it('handleRouteExpression ignores call expressions without property name', () => {
+    const code = 'const x = foo()';
+    const result = extractFunctions(code);
+    expect(result).toEqual([]);
+  });
+});

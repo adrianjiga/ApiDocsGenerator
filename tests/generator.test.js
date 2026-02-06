@@ -164,4 +164,30 @@ describe('generate', () => {
       formatters.html.generate = original;
     }
   });
+
+  it('tracks skipped formats in results', async () => {
+    const result = await generate(examplesDir, outputDir, [
+      'markdown',
+      'fakefmt',
+    ]);
+    expect(result.success).toBe(true);
+    expect(result.skipped).toHaveLength(1);
+    expect(result.skipped[0]).toEqual({
+      format: 'fakefmt',
+      reason: 'Unknown format',
+    });
+    expect(result.generated).toHaveLength(1);
+  });
+
+  it('returns empty skipped array when all formats are valid', async () => {
+    const result = await generate(examplesDir, outputDir, ['markdown']);
+    expect(result.skipped).toEqual([]);
+  });
+
+  it('returns failure for non-existent source directory', async () => {
+    const result = await generate('/non/existent/dir', outputDir, [
+      'markdown',
+    ]);
+    expect(result.success).toBe(false);
+  });
 });

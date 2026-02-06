@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { analyzeCoverage, checkRouteDocumentation } from '../src/analyzer.js';
 import { makeFunction, makeRoute, fullyDocumentedJsdoc } from './fixtures.js';
 
@@ -358,5 +358,60 @@ describe('checkRouteDocumentation', () => {
     const result = checkRouteDocumentation(route);
     expect(result.existing.description).toBe('Get user');
     expect(result.existing.params).toEqual(['id']);
+  });
+});
+
+describe('analyzeCoverage – error scenarios', () => {
+  it('returns empty result for null input', () => {
+    const result = analyzeCoverage(null);
+    expect(result.summary.totalFunctions).toBe(0);
+    expect(result.files).toEqual([]);
+    expect(result.gaps).toEqual([]);
+  });
+
+  it('returns empty result for undefined input', () => {
+    const result = analyzeCoverage(undefined);
+    expect(result.summary.coveragePercentage).toBe(0);
+  });
+
+  it('returns empty result for string input', () => {
+    const result = analyzeCoverage('not an array');
+    expect(result.summary.totalFunctions).toBe(0);
+  });
+
+  it('handles file entry with missing functions field', () => {
+    const apiData = [{ file: '/a.js', fileName: 'a.js', routes: [] }];
+    const result = analyzeCoverage(apiData);
+    expect(result.summary.totalFunctions).toBe(0);
+  });
+
+  it('handles file entry with missing routes field', () => {
+    const apiData = [{ file: '/a.js', fileName: 'a.js', functions: [] }];
+    const result = analyzeCoverage(apiData);
+    expect(result.summary.totalRoutes).toBe(0);
+  });
+
+  it('handles function with missing params array gracefully', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const apiData = [
+      {
+        file: '/a.js',
+        fileName: 'a.js',
+        functions: [{ name: 'broken', jsdoc: null }],
+        routes: [],
+      },
+    ];
+    const result = analyzeCoverage(apiData);
+    // Should warn but not crash
+    expect(result.summary.totalFunctions).toBe(1);
+    vi.restoreAllMocks();
+  });
+
+  it('handles empty array input', () => {
+    const result = analyzeCoverage([]);
+    expect(result.summary.totalFunctions).toBe(0);
+    expect(result.summary.coveragePercentage).toBe(0);
+    expect(result.files).toEqual([]);
+    expect(result.gaps).toEqual([]);
   });
 });
