@@ -1,5 +1,4 @@
 import fs from 'fs-extra';
-import fsStd from 'fs/promises';
 import path from 'path';
 import * as parser from './parser.js';
 import { formatters } from './formatters/registry.js';
@@ -34,7 +33,8 @@ async function loadConfig(configPath) {
   const filePath = configPath || path.join(process.cwd(), 'apidocs.config.js');
 
   try {
-    await fsStd.access(filePath);
+    const exists = await fs.pathExists(filePath);
+    if (!exists) return defaults;
   } catch {
     return defaults;
   }
@@ -170,4 +170,4 @@ async function generate(
   }
 }
 
-export { defaultConfig, getDefaultConfig, loadConfig, generate };
+export { defaultConfig, getDefaultConfig, loadConfig, generate, buildSummaryReport };

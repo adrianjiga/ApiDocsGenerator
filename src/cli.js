@@ -1,5 +1,5 @@
 import path from 'path';
-import fs from 'fs';
+import fs from 'fs-extra';
 import { program } from 'commander';
 import * as generator from './generator.js';
 import * as parser from './parser.js';
@@ -146,9 +146,9 @@ program
       const outputFile = options.output || 'coverage-dashboard.html';
       const outputPath = path.resolve(outputFile);
       const outputDir = path.dirname(outputPath);
-      fs.mkdirSync(outputDir, { recursive: true });
+      await fs.ensureDir(outputDir);
       const dashboardHtml = generateDashboard(result);
-      fs.writeFileSync(outputPath, dashboardHtml);
+      await fs.writeFile(outputPath, dashboardHtml);
       console.log(`✅ Dashboard written to: ${outputPath}\n`);
     } else {
       formatTerminalReport(result, threshold);
