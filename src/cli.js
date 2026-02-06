@@ -122,6 +122,10 @@ program
   .action(async (options) => {
     const sourceDir = path.resolve(options.dir);
     const threshold = parseInt(options.threshold, 10);
+    if (isNaN(threshold) || threshold < 0 || threshold > 100) {
+      console.error('Error: --threshold must be a number between 0 and 100');
+      process.exit(1);
+    }
     const format = options.format.toLowerCase();
     const config = await resolveConfig(options);
 
