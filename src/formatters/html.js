@@ -141,7 +141,6 @@ function generateHTML(apiData, config = {}) {
       background: rgba(99, 102, 241, 0.05);
       padding: 1.5rem;
       margin-bottom: 1rem;
-      border-left: 4px solid #6366f1;
       border-radius: 0.5rem;
       transition: all 0.3s ease;
       border: 1px solid rgba(99, 102, 241, 0.1);
@@ -193,7 +192,6 @@ function generateHTML(apiData, config = {}) {
       margin: 0.375rem 0;
       border-radius: 0.375rem;
       font-size: 0.875rem;
-      border-left: 3px solid #10b981;
       border: 1px solid rgba(16, 185, 129, 0.15);
       border-left: 3px solid #10b981;
       transition: all 0.2s ease;

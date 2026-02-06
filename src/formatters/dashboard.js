@@ -29,7 +29,7 @@ function generateDashboard(report) {
         <td class="gap-name">${escapeHtml(gap.name)}</td>
         <td class="gap-line">${gap.line}</td>
         <td class="gap-severity"><span class="severity-${gap.severity}">${gap.severity}</span></td>
-        <td class="gap-missing">${gap.missing.join(', ')}</td>
+        <td class="gap-missing">${escapeHtml(gap.missing.join(', '))}</td>
       </tr>
     `,
     )
@@ -167,7 +167,6 @@ function generateDashboard(report) {
     }
 
     .stat-card {
-      group relative;
       background: linear-gradient(135deg, #13131a 0%, #1a1a24 100%);
       border: 1px solid rgba(99, 102, 241, 0.1);
       border-radius: 0.875rem;
