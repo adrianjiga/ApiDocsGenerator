@@ -146,11 +146,11 @@ function analyzeCoverage(apiData) {
 }
 
 /**
- * Check documentation status of a function
- * @param {Object} func - Function object with name, params, jsdoc
+ * Check documentation status of an item (function or route)
+ * @param {Object} item - Item with params and jsdoc properties
  * @returns {Object} Status object with isFullyDocumented, isPartiallyDocumented, missing, existing
  */
-function checkFunctionDocumentation(func) {
+function checkDocumentation(item) {
   const existing = {
     description: null,
     params: [],
@@ -159,8 +159,7 @@ function checkFunctionDocumentation(func) {
 
   const missing = [];
 
-  // Check if jsdoc exists
-  if (!func.jsdoc) {
+  if (!item.jsdoc) {
     return {
       isFullyDocumented: false,
       isPartiallyDocumented: false,
@@ -170,19 +169,18 @@ function checkFunctionDocumentation(func) {
   }
 
   // Check description
-  if (func.jsdoc.description && func.jsdoc.description.trim()) {
-    existing.description = func.jsdoc.description;
+  if (item.jsdoc.description && item.jsdoc.description.trim()) {
+    existing.description = item.jsdoc.description;
   } else {
     missing.push('description');
   }
 
   // Check params
-  const paramTags = getParamTags(func.jsdoc.tags);
+  const paramTags = getParamTags(item.jsdoc.tags);
   const documentedParamNames = paramTags.map((tag) => tag.name);
-
   existing.params = documentedParamNames;
 
-  func.params.forEach((paramName) => {
+  item.params.forEach((paramName) => {
     if (!documentedParamNames.includes(paramName)) {
       if (!missing.includes('params')) {
         missing.push('params');
@@ -191,8 +189,7 @@ function checkFunctionDocumentation(func) {
   });
 
   // Check returns
-  const hasReturnsTag = getReturnTags(func.jsdoc.tags).length > 0;
-
+  const hasReturnsTag = getReturnTags(item.jsdoc.tags).length > 0;
   if (hasReturnsTag) {
     existing.returns = true;
   } else {
@@ -200,14 +197,18 @@ function checkFunctionDocumentation(func) {
   }
 
   const isFullyDocumented = missing.length === 0;
-  const isPartiallyDocumented = !isFullyDocumented && func.jsdoc !== null;
+  const isPartiallyDocumented = !isFullyDocumented && item.jsdoc !== null;
 
-  return {
-    isFullyDocumented,
-    isPartiallyDocumented,
-    missing,
-    existing,
-  };
+  return { isFullyDocumented, isPartiallyDocumented, missing, existing };
+}
+
+/**
+ * Check documentation status of a function
+ * @param {Object} func - Function object with name, params, jsdoc
+ * @returns {Object} Status object with isFullyDocumented, isPartiallyDocumented, missing, existing
+ */
+function checkFunctionDocumentation(func) {
+  return checkDocumentation(func);
 }
 
 /**
@@ -216,55 +217,7 @@ function checkFunctionDocumentation(func) {
  * @returns {Object} Status object with isFullyDocumented, isPartiallyDocumented, missing, existing
  */
 function checkRouteDocumentation(route) {
-  const existing = {
-    description: null,
-    params: [],
-    returns: false,
-  };
-
-  const missing = [];
-
-  if (!route.jsdoc) {
-    return {
-      isFullyDocumented: false,
-      isPartiallyDocumented: false,
-      missing: ['description', 'params', 'returns'],
-      existing,
-    };
-  }
-
-  // Check description
-  if (route.jsdoc.description && route.jsdoc.description.trim()) {
-    existing.description = route.jsdoc.description;
-  } else {
-    missing.push('description');
-  }
-
-  // Check path params documented via @param
-  const paramTags = getParamTags(route.jsdoc.tags);
-  const documentedParamNames = paramTags.map((tag) => tag.name);
-  existing.params = documentedParamNames;
-
-  route.params.forEach((paramName) => {
-    if (!documentedParamNames.includes(paramName)) {
-      if (!missing.includes('params')) {
-        missing.push('params');
-      }
-    }
-  });
-
-  // Check returns
-  const hasReturnsTag = getReturnTags(route.jsdoc.tags).length > 0;
-  if (hasReturnsTag) {
-    existing.returns = true;
-  } else {
-    missing.push('returns');
-  }
-
-  const isFullyDocumented = missing.length === 0;
-  const isPartiallyDocumented = !isFullyDocumented && route.jsdoc !== null;
-
-  return { isFullyDocumented, isPartiallyDocumented, missing, existing };
+  return checkDocumentation(route);
 }
 
 export { analyzeCoverage, checkRouteDocumentation };
