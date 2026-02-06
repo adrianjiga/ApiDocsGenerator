@@ -6,6 +6,24 @@ import { calcPercentage, getParamTags, getReturnTags } from './utils.js';
  * @returns {Object} Coverage analysis with summary, per-file breakdown, and gaps
  */
 function analyzeCoverage(apiData) {
+  if (!Array.isArray(apiData)) {
+    return {
+      summary: {
+        totalFunctions: 0,
+        documentedFunctions: 0,
+        undocumentedFunctions: 0,
+        partiallyDocumented: 0,
+        totalRoutes: 0,
+        documentedRoutes: 0,
+        coveragePercentage: 0,
+        functionCoverage: 0,
+        routeCoverage: 0,
+      },
+      files: [],
+      gaps: [],
+    };
+  }
+
   const gaps = [];
   const files = [];
 
