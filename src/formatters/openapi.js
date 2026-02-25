@@ -47,6 +47,7 @@ function extractParams(openApiPath) {
 function generateOpenAPI(apiData, config = {}) {
   const paths = new Map();
   const tagSet = new Map();
+  const usedOperationIds = new Map();
 
   for (const file of apiData) {
     for (const route of file.routes) {
@@ -67,7 +68,14 @@ function generateOpenAPI(apiData, config = {}) {
 
       const summary =
         route.jsdoc?.description || `${route.method} ${openApiPath}`;
-      const operationId = deriveOperationId(method, openApiPath);
+
+      // Deduplicate operationIds: append a counter suffix on collision
+      const baseId = deriveOperationId(method, openApiPath);
+      const idKey = baseId;
+      const count = usedOperationIds.get(idKey) || 0;
+      usedOperationIds.set(idKey, count + 1);
+      const operationId = count === 0 ? baseId : `${baseId}-${count}`;
+
       const params = extractParams(openApiPath);
 
       const operation = {
