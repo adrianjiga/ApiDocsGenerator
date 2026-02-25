@@ -1,5 +1,6 @@
 import fs from 'fs-extra';
 import path from 'path';
+import { pathToFileURL } from 'url';
 import * as parser from './parser.js';
 import { formatters } from './formatters/registry.js';
 import { DEFAULT_EXCLUDE_PATTERN } from './utils.js';
@@ -40,7 +41,7 @@ async function loadConfig(configPath) {
   }
 
   try {
-    const fileUrl = new URL(`file://${path.resolve(filePath)}`);
+    const fileUrl = pathToFileURL(path.resolve(filePath));
     const mod = await import(fileUrl.href);
     const userConfig = mod.default || mod;
     return { ...defaults, ...userConfig };
