@@ -17,15 +17,15 @@ function getCoverageColor(percentage) {
  * @param {Object} report - Coverage analysis report from analyzeCoverage()
  * @returns {string} Self-contained HTML dashboard
  */
+/** SVG gauge circle radius. The circumference is 2 * PI * GAUGE_RADIUS. */
+const GAUGE_RADIUS = 90;
+const GAUGE_CIRCUMFERENCE = 2 * Math.PI * GAUGE_RADIUS;
+
 function generateDashboard(report) {
   const { summary, files, gaps } = report;
   const coverage = summary.coveragePercentage;
 
-  // Determine gauge color based on coverage
-  let gaugeColor = '#ff4444'; // red < 50
-  if (coverage >= 80)
-    gaugeColor = '#44bb44'; // green >= 80
-  else if (coverage >= 50) gaugeColor = '#ffaa44'; // yellow 50-80
+  const gaugeColor = getCoverageColor(coverage);
 
   /**
    * Generate documentation gap rows
@@ -464,7 +464,7 @@ function generateDashboard(report) {
             fill="none"
             stroke="${gaugeColor}"
             stroke-width="8"
-            stroke-dasharray="${coverage * 5.65} 565"
+            stroke-dasharray="${((coverage / 100) * GAUGE_CIRCUMFERENCE).toFixed(2)} ${GAUGE_CIRCUMFERENCE.toFixed(2)}"
             stroke-dashoffset="0"
             stroke-linecap="round"
             style="transform: rotate(-90deg); transform-origin: 100px 100px; transition: stroke-dasharray 0.5s ease;"
