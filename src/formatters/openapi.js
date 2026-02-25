@@ -1,6 +1,16 @@
 import yaml from 'js-yaml';
 
 /**
+ * Default success response code per HTTP method.
+ * POST → 201 Created, DELETE → 204 No Content, others → 200 OK.
+ * @type {Object.<string, number>}
+ */
+const METHOD_SUCCESS_CODE = {
+  post: 201,
+  delete: 204,
+};
+
+/**
  * Convert an Express-style path to OpenAPI path syntax.
  * @param {string} expressPath - e.g. /users/:id
  * @returns {string} e.g. /users/{id}
@@ -78,12 +88,20 @@ function generateOpenAPI(apiData, config = {}) {
 
       const params = extractParams(openApiPath);
 
+      const successCode = METHOD_SUCCESS_CODE[method] || 200;
+      const successDescription =
+        successCode === 201
+          ? 'Resource created'
+          : successCode === 204
+            ? 'No content'
+            : 'Successful response';
+
       const operation = {
         summary,
         operationId,
         tags: [sourceFile],
         responses: {
-          200: { description: 'Successful response' },
+          [successCode]: { description: successDescription },
         },
       };
 
