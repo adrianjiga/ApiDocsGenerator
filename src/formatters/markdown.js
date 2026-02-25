@@ -6,7 +6,8 @@ import { getParamTags, getReturnTags, cleanTagDescription } from '../utils.js';
  * @returns {string} Markdown formatted documentation
  */
 function generateMarkdown(apiData, config = {}) {
-  let md = '# API Documentation\n\n';
+  const docTitle = config.apiTitle || 'API Documentation';
+  let md = `# ${docTitle}\n\n`;
   md += `Generated: ${new Date().toISOString()}\n\n`;
 
   // Table of contents

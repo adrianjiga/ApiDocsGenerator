@@ -14,13 +14,15 @@ import { BASE_CSS } from './shared-styles.js';
  */
 function generateHTML(apiData, config = {}) {
   const timestamp = new Date().toISOString();
+  const pageTitle = escapeHtml(config.apiTitle || 'API Documentation');
 
   let html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>API Documentation</title>
+  <title>${pageTitle}</title>
+  <meta name="description" content="Auto-generated API documentation for ${pageTitle}">
   <style>
     ${BASE_CSS}
 
@@ -253,7 +255,7 @@ function generateHTML(apiData, config = {}) {
 <body>
   <div class="container">
     <header>
-      <h1>📚 API Documentation</h1>
+      <h1>📚 ${pageTitle}</h1>
       <p>Auto-generated documentation • ${timestamp}</p>
     </header>`;
 
