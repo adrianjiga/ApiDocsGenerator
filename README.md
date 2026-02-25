@@ -330,7 +330,7 @@ async function getUserById(userId) {
   // implementation
 }
 
-const express = require('express');
+import express from 'express';
 const app = express();
 
 /**

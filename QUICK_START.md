@@ -133,7 +133,7 @@ api-docs-generator audit --dir ./src --threshold 90 --format terminal
 The tool automatically detects routes:
 
 ```javascript
-const express = require('express');
+import express from 'express';
 const app = express();
 
 // These routes are auto-detected!
