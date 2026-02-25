@@ -262,7 +262,7 @@ function generateHTML(apiData, config = {}) {
 
   if (fileSections.length > 0) {
     html += `
-    <nav>
+    <nav aria-label="Table of Contents">
       <h2>📖 Table of Contents</h2>
       <ul>`;
 
