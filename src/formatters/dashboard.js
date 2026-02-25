@@ -2,6 +2,17 @@ import { escapeHtml } from '../utils.js';
 import { BASE_CSS } from './shared-styles.js';
 
 /**
+ * Get color based on coverage percentage
+ * @param {number} percentage - Coverage percentage
+ * @returns {string} Hex color code
+ */
+function getCoverageColor(percentage) {
+  if (percentage >= 80) return '#44bb44'; // green
+  if (percentage >= 50) return '#ffaa44'; // yellow
+  return '#ff4444'; // red
+}
+
+/**
  * Generate a self-contained HTML dashboard showing documentation coverage
  * @param {Object} report - Coverage analysis report from analyzeCoverage()
  * @returns {string} Self-contained HTML dashboard
@@ -552,17 +563,6 @@ function generateDashboard(report) {
   </div>
 </body>
 </html>`;
-}
-
-/**
- * Get color based on coverage percentage
- * @param {number} percentage - Coverage percentage
- * @returns {string} Hex color code
- */
-function getCoverageColor(percentage) {
-  if (percentage >= 80) return '#44bb44'; // green
-  if (percentage >= 50) return '#ffaa44'; // yellow
-  return '#ff4444'; // red
 }
 
 export { generateDashboard };
