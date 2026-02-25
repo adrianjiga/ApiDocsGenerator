@@ -33,7 +33,7 @@ function generateMarkdown(apiData, config = {}) {
     if (file.functions.length === 0 && file.routes.length === 0) return;
 
     md += `## ${file.fileName}\n\n`;
-    md += `**File:** \`${file.file}\`\n\n`;
+    md += `**File:** \`${file.fileName}\`\n\n`;
 
     // Functions
     if (file.functions.length > 0) {

@@ -284,7 +284,7 @@ function generateHTML(apiData, config = {}) {
     html += `
     <div class="file-section" id="${sanitizeHtmlId(file.fileName)}">
       <h2>${escapeHtml(file.fileName)}</h2>
-      <div class="file-path">📁 ${escapeHtml(file.file)}</div>`;
+      <div class="file-path">📁 ${escapeHtml(file.fileName)}</div>`;
 
     // Functions
     if (file.functions.length > 0) {
