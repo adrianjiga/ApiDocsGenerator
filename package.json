@@ -1,6 +1,6 @@
 {
   "name": "api-docs-generator",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "description": "Auto-generates API documentation from JavaScript/TypeScript source code",
   "main": "src/index.js",
