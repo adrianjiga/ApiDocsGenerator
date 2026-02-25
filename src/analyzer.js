@@ -206,10 +206,22 @@ function checkDocumentation(item) {
     }
   });
 
-  // Check returns
-  const hasReturnsTag = getReturnTags(item.jsdoc.tags).length > 0;
+  // Check returns — @returns {void} or @returns {undefined} counts as
+  // intentionally documented (the developer chose to declare no return value)
+  const returnTags = getReturnTags(item.jsdoc.tags);
+  const hasReturnsTag = returnTags.length > 0;
+  const isVoidReturn =
+    hasReturnsTag &&
+    returnTags.some((t) => {
+      const type = (t.type || '').toLowerCase().trim();
+      return type === 'void' || type === 'undefined' || type === 'never';
+    });
+
   if (hasReturnsTag) {
     existing.returns = true;
+    if (isVoidReturn) {
+      existing.voidReturn = true;
+    }
   } else {
     missing.push('returns');
   }
