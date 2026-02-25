@@ -1,6 +1,6 @@
 {
   "name": "api-docs-generator",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "description": "Auto-generates API documentation from JavaScript/TypeScript source code",
   "main": "src/index.js",
@@ -34,6 +34,15 @@
   ],
   "author": "Adrian Jiga",
   "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "src/",
+    "bin/",
+    "README.md",
+    "QUICK_START.md"
+  ],
   "dependencies": {
     "commander": "^14.0.2",
     "comment-parser": "^1.4.5",

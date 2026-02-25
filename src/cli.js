@@ -1,4 +1,5 @@
 import path from 'path';
+import { createRequire } from 'module';
 import fs from 'fs-extra';
 import { program } from 'commander';
 import * as generator from './generator.js';
@@ -7,12 +8,15 @@ import { analyzeCoverage } from './analyzer.js';
 import { formatters } from './formatters/registry.js';
 import { loadConfig } from './generator.js';
 
+const require = createRequire(import.meta.url);
+const { version } = require('../package.json');
+
 program
   .name('api-docs-generator')
   .description(
     'Auto-generates API documentation from JavaScript/TypeScript source code',
   )
-  .version('1.0.0');
+  .version(version);
 
 /**
  * Build a resolved config by loading the config file and applying CLI overrides.

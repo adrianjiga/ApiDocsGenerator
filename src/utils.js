@@ -2,7 +2,8 @@
  * Default regex pattern for directories to exclude when scanning
  * @type {string}
  */
-const DEFAULT_EXCLUDE_PATTERN = 'node_modules|dist|build';
+const DEFAULT_EXCLUDE_PATTERN =
+  'node_modules|dist|build|\\.cache|coverage|\\.turbo|\\.nx|\\.next|\\.nuxt|out|\\.git';
 
 const NON_WORD_REGEX = /\W+/g;
 
@@ -12,7 +13,7 @@ const NON_WORD_REGEX = /\W+/g;
  * @returns {string} Sanitized string safe for HTML id
  */
 function sanitizeHtmlId(str) {
-  return str.replace(NON_WORD_REGEX, '-').toLowerCase();
+  return str.replace(NON_WORD_REGEX, '-').toLowerCase().replace(/^-+|-+$/g, '');
 }
 
 /**

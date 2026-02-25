@@ -330,7 +330,7 @@ async function getUserById(userId) {
   // implementation
 }
 
-const express = require('express');
+import express from 'express';
 const app = express();
 
 /**
@@ -375,7 +375,7 @@ The tool scans and parses:
 ## How It Works
 
 1. **Directory Scanning** - Recursively scans for JS/TS files
-2. **AST Parsing** - Uses espree to parse JavaScript code
+2. **AST Parsing** - Uses `@typescript-eslint/typescript-estree` to parse JavaScript and TypeScript code
 3. **JSDoc Extraction** - Parses JSDoc comments using comment-parser
 4. **Route Detection** - Identifies Express/Fastify route definitions
 5. **Metadata Collection** - Gathers functions, routes, and documentation
@@ -384,13 +384,24 @@ The tool scans and parses:
 
 ## Configuration
 
-### Environment Variables
-
-- `API_DOC_GEN_EXCLUDE` - Glob pattern to exclude directories (default: `node_modules|dist|build`)
-
 ### Command Line Options
 
-All options can be specified via command line flags. No configuration file is required.
+All options can be specified via command line flags.
+
+### Configuration File (Optional)
+
+Create `apidocs.config.js` in your project root to set persistent defaults:
+
+```js
+export default {
+  excludePattern: 'node_modules|dist|build',
+  serverUrl: 'http://localhost:3000',
+  apiTitle: 'My API',
+  apiVersion: '2.0.0',
+};
+```
+
+Pass a custom config path with `--config path/to/apidocs.config.js`.
 
 ## Documentation Coverage Analysis
 

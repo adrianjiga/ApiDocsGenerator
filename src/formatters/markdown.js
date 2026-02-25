@@ -1,4 +1,9 @@
-import { getParamTags, getReturnTags, cleanTagDescription } from '../utils.js';
+import {
+  getParamTags,
+  getReturnTags,
+  cleanTagDescription,
+  sanitizeHtmlId,
+} from '../utils.js';
 
 /**
  * Generate Markdown documentation
@@ -6,7 +11,8 @@ import { getParamTags, getReturnTags, cleanTagDescription } from '../utils.js';
  * @returns {string} Markdown formatted documentation
  */
 function generateMarkdown(apiData, config = {}) {
-  let md = '# API Documentation\n\n';
+  const docTitle = config.apiTitle || 'API Documentation';
+  let md = `# ${docTitle}\n\n`;
   md += `Generated: ${new Date().toISOString()}\n\n`;
 
   // Table of contents
@@ -15,7 +21,7 @@ function generateMarkdown(apiData, config = {}) {
   let fileIndex = 1;
   apiData.forEach((file) => {
     if (file.functions.length > 0 || file.routes.length > 0) {
-      md += `${fileIndex}. [${file.fileName}](#${file.fileName.replace(/\W/g, '-').toLowerCase()})\n`;
+      md += `${fileIndex}. [${file.fileName}](#${sanitizeHtmlId(file.fileName)})\n`;
       fileIndex++;
     }
   });
@@ -27,7 +33,7 @@ function generateMarkdown(apiData, config = {}) {
     if (file.functions.length === 0 && file.routes.length === 0) return;
 
     md += `## ${file.fileName}\n\n`;
-    md += `**File:** \`${file.file}\`\n\n`;
+    md += `**File:** \`${file.fileName}\`\n\n`;
 
     // Functions
     if (file.functions.length > 0) {
@@ -68,7 +74,7 @@ function generateMarkdown(apiData, config = {}) {
 
         md += '**Usage Example:**\n\n';
         md += '```javascript\n';
-        md += `${fn.name}(${fn.params.map((p) => `arg_${p}`).join(', ')});\n`;
+        md += `${fn.name}(${fn.params.join(', ')});\n`;
         md += '```\n\n';
       });
     }

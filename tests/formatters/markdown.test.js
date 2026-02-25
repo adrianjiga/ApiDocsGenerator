@@ -40,7 +40,7 @@ describe('generateMarkdown', () => {
   it('includes usage example', () => {
     const md = generateMarkdown(mockApiData);
     expect(md).toContain('**Usage Example:**');
-    expect(md).toContain('greet(arg_name)');
+    expect(md).toContain('greet(name)');
   });
 
   it('includes route documentation', () => {

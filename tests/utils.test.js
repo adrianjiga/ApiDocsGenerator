@@ -25,6 +25,18 @@ describe('sanitizeHtmlId', () => {
   it('handles empty string', () => {
     expect(sanitizeHtmlId('')).toBe('');
   });
+
+  it('strips leading and trailing hyphens produced by non-ASCII characters', () => {
+    expect(sanitizeHtmlId('用户.js')).toBe('js');
+  });
+
+  it('handles a filename that is entirely non-ASCII', () => {
+    expect(sanitizeHtmlId('用户')).toBe('');
+  });
+
+  it('keeps inner hyphens from non-ASCII characters between word chars', () => {
+    expect(sanitizeHtmlId('file用户name.js')).toBe('file-name-js');
+  });
 });
 
 describe('getParamName', () => {

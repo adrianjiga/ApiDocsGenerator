@@ -59,6 +59,25 @@ beforeEach(() => {
   });
 });
 
+/** Run a callback with process.stdout.isTTY forced to true, then restore. */
+function withTTY(fn) {
+  const original = Object.getOwnPropertyDescriptor(process.stdout, 'isTTY');
+  Object.defineProperty(process.stdout, 'isTTY', {
+    value: true,
+    configurable: true,
+    writable: true,
+  });
+  try {
+    fn();
+  } finally {
+    if (original) {
+      Object.defineProperty(process.stdout, 'isTTY', original);
+    } else {
+      delete process.stdout.isTTY;
+    }
+  }
+}
+
 describe('formatTerminalReport', () => {
   it('prints header', () => {
     formatTerminalReport(makeReport(), 80);
@@ -203,27 +222,27 @@ describe('formatTerminalReport', () => {
         },
       ],
     });
-    formatTerminalReport(report, 80);
+    withTTY(() => formatTerminalReport(report, 80));
     const output = logOutput.join('\n');
     expect(output).toContain('⚠');
   });
 
   it('shows error icon for error severity gaps', () => {
-    formatTerminalReport(makeReport(), 80);
+    withTTY(() => formatTerminalReport(makeReport(), 80));
     const output = logOutput.join('\n');
     expect(output).toContain('✗');
   });
 
   it('uses green progress bar when coverage meets threshold', () => {
     const report = makeReport({ summary: { coveragePercentage: 60 } });
-    formatTerminalReport(report, 50);
+    withTTY(() => formatTerminalReport(report, 50));
     const output = logOutput.join('\n');
     expect(output).toContain('\x1b[32m[');
   });
 
   it('uses red progress bar when coverage is below threshold', () => {
     const report = makeReport({ summary: { coveragePercentage: 60 } });
-    formatTerminalReport(report, 80);
+    withTTY(() => formatTerminalReport(report, 80));
     const output = logOutput.join('\n');
     expect(output).toContain('\x1b[31m[');
   });

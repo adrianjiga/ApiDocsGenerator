@@ -340,8 +340,8 @@ All CSS is inline with zero external dependencies. Design follows the frontend-d
 
 ## Important Notes
 
-- **No configuration file** - All options are command-line flags; environment variables for exclusion patterns only
-- **AST parsing scope** - Limited to ES2022 syntax (see espree config in parser.js)
+- **Configuration file** - Optional `apidocs.config.js` at project root; all options are also available as command-line flags
+- **AST parsing scope** - Uses `@typescript-eslint/typescript-estree`; supports ES2022+ and full TypeScript syntax
 - **JSDoc format requirement** - Must use `/** */` block comment format within 2 lines above the function
 - **JSDoc tag aliases** - Both `@returns` and `@return` are recognized as the returns tag
 - **Route detection limitation** - Only detects routes with string literal paths, not dynamic/template paths

@@ -1,6 +1,16 @@
 import yaml from 'js-yaml';
 
 /**
+ * Default success response code per HTTP method.
+ * POST → 201 Created, DELETE → 204 No Content, others → 200 OK.
+ * @type {Object.<string, number>}
+ */
+const METHOD_SUCCESS_CODE = {
+  post: 201,
+  delete: 204,
+};
+
+/**
  * Convert an Express-style path to OpenAPI path syntax.
  * @param {string} expressPath - e.g. /users/:id
  * @returns {string} e.g. /users/{id}
@@ -47,6 +57,7 @@ function extractParams(openApiPath) {
 function generateOpenAPI(apiData, config = {}) {
   const paths = new Map();
   const tagSet = new Map();
+  const usedOperationIds = new Map();
 
   for (const file of apiData) {
     for (const route of file.routes) {
@@ -67,15 +78,30 @@ function generateOpenAPI(apiData, config = {}) {
 
       const summary =
         route.jsdoc?.description || `${route.method} ${openApiPath}`;
-      const operationId = deriveOperationId(method, openApiPath);
+
+      // Deduplicate operationIds: append a counter suffix on collision
+      const baseId = deriveOperationId(method, openApiPath);
+      const idKey = baseId;
+      const count = usedOperationIds.get(idKey) || 0;
+      usedOperationIds.set(idKey, count + 1);
+      const operationId = count === 0 ? baseId : `${baseId}-${count}`;
+
       const params = extractParams(openApiPath);
+
+      const successCode = METHOD_SUCCESS_CODE[method] || 200;
+      const successDescription =
+        successCode === 201
+          ? 'Resource created'
+          : successCode === 204
+            ? 'No content'
+            : 'Successful response';
 
       const operation = {
         summary,
         operationId,
         tags: [sourceFile],
         responses: {
-          200: { description: 'Successful response' },
+          [successCode]: { description: successDescription },
         },
       };
 

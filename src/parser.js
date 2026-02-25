@@ -336,12 +336,24 @@ function matchJSDocToItems(jsdocs, items) {
   return { jsdocMap, itemKey };
 }
 
+/** Maximum file size to parse (1 MB). Files larger than this are likely
+ *  minified bundles or machine-generated code — skip them with a warning. */
+const MAX_FILE_SIZE_BYTES = 1024 * 1024;
+
 /**
  * Parse a file and extract all metadata
  * @param {string} filePath - Path to the file
- * @returns {Object} Metadata object with functions, routes, and JSDoc
+ * @returns {Object|null} Metadata object with functions, routes, and JSDoc, or null if skipped
  */
 async function parseFile(filePath) {
+  const stat = await fs.stat(filePath);
+  if (stat.size > MAX_FILE_SIZE_BYTES) {
+    console.warn(
+      `Warning: Skipping ${filePath} (${(stat.size / 1024).toFixed(0)} KB) — exceeds 1 MB limit. Add it to excludePattern to suppress this warning.`,
+    );
+    return null;
+  }
+
   const sourceCode = await fs.readFile(filePath, 'utf8');
   const fileName = path.basename(filePath);
   const jsdocs = parseJSDoc(sourceCode);
@@ -403,7 +415,15 @@ const JS_TS_FILE_REGEX = /\.(js|ts|jsx|tsx)$/;
  * @returns {Array} Array of file paths
  */
 async function scanDirectory(dir, excludePattern = DEFAULT_EXCLUDE_PATTERN) {
-  const excludeRegex = new RegExp(excludePattern);
+  let excludeRegex;
+  try {
+    excludeRegex = new RegExp(excludePattern);
+  } catch {
+    console.warn(
+      `Warning: Invalid exclude pattern "${excludePattern}", falling back to default.`,
+    );
+    excludeRegex = new RegExp(DEFAULT_EXCLUDE_PATTERN);
+  }
   return _scanDirectoryImpl(dir, excludeRegex);
 }
 

@@ -14,19 +14,17 @@ import { BASE_CSS } from './shared-styles.js';
  */
 function generateHTML(apiData, config = {}) {
   const timestamp = new Date().toISOString();
+  const pageTitle = escapeHtml(config.apiTitle || 'API Documentation');
 
   let html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>API Documentation</title>
+  <title>${pageTitle}</title>
+  <meta name="description" content="Auto-generated API documentation for ${pageTitle}">
   <style>
     ${BASE_CSS}
-
-    @keyframes stagger-1 { animation-delay: 0ms; }
-    @keyframes stagger-2 { animation-delay: 100ms; }
-    @keyframes stagger-3 { animation-delay: 200ms; }
 
     .container { max-width: 1200px; margin: 0 auto; padding: 2rem; position: relative; z-index: 1; }
 
@@ -253,7 +251,7 @@ function generateHTML(apiData, config = {}) {
 <body>
   <div class="container">
     <header>
-      <h1>📚 API Documentation</h1>
+      <h1>📚 ${pageTitle}</h1>
       <p>Auto-generated documentation • ${timestamp}</p>
     </header>`;
 
@@ -264,7 +262,7 @@ function generateHTML(apiData, config = {}) {
 
   if (fileSections.length > 0) {
     html += `
-    <nav>
+    <nav aria-label="Table of Contents">
       <h2>📖 Table of Contents</h2>
       <ul>`;
 
@@ -282,7 +280,7 @@ function generateHTML(apiData, config = {}) {
     html += `
     <div class="file-section" id="${sanitizeHtmlId(file.fileName)}">
       <h2>${escapeHtml(file.fileName)}</h2>
-      <div class="file-path">📁 ${escapeHtml(file.file)}</div>`;
+      <div class="file-path">📁 ${escapeHtml(file.fileName)}</div>`;
 
     // Functions
     if (file.functions.length > 0) {
@@ -325,7 +323,7 @@ function generateHTML(apiData, config = {}) {
 
         html += `
           <h5 style="margin-top: 15px;">💡 Usage Example</h5>
-          <div class="code-block">${escapeHtml(fn.name)}(${fn.params.map((p) => `arg_${escapeHtml(p)}`).join(', ')});</div>
+          <div class="code-block">${escapeHtml(fn.name)}(${fn.params.map((p) => escapeHtml(p)).join(', ')});</div>
         </div>`;
       });
 
