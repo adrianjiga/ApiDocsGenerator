@@ -18,6 +18,14 @@ function generateJSON(apiData, config = {}) {
         params: fn.params,
         description: fn.description,
         line: fn.line,
+        async: fn.async || false,
+        generator: fn.generator || false,
+        exported: fn.exported || false,
+        ...(fn.className !== undefined && {
+          className: fn.className,
+          static: fn.static || false,
+          methodKind: fn.methodKind || 'method',
+        }),
         jsdoc: fn.jsdoc
           ? {
               description: fn.jsdoc.description,
