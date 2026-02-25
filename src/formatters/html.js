@@ -26,10 +26,6 @@ function generateHTML(apiData, config = {}) {
   <style>
     ${BASE_CSS}
 
-    @keyframes stagger-1 { animation-delay: 0ms; }
-    @keyframes stagger-2 { animation-delay: 100ms; }
-    @keyframes stagger-3 { animation-delay: 200ms; }
-
     .container { max-width: 1200px; margin: 0 auto; padding: 2rem; position: relative; z-index: 1; }
 
     header {
