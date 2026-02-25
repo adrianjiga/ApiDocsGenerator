@@ -68,7 +68,7 @@ function generateMarkdown(apiData, config = {}) {
 
         md += '**Usage Example:**\n\n';
         md += '```javascript\n';
-        md += `${fn.name}(${fn.params.map((p) => `arg_${p}`).join(', ')});\n`;
+        md += `${fn.name}(${fn.params.join(', ')});\n`;
         md += '```\n\n';
       });
     }

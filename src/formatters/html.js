@@ -325,7 +325,7 @@ function generateHTML(apiData, config = {}) {
 
         html += `
           <h5 style="margin-top: 15px;">💡 Usage Example</h5>
-          <div class="code-block">${escapeHtml(fn.name)}(${fn.params.map((p) => `arg_${escapeHtml(p)}`).join(', ')});</div>
+          <div class="code-block">${escapeHtml(fn.name)}(${fn.params.map((p) => escapeHtml(p)).join(', ')});</div>
         </div>`;
       });
 
