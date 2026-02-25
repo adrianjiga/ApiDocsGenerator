@@ -1,3 +1,8 @@
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
+const { version: toolVersion } = require('../../package.json');
+
 /**
  * Generate JSON documentation
  * @param {Array} apiData - Array of parsed API metadata
@@ -7,8 +12,9 @@ function generateJSON(apiData, config = {}) {
   const output = {
     meta: {
       generated: new Date().toISOString(),
-      version: config.apiVersion || '1.0.0',
       tool: 'api-docs-generator',
+      toolVersion,
+      apiVersion: config.apiVersion || '1.0.0',
     },
     files: apiData.map((file) => ({
       file: file.file,

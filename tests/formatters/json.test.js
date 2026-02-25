@@ -12,7 +12,8 @@ describe('generateJSON', () => {
     const parsed = JSON.parse(generateJSON(mockApiData));
     expect(parsed.meta).toBeDefined();
     expect(parsed.meta.tool).toBe('api-docs-generator');
-    expect(parsed.meta.version).toBe('1.0.0');
+    expect(parsed.meta.toolVersion).toBeDefined();
+    expect(parsed.meta.apiVersion).toBe('1.0.0');
     expect(parsed.meta.generated).toBeDefined();
   });
 
@@ -116,7 +117,7 @@ describe('generateJSON', () => {
     const parsed = JSON.parse(
       generateJSON(mockApiData, { apiVersion: '3.0.0' }),
     );
-    expect(parsed.meta.version).toBe('3.0.0');
+    expect(parsed.meta.apiVersion).toBe('3.0.0');
   });
 
   it('handles multiple files', () => {
