@@ -403,7 +403,15 @@ const JS_TS_FILE_REGEX = /\.(js|ts|jsx|tsx)$/;
  * @returns {Array} Array of file paths
  */
 async function scanDirectory(dir, excludePattern = DEFAULT_EXCLUDE_PATTERN) {
-  const excludeRegex = new RegExp(excludePattern);
+  let excludeRegex;
+  try {
+    excludeRegex = new RegExp(excludePattern);
+  } catch {
+    console.warn(
+      `Warning: Invalid exclude pattern "${excludePattern}", falling back to default.`,
+    );
+    excludeRegex = new RegExp(DEFAULT_EXCLUDE_PATTERN);
+  }
   return _scanDirectoryImpl(dir, excludeRegex);
 }
 
