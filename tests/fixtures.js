@@ -52,6 +52,27 @@ export function fullyDocumentedJsdoc(params) {
 }
 
 /**
+ * Create a fully documented JSDoc object for a route.
+ * Includes a description, @param tags, and a @returns tag.
+ * @param {string[]} params - Route parameter names
+ * @returns {Object}
+ */
+export function fullyDocumentedRouteJsdoc(params = []) {
+  return {
+    description: 'A documented route',
+    tags: [
+      ...params.map((p) => ({
+        tag: 'param',
+        name: p,
+        type: 'string',
+        description: `The ${p}`,
+      })),
+      { tag: 'returns', type: 'Object', description: 'response data' },
+    ],
+  };
+}
+
+/**
  * Standard mock API data shared across formatter tests.
  * Contains one file with a documented function and a route.
  * @type {Array}
