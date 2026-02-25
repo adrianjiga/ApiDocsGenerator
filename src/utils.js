@@ -13,7 +13,7 @@ const NON_WORD_REGEX = /\W+/g;
  * @returns {string} Sanitized string safe for HTML id
  */
 function sanitizeHtmlId(str) {
-  return str.replace(NON_WORD_REGEX, '-').toLowerCase();
+  return str.replace(NON_WORD_REGEX, '-').toLowerCase().replace(/^-+|-+$/g, '');
 }
 
 /**
