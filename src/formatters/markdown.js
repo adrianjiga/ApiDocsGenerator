@@ -1,4 +1,9 @@
-import { getParamTags, getReturnTags, cleanTagDescription } from '../utils.js';
+import {
+  getParamTags,
+  getReturnTags,
+  cleanTagDescription,
+  sanitizeHtmlId,
+} from '../utils.js';
 
 /**
  * Generate Markdown documentation
@@ -16,7 +21,7 @@ function generateMarkdown(apiData, config = {}) {
   let fileIndex = 1;
   apiData.forEach((file) => {
     if (file.functions.length > 0 || file.routes.length > 0) {
-      md += `${fileIndex}. [${file.fileName}](#${file.fileName.replace(/\W/g, '-').toLowerCase()})\n`;
+      md += `${fileIndex}. [${file.fileName}](#${sanitizeHtmlId(file.fileName)})\n`;
       fileIndex++;
     }
   });
