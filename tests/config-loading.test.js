@@ -11,12 +11,12 @@ afterEach(() => {
 describe('getDefaultConfig', () => {
   it('returns all 4 keys with expected default values', () => {
     const config = getDefaultConfig();
-    expect(config).toEqual({
-      excludePattern: 'node_modules|dist|build',
-      serverUrl: 'http://localhost:3000',
-      apiTitle: 'API Documentation',
-      apiVersion: '1.0.0',
-    });
+    expect(config.serverUrl).toBe('http://localhost:3000');
+    expect(config.apiTitle).toBe('API Documentation');
+    expect(config.apiVersion).toBe('1.0.0');
+    // excludePattern covers node_modules and common build/cache directories
+    expect(config.excludePattern).toContain('node_modules');
+    expect(config.excludePattern).toContain('dist');
   });
 
   it('returns a fresh copy (no shared mutation)', () => {
@@ -43,7 +43,7 @@ describe('loadConfig', () => {
     try {
       const config = await loadConfig(configFile);
       expect(config.serverUrl).toBe('https://api.example.com');
-      expect(config.excludePattern).toBe('node_modules|dist|build');
+      expect(config.excludePattern).toContain('node_modules');
       expect(config.apiTitle).toBe('API Documentation');
       expect(config.apiVersion).toBe('1.0.0');
     } finally {

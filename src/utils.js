@@ -2,7 +2,8 @@
  * Default regex pattern for directories to exclude when scanning
  * @type {string}
  */
-const DEFAULT_EXCLUDE_PATTERN = 'node_modules|dist|build';
+const DEFAULT_EXCLUDE_PATTERN =
+  'node_modules|dist|build|\\.cache|coverage|\\.turbo|\\.nx|\\.next|\\.nuxt|out|\\.git';
 
 const NON_WORD_REGEX = /\W+/g;
 
