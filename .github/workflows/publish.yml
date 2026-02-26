@@ -4,6 +4,9 @@ on:
   release:
     types: [published]
 
+permissions:
+  id-token: write # Required for OIDC token exchange with npm
+
 jobs:
   publish:
     name: Publish npm Package
@@ -27,6 +30,4 @@ jobs:
         run: npm test
 
       - name: Publish to npm
-        run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
+        run: npm publish --provenance --access public
