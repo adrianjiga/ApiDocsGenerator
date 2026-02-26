@@ -34,6 +34,14 @@
   ],
   "author": "Adrian Jiga",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adrianjiga/ApiDocsGenerator.git"
+  },
+  "homepage": "https://github.com/adrianjiga/ApiDocsGenerator#readme",
+  "bugs": {
+    "url": "https://github.com/adrianjiga/ApiDocsGenerator/issues"
+  },
   "engines": {
     "node": ">=18.0.0"
   },

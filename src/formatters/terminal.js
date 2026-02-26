@@ -56,9 +56,7 @@ function formatTerminalReport(report, threshold) {
     : '-'.repeat(emptyLength);
   const barColor = meetsThreshold ? c.green : c.red;
 
-  console.log(
-    `${barColor}[${filledBar}${emptyBar}] ${coverage}%${c.reset}`,
-  );
+  console.log(`${barColor}[${filledBar}${emptyBar}] ${coverage}%${c.reset}`);
 
   // Summary stats
   console.log(`\n${c.cyan}Summary${c.reset}`);

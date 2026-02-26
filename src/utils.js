@@ -13,7 +13,10 @@ const NON_WORD_REGEX = /\W+/g;
  * @returns {string} Sanitized string safe for HTML id
  */
 function sanitizeHtmlId(str) {
-  return str.replace(NON_WORD_REGEX, '-').toLowerCase().replace(/^-+|-+$/g, '');
+  return str
+    .replace(NON_WORD_REGEX, '-')
+    .toLowerCase()
+    .replace(/^-+|-+$/g, '');
 }
 
 /**
@@ -46,7 +49,8 @@ function getParamName(param) {
     }
     return '[...]';
   }
-  if (param.type === 'TSParameterProperty') return getParamName(param.parameter);
+  if (param.type === 'TSParameterProperty')
+    return getParamName(param.parameter);
   if (param.type === 'AssignmentPattern') return getParamName(param.left);
   return 'arg';
 }

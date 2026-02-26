@@ -85,10 +85,7 @@ describe('full pipeline: parse → analyze → generate', () => {
 
   it('generated HTML is valid and contains route info', async () => {
     await generate(examplesDir, outputDir, ['html']);
-    const html = await fs.readFile(
-      path.join(outputDir, 'index.html'),
-      'utf8',
-    );
+    const html = await fs.readFile(path.join(outputDir, 'index.html'), 'utf8');
 
     expect(html).toContain('<!DOCTYPE html>');
     expect(html).toContain('</html>');

@@ -185,9 +185,7 @@ describe('generate', () => {
   });
 
   it('returns failure for non-existent source directory', async () => {
-    const result = await generate('/non/existent/dir', outputDir, [
-      'markdown',
-    ]);
+    const result = await generate('/non/existent/dir', outputDir, ['markdown']);
     expect(result.success).toBe(false);
   });
 });
