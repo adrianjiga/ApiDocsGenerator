@@ -33,9 +33,7 @@ const { program, resolveConfig } = await import('../src/cli.js');
 const generator = await import('../src/generator.js');
 const parser = await import('../src/parser.js');
 const { analyzeCoverage } = await import('../src/analyzer.js');
-const { formatTerminalReport } = await import(
-  '../src/formatters/terminal.js'
-);
+const { formatTerminalReport } = await import('../src/formatters/terminal.js');
 const { generateDashboard } = await import('../src/formatters/dashboard.js');
 
 beforeEach(() => {
@@ -208,13 +206,7 @@ describe('audit command', () => {
     ]);
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
-    await program.parseAsync([
-      'node',
-      'cli.js',
-      'audit',
-      '-f',
-      'json',
-    ]);
+    await program.parseAsync(['node', 'cli.js', 'audit', '-f', 'json']);
 
     const jsonCall = logSpy.mock.calls.find((call) => {
       try {
@@ -261,17 +253,9 @@ describe('audit command', () => {
       summary: { coveragePercentage: 50 },
     });
     vi.spyOn(console, 'log').mockImplementation(() => {});
-    const exitSpy = vi
-      .spyOn(process, 'exit')
-      .mockImplementation(() => {});
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {});
 
-    await program.parseAsync([
-      'node',
-      'cli.js',
-      'audit',
-      '-t',
-      '80',
-    ]);
+    await program.parseAsync(['node', 'cli.js', 'audit', '-t', '80']);
 
     expect(exitSpy).toHaveBeenCalledWith(1);
   });

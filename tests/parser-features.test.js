@@ -18,7 +18,8 @@ afterEach(() => {
 
 describe('TypeScript parsing', () => {
   it('parses a function with type annotations', () => {
-    const source = 'function add(a: number, b: number): number { return a + b; }';
+    const source =
+      'function add(a: number, b: number): number { return a + b; }';
     const result = extractFunctions(source);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
@@ -59,7 +60,8 @@ describe('TypeScript parsing', () => {
   });
 
   it('handles typed default parameter values', () => {
-    const source = 'function greet(name: string = "world"): string { return name; }';
+    const source =
+      'function greet(name: string = "world"): string { return name; }';
     const result = extractFunctions(source);
     expect(result).toHaveLength(1);
     expect(result[0].params).toEqual(['name']);

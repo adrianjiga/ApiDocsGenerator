@@ -128,7 +128,11 @@ function handleClassDeclaration(node, functions, exported) {
   if (!node.body?.body) return;
 
   for (const member of node.body.body) {
-    if (member.type !== 'MethodDefinition' && member.type !== 'TSAbstractMethodDefinition') continue;
+    if (
+      member.type !== 'MethodDefinition' &&
+      member.type !== 'TSAbstractMethodDefinition'
+    )
+      continue;
 
     const methodName = member.key?.name || member.key?.value || 'anonymous';
     const fnNode = member.value;
@@ -229,11 +233,7 @@ function extractFunctions(sourceCode) {
 
       // Class declarations
       if (node.type === 'ClassDeclaration') {
-        handleClassDeclaration(
-          node,
-          functions,
-          exportedDeclarations.has(node),
-        );
+        handleClassDeclaration(node, functions, exportedDeclarations.has(node));
       }
 
       // Class expressions assigned to variables
