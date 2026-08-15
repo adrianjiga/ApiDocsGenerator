@@ -413,6 +413,37 @@ describe('scanDirectory', () => {
     });
   });
 
+  it('only excludes whole path segments, not similarly-named directories', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'exclude-test-'));
+    const subDirs = ['src', 'src/dist', 'src/dist-tools', 'src/build-output'];
+    subDirs.forEach((d) =>
+      fs.mkdirSync(path.join(tmpDir, d), { recursive: true }),
+    );
+    fs.writeFileSync(path.join(tmpDir, 'src', 'keep.js'), 'function a() {}\n');
+    fs.writeFileSync(
+      path.join(tmpDir, 'src', 'dist', 'skip.js'),
+      'function b() {}\n',
+    );
+    fs.writeFileSync(
+      path.join(tmpDir, 'src', 'dist-tools', 'keep2.js'),
+      'function c() {}\n',
+    );
+    fs.writeFileSync(
+      path.join(tmpDir, 'src', 'build-output', 'keep3.js'),
+      'function d() {}\n',
+    );
+    try {
+      const files = await scanDirectory(tmpDir, 'node_modules|dist|build');
+      const relative = files.map((f) => path.relative(tmpDir, f));
+      expect(relative).toContain(path.join('src', 'keep.js'));
+      expect(relative).toContain(path.join('src', 'dist-tools', 'keep2.js'));
+      expect(relative).toContain(path.join('src', 'build-output', 'keep3.js'));
+      expect(relative).not.toContain(path.join('src', 'dist', 'skip.js'));
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   it('returns empty array and warns for unreadable directory', async () => {
     const files = await scanDirectory('/nonexistent/path/xyz');
     expect(files).toHaveLength(0);
