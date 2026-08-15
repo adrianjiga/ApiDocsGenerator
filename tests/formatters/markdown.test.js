@@ -131,6 +131,12 @@ describe('generateMarkdown', () => {
     expect(md).toContain('[utils.js]');
   });
 
+  it('links table-of-contents entries to GitHub-compatible anchors', () => {
+    const md = generateMarkdown(mockApiData);
+    // GitHub slugs strip the dot from "app.js" -> "appjs".
+    expect(md).toContain('[app.js](#appjs)');
+  });
+
   it('omits params and returns when JSDoc has empty tags array', () => {
     const data = [
       {

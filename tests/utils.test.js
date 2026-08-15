@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   sanitizeHtmlId,
+  githubSlug,
   getParamName,
   escapeHtml,
   calcPercentage,
@@ -36,6 +37,28 @@ describe('sanitizeHtmlId', () => {
 
   it('keeps inner hyphens from non-ASCII characters between word chars', () => {
     expect(sanitizeHtmlId('file用户name.js')).toBe('file-name-js');
+  });
+});
+
+describe('githubSlug', () => {
+  it('strips dots like GitHub instead of replacing them with hyphens', () => {
+    expect(githubSlug('advanced-sample.js')).toBe('advanced-samplejs');
+  });
+
+  it('matches GitHub slug for headings without punctuation', () => {
+    expect(githubSlug('My File')).toBe('my-file');
+  });
+
+  it('strips punctuation and collapses whitespace runs', () => {
+    expect(githubSlug('Hello,   World!')).toBe('hello-world');
+  });
+
+  it('keeps hyphens and underscores', () => {
+    expect(githubSlug('foo_bar-baz')).toBe('foo_bar-baz');
+  });
+
+  it('handles empty string', () => {
+    expect(githubSlug('')).toBe('');
   });
 });
 

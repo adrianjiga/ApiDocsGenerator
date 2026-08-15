@@ -2,7 +2,7 @@ import {
   getParamTags,
   getReturnTags,
   cleanTagDescription,
-  sanitizeHtmlId,
+  githubSlug,
 } from '../utils.js';
 
 /**
@@ -21,7 +21,7 @@ function generateMarkdown(apiData, config = {}) {
   let fileIndex = 1;
   apiData.forEach((file) => {
     if (file.functions.length > 0 || file.routes.length > 0) {
-      md += `${fileIndex}. [${file.fileName}](#${sanitizeHtmlId(file.fileName)})\n`;
+      md += `${fileIndex}. [${file.fileName}](#${githubSlug(file.fileName)})\n`;
       fileIndex++;
     }
   });
