@@ -398,6 +398,8 @@ export default {
   serverUrl: 'http://localhost:3000',
   apiTitle: 'My API',
   apiVersion: '2.0.0',
+  // Optional: restrict route detection to these Express/Fastify instance identifiers
+  routeServers: ['app', 'router'],
 };
 ```
 

@@ -20,6 +20,25 @@ function sanitizeHtmlId(str) {
 }
 
 /**
+ * Generate a heading anchor slug that matches GitHub's markdown anchor
+ * algorithm. GitHub derives anchors from heading text by lowercasing, stripping
+ * punctuation (but keeping `-` and `_`), and collapsing whitespace runs to a
+ * single hyphen. The generic `sanitizeHtmlId` replaces every non-word char
+ * with `-`, which diverges for dotted names (e.g. `app.js` → `app-js` vs
+ * GitHub's `appjs`) and would produce broken table-of-contents links.
+ * @param {string} str - Heading text to slugify
+ * @returns {string} GitHub-compatible anchor slug
+ */
+function githubSlug(str) {
+  return str
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .replace(/[\s]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+/**
  * Extract variable/parameter name from complex destructuring
  * @param {Object} param - Parameter node from AST
  * @returns {string} Parameter name
@@ -112,6 +131,7 @@ function calcPercentage(part, total) {
 export {
   DEFAULT_EXCLUDE_PATTERN,
   sanitizeHtmlId,
+  githubSlug,
   getParamName,
   escapeHtml,
   calcPercentage,

@@ -97,24 +97,36 @@ function handleFunctionExpression(node, functions, exported) {
  * Handle a CallExpression node and push route metadata if it matches an HTTP method
  * @param {Object} node - AST CallExpression node
  * @param {Array} functions - Accumulator array for extracted function/route metadata
+ * @param {string[]} [routeServers] - Optional list of Express/Fastify instance
+ *   identifiers (e.g. ['app', 'router']) to restrict route detection to. When
+ *   omitted, any identifier callee with a server-relative path is treated as a
+ *   route.
  */
-function handleRouteExpression(node, functions) {
+function handleRouteExpression(node, functions, routeServers) {
   const methodName = node.callee?.property?.name;
   if (!methodName || !HTTP_METHODS.includes(methodName)) return;
+
+  if (routeServers && routeServers.length > 0) {
+    const serverName = node.callee?.object?.name;
+    if (!serverName || !routeServers.includes(serverName)) return;
+  }
 
   const method = methodName.toUpperCase();
   const pathArg = node.arguments[0];
   const routePath = pathArg?.value || '';
 
-  if (routePath) {
-    functions.push({
-      type: 'route',
-      method,
-      path: routePath,
-      line: node.loc?.start.line || 0,
-      params: extractRouteParams(routePath),
-    });
-  }
+  // Only treat the call as a route when the first argument is a server-relative
+  // path (e.g. "/users/:id"). This avoids misreporting unrelated HTTP-client
+  // calls such as `http.get('https://...')` as API routes.
+  if (typeof routePath !== 'string' || !routePath.startsWith('/')) return;
+
+  functions.push({
+    type: 'route',
+    method,
+    path: routePath,
+    line: node.loc?.start.line || 0,
+    params: extractRouteParams(routePath),
+  });
 }
 
 /**
@@ -158,9 +170,11 @@ function handleClassDeclaration(node, functions, exported) {
 /**
  * Extract function information from AST
  * @param {string} sourceCode - JavaScript/TypeScript source code
+ * @param {string[]} [routeServers] - Optional list of Express/Fastify instance
+ *   identifiers to restrict route detection to.
  * @returns {Array} Array of function metadata objects
  */
-function extractFunctions(sourceCode) {
+function extractFunctions(sourceCode, routeServers) {
   const functions = [];
 
   try {
@@ -228,7 +242,7 @@ function extractFunctions(sourceCode) {
       }
 
       if (node.type === 'CallExpression' && node.callee?.property) {
-        handleRouteExpression(node, functions);
+        handleRouteExpression(node, functions, routeServers);
       }
 
       // Class declarations
@@ -343,9 +357,10 @@ const MAX_FILE_SIZE_BYTES = 1024 * 1024;
 /**
  * Parse a file and extract all metadata
  * @param {string} filePath - Path to the file
+ * @param {Object} [config] - Configuration affecting parsing (e.g. routeServers)
  * @returns {Object|null} Metadata object with functions, routes, and JSDoc, or null if skipped
  */
-async function parseFile(filePath) {
+async function parseFile(filePath, config = {}) {
   const stat = await fs.stat(filePath);
   if (stat.size > MAX_FILE_SIZE_BYTES) {
     console.warn(
@@ -357,7 +372,7 @@ async function parseFile(filePath) {
   const sourceCode = await fs.readFile(filePath, 'utf8');
   const fileName = path.basename(filePath);
   const jsdocs = parseJSDoc(sourceCode);
-  const functions = extractFunctions(sourceCode);
+  const functions = extractFunctions(sourceCode, config.routeServers);
   const { jsdocMap, itemKey } = matchJSDocToItems(jsdocs, functions);
 
   const api = {
@@ -417,12 +432,14 @@ const JS_TS_FILE_REGEX = /\.(js|ts|jsx|tsx)$/;
 async function scanDirectory(dir, excludePattern = DEFAULT_EXCLUDE_PATTERN) {
   let excludeRegex;
   try {
-    excludeRegex = new RegExp(excludePattern);
+    // Anchor the pattern to whole path segments so a term like "dist" only
+    // excludes a "dist" directory, not similarly-named ones (e.g. "dist-tools").
+    excludeRegex = new RegExp(`(^|/)(${excludePattern})($|/)`);
   } catch {
     console.warn(
       `Warning: Invalid exclude pattern "${excludePattern}", falling back to default.`,
     );
-    excludeRegex = new RegExp(DEFAULT_EXCLUDE_PATTERN);
+    excludeRegex = new RegExp(`(^|/)(${DEFAULT_EXCLUDE_PATTERN})($|/)`);
   }
   return _scanDirectoryImpl(dir, excludeRegex);
 }
@@ -474,7 +491,7 @@ async function parseDirectory(dir, config = {}) {
   const results = await Promise.all(
     files.map(async (file) => {
       try {
-        return await parseFile(file);
+        return await parseFile(file, config);
       } catch (err) {
         console.warn(`Error parsing ${file}: ${err.message}`);
         return null;

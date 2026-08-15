@@ -144,7 +144,16 @@ program
     const result = analyzeCoverage(apiData);
 
     if (format === 'json') {
-      console.log(JSON.stringify(result, null, 2));
+      const json = JSON.stringify(result, null, 2);
+      if (options.output) {
+        const outputPath = path.resolve(options.output);
+        const outputDir = path.dirname(outputPath);
+        await fs.ensureDir(outputDir);
+        await fs.writeFile(outputPath, json);
+        console.log(`✅ json written to: ${outputPath}\n`);
+      } else {
+        console.log(json);
+      }
     } else if (formatters[format]?.type === 'report') {
       const formatter = formatters[format];
       if (formatter.filename) {
@@ -159,7 +168,10 @@ program
         formatter.generate(result, threshold);
       }
     } else {
-      formatters.terminal.generate(result, threshold);
+      console.error(
+        `Error: Unknown audit format "${format}". Use one of: terminal, json, dashboard.`,
+      );
+      process.exit(1);
     }
 
     const coverage = result.summary.coveragePercentage;
@@ -176,11 +188,23 @@ program.action(() => {
   }
 });
 
+/**
+ * Parse command-line arguments. Called by the bin entrypoint so the CLI runs
+ * regardless of how it is invoked (installed globally, via npm exec, or by
+ * running bin/api-docs-generator directly).
+ */
+function run() {
+  program.parse(process.argv);
+}
+
+// Auto-parse when cli.js is executed directly (e.g. `node src/cli.js ...`).
+// When run through the bin entrypoint, argv[1] is the bin path, so this guard
+// stays false and parsing is left to the bin's `run()` call — never both.
 const isMain =
   process.argv[1] &&
   import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/'));
 if (isMain) {
-  program.parse(process.argv);
+  run();
 }
 
-export { program, resolveConfig };
+export { program, resolveConfig, run };

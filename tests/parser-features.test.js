@@ -373,3 +373,44 @@ router.get("/api/data", (req, res) => {});
     expect(paths).toContain('/api/data');
   });
 });
+
+describe('route detection false positives', () => {
+  it('does not treat HTTP-client calls with absolute URLs as routes', () => {
+    const source = `
+http.get("http://example.com", cb);
+https.get("https://api.example.com/users", cb);
+    `;
+    const result = extractFunctions(source);
+    expect(result.filter((f) => f.type === 'route')).toHaveLength(0);
+  });
+
+  it('does not treat calls whose path is not server-relative as routes', () => {
+    const source = `
+client.fetch("users");
+client.get("/users");
+    `;
+    const result = extractFunctions(source);
+    const routes = result.filter((f) => f.type === 'route');
+    expect(routes).toHaveLength(1);
+    expect(routes[0].path).toBe('/users');
+  });
+
+  it('restricts routes to listed server identifiers when routeServers is set', () => {
+    const source = `
+app.get("/users", cb);
+router.post("/items", cb);
+client.delete("/files/:id");
+    `;
+    const result = extractFunctions(source, ['app', 'router']);
+    const routes = result.filter((f) => f.type === 'route');
+    expect(routes).toHaveLength(2);
+    const paths = routes.map((r) => r.path).sort();
+    expect(paths).toEqual(['/items', '/users']);
+  });
+
+  it('keeps broad detection when routeServers is empty', () => {
+    const source = 'client.post("/uploads", cb);';
+    const result = extractFunctions(source, []);
+    expect(result.filter((f) => f.type === 'route')).toHaveLength(1);
+  });
+});
