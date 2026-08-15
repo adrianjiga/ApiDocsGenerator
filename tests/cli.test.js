@@ -295,4 +295,20 @@ describe('audit command', () => {
 
     expect(exitSpy).toHaveBeenCalledWith(1);
   });
+
+  it('errors on an unknown audit format instead of falling back to terminal', async () => {
+    parser.parseDirectory.mockResolvedValue([
+      { fileName: 'a.js', functions: [{ name: 'fn' }], routes: [] },
+    ]);
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {});
+    formatTerminalReport.mockClear();
+
+    await program.parseAsync(['node', 'cli.js', 'audit', '-f', 'markdown']);
+
+    expect(errorSpy).toHaveBeenCalled();
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(formatTerminalReport).not.toHaveBeenCalled();
+  });
 });

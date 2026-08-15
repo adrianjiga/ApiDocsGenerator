@@ -168,7 +168,10 @@ program
         formatter.generate(result, threshold);
       }
     } else {
-      formatters.terminal.generate(result, threshold);
+      console.error(
+        `Error: Unknown audit format "${format}". Use one of: terminal, json, dashboard.`,
+      );
+      process.exit(1);
     }
 
     const coverage = result.summary.coveragePercentage;
