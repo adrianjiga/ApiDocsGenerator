@@ -219,6 +219,42 @@ describe('audit command', () => {
     expect(jsonCall).toBeDefined();
   });
 
+  it('writes json to a file when --output is provided', async () => {
+    parser.parseDirectory.mockResolvedValue([
+      { fileName: 'a.js', functions: [{ name: 'fn' }], routes: [] },
+    ]);
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'json-out-'));
+    const outputFile = path.join(tmpDir, 'coverage.json');
+
+    await program.parseAsync([
+      'node',
+      'cli.js',
+      'audit',
+      '-f',
+      'json',
+      '-o',
+      outputFile,
+    ]);
+
+    expect(fs.existsSync(outputFile)).toBe(true);
+    expect(() => JSON.parse(fs.readFileSync(outputFile, 'utf8'))).not.toThrow();
+    // Should not print the JSON to stdout when writing to a file.
+    const jsonPrinted = logSpy.mock.calls.some((call) => {
+      try {
+        JSON.parse(call[0]);
+        return true;
+      } catch {
+        return false;
+      }
+    });
+    expect(jsonPrinted).toBe(false);
+
+    fs.unlinkSync(outputFile);
+    fs.rmdirSync(tmpDir);
+  });
+
   it('generates dashboard when format is dashboard', async () => {
     parser.parseDirectory.mockResolvedValue([
       { fileName: 'a.js', functions: [{ name: 'fn' }], routes: [] },

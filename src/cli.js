@@ -144,7 +144,16 @@ program
     const result = analyzeCoverage(apiData);
 
     if (format === 'json') {
-      console.log(JSON.stringify(result, null, 2));
+      const json = JSON.stringify(result, null, 2);
+      if (options.output) {
+        const outputPath = path.resolve(options.output);
+        const outputDir = path.dirname(outputPath);
+        await fs.ensureDir(outputDir);
+        await fs.writeFile(outputPath, json);
+        console.log(`✅ json written to: ${outputPath}\n`);
+      } else {
+        console.log(json);
+      }
     } else if (formatters[format]?.type === 'report') {
       const formatter = formatters[format];
       if (formatter.filename) {
