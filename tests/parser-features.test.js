@@ -394,4 +394,23 @@ client.get("/users");
     expect(routes).toHaveLength(1);
     expect(routes[0].path).toBe('/users');
   });
+
+  it('restricts routes to listed server identifiers when routeServers is set', () => {
+    const source = `
+app.get("/users", cb);
+router.post("/items", cb);
+client.delete("/files/:id");
+    `;
+    const result = extractFunctions(source, ['app', 'router']);
+    const routes = result.filter((f) => f.type === 'route');
+    expect(routes).toHaveLength(2);
+    const paths = routes.map((r) => r.path).sort();
+    expect(paths).toEqual(['/items', '/users']);
+  });
+
+  it('keeps broad detection when routeServers is empty', () => {
+    const source = 'client.post("/uploads", cb);';
+    const result = extractFunctions(source, []);
+    expect(result.filter((f) => f.type === 'route')).toHaveLength(1);
+  });
 });

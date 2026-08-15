@@ -300,7 +300,6 @@ describe('audit command', () => {
     parser.parseDirectory.mockResolvedValue([
       { fileName: 'a.js', functions: [{ name: 'fn' }], routes: [] },
     ]);
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {});
     formatTerminalReport.mockClear();

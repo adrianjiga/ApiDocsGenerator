@@ -10,4 +10,8 @@ export default {
 
   // Version string used in OpenAPI spec and JSON output
   apiVersion: '1.0.0',
+
+  // Optional: restrict route detection to these Express/Fastify instance
+  // identifiers (e.g. ['app', 'router']). Leave empty for broad detection.
+  // routeServers: ['app', 'router'],
 };

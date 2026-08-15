@@ -97,10 +97,19 @@ function handleFunctionExpression(node, functions, exported) {
  * Handle a CallExpression node and push route metadata if it matches an HTTP method
  * @param {Object} node - AST CallExpression node
  * @param {Array} functions - Accumulator array for extracted function/route metadata
+ * @param {string[]} [routeServers] - Optional list of Express/Fastify instance
+ *   identifiers (e.g. ['app', 'router']) to restrict route detection to. When
+ *   omitted, any identifier callee with a server-relative path is treated as a
+ *   route.
  */
-function handleRouteExpression(node, functions) {
+function handleRouteExpression(node, functions, routeServers) {
   const methodName = node.callee?.property?.name;
   if (!methodName || !HTTP_METHODS.includes(methodName)) return;
+
+  if (routeServers && routeServers.length > 0) {
+    const serverName = node.callee?.object?.name;
+    if (!serverName || !routeServers.includes(serverName)) return;
+  }
 
   const method = methodName.toUpperCase();
   const pathArg = node.arguments[0];
@@ -161,9 +170,11 @@ function handleClassDeclaration(node, functions, exported) {
 /**
  * Extract function information from AST
  * @param {string} sourceCode - JavaScript/TypeScript source code
+ * @param {string[]} [routeServers] - Optional list of Express/Fastify instance
+ *   identifiers to restrict route detection to.
  * @returns {Array} Array of function metadata objects
  */
-function extractFunctions(sourceCode) {
+function extractFunctions(sourceCode, routeServers) {
   const functions = [];
 
   try {
@@ -231,7 +242,7 @@ function extractFunctions(sourceCode) {
       }
 
       if (node.type === 'CallExpression' && node.callee?.property) {
-        handleRouteExpression(node, functions);
+        handleRouteExpression(node, functions, routeServers);
       }
 
       // Class declarations
@@ -346,9 +357,10 @@ const MAX_FILE_SIZE_BYTES = 1024 * 1024;
 /**
  * Parse a file and extract all metadata
  * @param {string} filePath - Path to the file
+ * @param {Object} [config] - Configuration affecting parsing (e.g. routeServers)
  * @returns {Object|null} Metadata object with functions, routes, and JSDoc, or null if skipped
  */
-async function parseFile(filePath) {
+async function parseFile(filePath, config = {}) {
   const stat = await fs.stat(filePath);
   if (stat.size > MAX_FILE_SIZE_BYTES) {
     console.warn(
@@ -360,7 +372,7 @@ async function parseFile(filePath) {
   const sourceCode = await fs.readFile(filePath, 'utf8');
   const fileName = path.basename(filePath);
   const jsdocs = parseJSDoc(sourceCode);
-  const functions = extractFunctions(sourceCode);
+  const functions = extractFunctions(sourceCode, config.routeServers);
   const { jsdocMap, itemKey } = matchJSDocToItems(jsdocs, functions);
 
   const api = {
@@ -479,7 +491,7 @@ async function parseDirectory(dir, config = {}) {
   const results = await Promise.all(
     files.map(async (file) => {
       try {
-        return await parseFile(file);
+        return await parseFile(file, config);
       } catch (err) {
         console.warn(`Error parsing ${file}: ${err.message}`);
         return null;

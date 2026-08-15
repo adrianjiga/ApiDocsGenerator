@@ -14,6 +14,10 @@ const defaultConfig = {
   serverUrl: 'http://localhost:3000',
   apiTitle: 'API Documentation',
   apiVersion: '1.0.0',
+  // Optional list of Express/Fastify instance identifiers (e.g. ['app',
+  // 'router']) to restrict route detection to. Empty array keeps the default
+  // broad detection.
+  routeServers: [],
 };
 
 /**
