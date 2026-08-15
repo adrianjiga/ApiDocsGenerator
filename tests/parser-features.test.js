@@ -373,3 +373,25 @@ router.get("/api/data", (req, res) => {});
     expect(paths).toContain('/api/data');
   });
 });
+
+describe('route detection false positives', () => {
+  it('does not treat HTTP-client calls with absolute URLs as routes', () => {
+    const source = `
+http.get("http://example.com", cb);
+https.get("https://api.example.com/users", cb);
+    `;
+    const result = extractFunctions(source);
+    expect(result.filter((f) => f.type === 'route')).toHaveLength(0);
+  });
+
+  it('does not treat calls whose path is not server-relative as routes', () => {
+    const source = `
+client.fetch("users");
+client.get("/users");
+    `;
+    const result = extractFunctions(source);
+    const routes = result.filter((f) => f.type === 'route');
+    expect(routes).toHaveLength(1);
+    expect(routes[0].path).toBe('/users');
+  });
+});

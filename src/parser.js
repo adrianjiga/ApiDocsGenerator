@@ -106,15 +106,18 @@ function handleRouteExpression(node, functions) {
   const pathArg = node.arguments[0];
   const routePath = pathArg?.value || '';
 
-  if (routePath) {
-    functions.push({
-      type: 'route',
-      method,
-      path: routePath,
-      line: node.loc?.start.line || 0,
-      params: extractRouteParams(routePath),
-    });
-  }
+  // Only treat the call as a route when the first argument is a server-relative
+  // path (e.g. "/users/:id"). This avoids misreporting unrelated HTTP-client
+  // calls such as `http.get('https://...')` as API routes.
+  if (typeof routePath !== 'string' || !routePath.startsWith('/')) return;
+
+  functions.push({
+    type: 'route',
+    method,
+    path: routePath,
+    line: node.loc?.start.line || 0,
+    params: extractRouteParams(routePath),
+  });
 }
 
 /**
