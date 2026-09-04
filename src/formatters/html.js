@@ -4,6 +4,7 @@ import {
   getParamTags,
   getReturnTags,
   cleanTagDescription,
+  uniqueFileLabels,
 } from '../utils.js';
 import { BASE_CSS } from './shared-styles.js';
 
@@ -15,6 +16,7 @@ import { BASE_CSS } from './shared-styles.js';
 function generateHTML(apiData, config = {}) {
   const timestamp = new Date().toISOString();
   const pageTitle = escapeHtml(config.apiTitle || 'API Documentation');
+  const labels = uniqueFileLabels(apiData);
 
   let html = `<!DOCTYPE html>
 <html lang="en">
@@ -267,7 +269,8 @@ function generateHTML(apiData, config = {}) {
       <ul>`;
 
     fileSections.forEach((file) => {
-      html += `<li><a href="#${sanitizeHtmlId(file.fileName)}">${escapeHtml(file.fileName)}</a></li>`;
+      const label = labels.get(file.file);
+      html += `<li><a href="#${sanitizeHtmlId(label)}">${escapeHtml(label)}</a></li>`;
     });
 
     html += `
@@ -277,9 +280,10 @@ function generateHTML(apiData, config = {}) {
 
   // Detailed documentation
   fileSections.forEach((file) => {
+    const label = labels.get(file.file);
     html += `
-    <div class="file-section" id="${sanitizeHtmlId(file.fileName)}">
-      <h2>${escapeHtml(file.fileName)}</h2>
+    <div class="file-section" id="${sanitizeHtmlId(label)}">
+      <h2>${escapeHtml(label)}</h2>
       <div class="file-path">📁 ${escapeHtml(file.fileName)}</div>`;
 
     // Functions

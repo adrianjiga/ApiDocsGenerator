@@ -3,6 +3,7 @@ import {
   getReturnTags,
   cleanTagDescription,
   githubSlug,
+  uniqueFileLabels,
 } from '../utils.js';
 
 /**
@@ -12,6 +13,7 @@ import {
  */
 function generateMarkdown(apiData, config = {}) {
   const docTitle = config.apiTitle || 'API Documentation';
+  const labels = uniqueFileLabels(apiData);
   let md = `# ${docTitle}\n\n`;
   md += `Generated: ${new Date().toISOString()}\n\n`;
 
@@ -21,7 +23,8 @@ function generateMarkdown(apiData, config = {}) {
   let fileIndex = 1;
   apiData.forEach((file) => {
     if (file.functions.length > 0 || file.routes.length > 0) {
-      md += `${fileIndex}. [${file.fileName}](#${githubSlug(file.fileName)})\n`;
+      const label = labels.get(file.file);
+      md += `${fileIndex}. [${label}](#${githubSlug(label)})\n`;
       fileIndex++;
     }
   });
@@ -32,7 +35,8 @@ function generateMarkdown(apiData, config = {}) {
   apiData.forEach((file) => {
     if (file.functions.length === 0 && file.routes.length === 0) return;
 
-    md += `## ${file.fileName}\n\n`;
+    const label = labels.get(file.file);
+    md += `## ${label}\n\n`;
     md += `**File:** \`${file.fileName}\`\n\n`;
 
     // Functions
