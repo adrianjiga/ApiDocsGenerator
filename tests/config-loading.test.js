@@ -28,9 +28,13 @@ describe('getDefaultConfig', () => {
 });
 
 describe('loadConfig', () => {
-  it('returns defaults when config file does not exist', async () => {
+  it('returns defaults and warns when an explicit config path does not exist', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const config = await loadConfig('/nonexistent/path/apidocs.config.js');
     expect(config).toEqual(getDefaultConfig());
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Config file not found'),
+    );
   });
 
   it('merges user overrides over defaults', async () => {

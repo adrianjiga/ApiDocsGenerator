@@ -39,7 +39,16 @@ async function loadConfig(configPath) {
 
   try {
     const exists = await fs.pathExists(filePath);
-    if (!exists) return defaults;
+    if (!exists) {
+      // Only warn when a config path was explicitly requested; a missing
+      // default config at the project root is a normal, quiet fallback.
+      if (configPath) {
+        console.warn(
+          `Warning: Config file not found: ${filePath}. Using defaults.`,
+        );
+      }
+      return defaults;
+    }
   } catch {
     return defaults;
   }
