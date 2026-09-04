@@ -29,6 +29,7 @@ function analyzeCoverage(apiData) {
 
   let totalFunctions = 0;
   let documentedFunctions = 0;
+  let partiallyDocumentedFunctions = 0;
   let totalRoutes = 0;
   let documentedRoutes = 0;
   let partiallyDocumented = 0;
@@ -53,6 +54,7 @@ function analyzeCoverage(apiData) {
             documentedFunctions++;
           } else if (docStatus.isPartiallyDocumented) {
             partiallyDocumented++;
+            partiallyDocumentedFunctions++;
           }
 
           if (!docStatus.isFullyDocumented) {
@@ -140,7 +142,8 @@ function analyzeCoverage(apiData) {
   // Calculate summary coverage percentages
   const totalItems = totalFunctions + totalRoutes;
   const totalDocumentedItems = documentedFunctions + documentedRoutes;
-  const undocumentedFunctions = totalFunctions - documentedFunctions;
+  const undocumentedFunctions =
+    totalFunctions - documentedFunctions - partiallyDocumentedFunctions;
 
   const coveragePercentage = calcPercentage(totalDocumentedItems, totalItems);
   const functionCoverage = calcPercentage(documentedFunctions, totalFunctions);

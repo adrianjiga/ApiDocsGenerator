@@ -292,6 +292,29 @@ describe('analyzeCoverage', () => {
     expect(result.gaps[0].severity).toBe('warning');
     expect(result.summary.partiallyDocumented).toBe(1);
   });
+
+  it('excludes partially documented functions from undocumentedFunctions', () => {
+    const apiData = [
+      {
+        file: '/src/a.js',
+        fileName: 'a.js',
+        functions: [
+          makeFunction('full', [], fullyDocumentedJsdoc([])),
+          makeFunction('partial', [], {
+            description: 'Some description',
+            tags: [],
+          }),
+          makeFunction('none', [], null),
+        ],
+        routes: [],
+      },
+    ];
+    const result = analyzeCoverage(apiData);
+    expect(result.summary.totalFunctions).toBe(3);
+    expect(result.summary.documentedFunctions).toBe(1);
+    expect(result.summary.partiallyDocumented).toBe(1);
+    expect(result.summary.undocumentedFunctions).toBe(1);
+  });
 });
 
 describe('checkRouteDocumentation', () => {
