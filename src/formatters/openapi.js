@@ -76,6 +76,13 @@ function generateOpenAPI(apiData, config = {}) {
         paths.set(openApiPath, {});
       }
 
+      // A path/method pair may exist only once in an OpenAPI spec. Earlier
+      // routes win; later duplicates are skipped rather than silently
+      // overwriting the operation already registered for that pair.
+      if (paths.get(openApiPath)[method]) {
+        continue;
+      }
+
       const summary =
         route.jsdoc?.description || `${route.method} ${openApiPath}`;
 

@@ -327,6 +327,37 @@ describe('generateOpenAPI – edge cases', () => {
     const spec = parse(data);
     expect(spec.paths['/items'].get.summary).toBe('List all items');
   });
+
+  it('keeps the first route when the same path and method repeat', () => {
+    const data = [
+      {
+        file: '/src/a.js',
+        fileName: 'a.js',
+        functions: [],
+        routes: [
+          makeRoute('GET', '/users', [], {
+            description: 'from a',
+            tags: [],
+          }),
+        ],
+      },
+      {
+        file: '/src/b.js',
+        fileName: 'b.js',
+        functions: [],
+        routes: [
+          makeRoute('GET', '/users', [], {
+            description: 'from b',
+            tags: [],
+          }),
+        ],
+      },
+    ];
+    const spec = parse(data);
+    expect(spec.paths['/users'].get.summary).toBe('from a');
+    expect(spec.paths['/users'].get.operationId).toBe('get-users');
+    expect(spec.paths['/users'].get.tags).toEqual(['a.js']);
+  });
 });
 
 // ---------------------------------------------------------------------------
