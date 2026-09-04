@@ -7,7 +7,11 @@ import { getParamName, DEFAULT_EXCLUDE_PATTERN } from './utils.js';
 const JSDOC_REGEX = /\/\*\*\s*([\s\S]*?)\*\//g;
 
 /**
- * Parse JSDoc comments from source code
+ * Parse JSDoc comments from source code.
+ * Comments are taken from the tokenizer so that JSDoc-shaped text inside
+ * string or template literals is never mistaken for documentation;
+ * regex-based extraction is kept only as a fallback for source that fails to
+ * parse (e.g. fragments).
  * @param {string} sourceCode - JavaScript/TypeScript source code
  * @returns {Array} Array of parsed JSDoc objects
  */
@@ -15,7 +19,46 @@ function parseJSDoc(sourceCode) {
   const comments = [];
 
   try {
-    // Use regex to find JSDoc comments in the source code
+    const ast = tsParse(sourceCode, {
+      loc: true,
+      range: true,
+      jsx: true,
+      allowInvalidAST: true,
+      comment: true,
+    });
+
+    for (const comment of ast.comments || []) {
+      // Only block comments opened with `/**` qualify as JSDoc — comment-parser
+      // will still drop single-line `/** x */` blocks (it returns no tokens).
+      if (comment.type !== 'Block' || !comment.value.startsWith('*')) continue;
+
+      try {
+        const parsed = parse('/*' + comment.value + '*/');
+        if (parsed && parsed.length > 0) {
+          comments.push({
+            raw: comment.value,
+            parsed: parsed[0],
+            loc: {
+              start: { line: comment.loc.start.line, column: 0 },
+              end: { line: comment.loc.end.line, column: 0 },
+            },
+          });
+        }
+      } catch (parseErr) {
+        // JSDoc parse error - continue
+        console.warn(
+          `Warning: Failed to parse JSDoc at line ${comment.loc.start.line}: ${parseErr.message}`,
+        );
+      }
+    }
+
+    return comments;
+  } catch (err) {
+    console.warn(`Warning: Failed to parse source code: ${err.message}`);
+  }
+
+  // Fallback: locate JSDoc blocks with a regex over the raw source.
+  try {
     JSDOC_REGEX.lastIndex = 0;
     let match;
 

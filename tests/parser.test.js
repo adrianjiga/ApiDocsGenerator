@@ -95,6 +95,31 @@ describe('parseJSDoc', () => {
     const result = parseJSDoc(source);
     expect(result[0].loc.start.line).toBe(3);
   });
+
+  it('ignores JSDoc-shaped text inside template literals', () => {
+    const source = `
+      const docs = \`/**
+       * This is a string, not documentation
+       * @param {number} x - X
+       */
+       \`;
+      /** Real JSDoc for the function */
+      function realFn() {}
+    `;
+    const result = parseJSDoc(source);
+    expect(result).toHaveLength(1);
+    expect(result[0].parsed.description).toContain('Real JSDoc');
+    expect(result[0].parsed.description).not.toContain('This is a string');
+  });
+
+  it('ignores JSDoc-shaped text inside string literals', () => {
+    const source = `const url = "/api/users"; // helper text /** not docs */
+      /** Real docs */
+      function f() {}`;
+    const result = parseJSDoc(source);
+    expect(result).toHaveLength(1);
+    expect(result[0].parsed.description).toContain('Real docs');
+  });
 });
 
 describe('extractFunctions', () => {
