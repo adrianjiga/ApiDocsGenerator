@@ -1,3 +1,5 @@
+import path from 'path';
+
 /**
  * Default regex pattern for directories to exclude when scanning
  * @type {string}
@@ -118,6 +120,52 @@ function cleanTagDescription(description) {
 }
 
 /**
+ * Generate unique display labels for scanned files, disambiguating basename
+ * collisions (e.g. `a/util.js` and `b/util.js`) by prefixing the directory
+ * path relative to the common scan root. Labels are used as heading text and
+ * anchor ids in markdown/HTML output, so they must be unique per file.
+ * @param {Array} apiData - Array of parsed file metadata (each with fileName and file)
+ * @returns {Map<string,string>} Map keyed by file path (file.file) to unique label
+ */
+function uniqueFileLabels(apiData) {
+  const labels = new Map();
+  if (!Array.isArray(apiData) || apiData.length === 0) return labels;
+
+  const nameCounts = new Map();
+  for (const file of apiData) {
+    nameCounts.set(file.fileName, (nameCounts.get(file.fileName) || 0) + 1);
+  }
+
+  // Only files whose basename collides need deduplication.
+  const colliding = apiData.filter((file) => nameCounts.get(file.fileName) > 1);
+  if (colliding.length === 0) {
+    for (const file of apiData) labels.set(file.file, file.fileName);
+    return labels;
+  }
+
+  // Common ancestor directory shared by all colliding files, used to keep
+  // the disambiguating prefix short and independent of absolute vs relative.
+  const dirs = colliding.map((file) => path.dirname(file.file));
+  let commonDir = dirs[0];
+  for (const dir of dirs.slice(1)) {
+    while (dir !== commonDir && !dir.startsWith(commonDir + path.sep)) {
+      commonDir = path.dirname(commonDir);
+      if (commonDir === path.dirname(commonDir)) break;
+    }
+  }
+
+  for (const file of apiData) {
+    let label = file.fileName;
+    if (nameCounts.get(file.fileName) > 1) {
+      const relativePath = path.relative(commonDir, file.file);
+      label = relativePath.split(path.sep).join('/');
+    }
+    labels.set(file.file, label);
+  }
+  return labels;
+}
+
+/**
  * Calculate percentage with one decimal place
  * @param {number} part - The portion
  * @param {number} total - The total
@@ -138,4 +186,5 @@ export {
   getParamTags,
   getReturnTags,
   cleanTagDescription,
+  uniqueFileLabels,
 };

@@ -192,4 +192,32 @@ describe('generateMarkdown', () => {
     expect(md).toContain('**Returns:**');
     expect(md).toContain('result');
   });
+
+  it('disambiguates files sharing a basename with directory prefixes', () => {
+    const data = [
+      {
+        file: '/src/a/util.js',
+        fileName: 'util.js',
+        functions: [
+          { name: 'aFn', params: [], description: 'x', line: 1, jsdoc: null },
+        ],
+        routes: [],
+      },
+      {
+        file: '/src/b/util.js',
+        fileName: 'util.js',
+        functions: [
+          { name: 'bFn', params: [], description: 'y', line: 1, jsdoc: null },
+        ],
+        routes: [],
+      },
+    ];
+    const md = generateMarkdown(data);
+    expect(md).toContain('[a/util.js](#autiljs)');
+    expect(md).toContain('[b/util.js](#butiljs)');
+    expect(md).toContain('## a/util.js');
+    expect(md).toContain('## b/util.js');
+    const utilHeadings = (md.match(/^## .*util\.js$/gm) || []).length;
+    expect(utilHeadings).toBe(2);
+  });
 });

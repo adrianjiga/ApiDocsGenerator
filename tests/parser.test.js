@@ -9,6 +9,7 @@ import {
   parseFile,
   scanDirectory,
   parseDirectory,
+  compileExcludeRegex,
 } from '../src/parser.js';
 
 beforeEach(() => {
@@ -93,6 +94,31 @@ describe('parseJSDoc', () => {
       function myFunc() {}`;
     const result = parseJSDoc(source);
     expect(result[0].loc.start.line).toBe(3);
+  });
+
+  it('ignores JSDoc-shaped text inside template literals', () => {
+    const source = `
+      const docs = \`/**
+       * This is a string, not documentation
+       * @param {number} x - X
+       */
+       \`;
+      /** Real JSDoc for the function */
+      function realFn() {}
+    `;
+    const result = parseJSDoc(source);
+    expect(result).toHaveLength(1);
+    expect(result[0].parsed.description).toContain('Real JSDoc');
+    expect(result[0].parsed.description).not.toContain('This is a string');
+  });
+
+  it('ignores JSDoc-shaped text inside string literals', () => {
+    const source = `const url = "/api/users"; // helper text /** not docs */
+      /** Real docs */
+      function f() {}`;
+    const result = parseJSDoc(source);
+    expect(result).toHaveLength(1);
+    expect(result[0].parsed.description).toContain('Real docs');
   });
 });
 
@@ -387,6 +413,27 @@ describe('parseFile', () => {
   });
 });
 
+describe('compileExcludeRegex', () => {
+  it('matches excluded directory on posix-style paths', () => {
+    const re = compileExcludeRegex('node_modules|dist|build');
+    expect(re.test('/proj/src/node_modules/pkg/file.js')).toBe(true);
+    expect(re.test('/proj/src/dist/file.js')).toBe(true);
+  });
+
+  it('matches excluded directory on windows-style paths', () => {
+    const re = compileExcludeRegex('node_modules|dist|build');
+    expect(re.test('C:\\proj\\src\\node_modules\\pkg\\file.js')).toBe(true);
+    expect(re.test('C:\\proj\\src\\dist\\file.js')).toBe(true);
+  });
+
+  it('only matches whole path segments', () => {
+    const re = compileExcludeRegex('node_modules|dist|build');
+    expect(re.test('/proj/src/dist-tools/file.js')).toBe(false);
+    expect(re.test('/proj/src/build-output/file.js')).toBe(false);
+    expect(re.test('/proj/src/my-distrust/file.js')).toBe(false);
+  });
+});
+
 describe('scanDirectory', () => {
   it('finds JS files in the examples directory', async () => {
     const files = await scanDirectory(path.resolve('examples'));
@@ -463,6 +510,26 @@ describe('parseDirectory', () => {
       expect(result).toHaveProperty('functions');
       expect(result).toHaveProperty('routes');
     });
+  });
+
+  it('preserves file order in output regardless of parse concurrency', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'parse-order-'));
+    const names = Array.from({ length: 25 }, (_, i) => `f${i}.js`);
+    names.forEach((name) =>
+      fs.writeFileSync(
+        path.join(tmpDir, name),
+        `/** Doc for ${name} */\nfunction ${name.replace('.js', '')}() {}\n`,
+      ),
+    );
+    try {
+      const scanOrder = await scanDirectory(tmpDir);
+      const results = await parseDirectory(tmpDir);
+      const files = results.map((r) => r.file);
+      expect(files).toEqual(scanOrder);
+      expect(files.length).toBe(25);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 });
 

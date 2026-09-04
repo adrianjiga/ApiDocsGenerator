@@ -289,4 +289,32 @@ describe('generateHTML', () => {
     expect(html).toContain('Map&lt;K,V&gt;');
     expect(html).toContain('a &lt;b&gt;map&lt;/b&gt;');
   });
+
+  it('disambiguates files sharing a basename with unique section ids', () => {
+    const data = [
+      {
+        file: '/src/a/util.js',
+        fileName: 'util.js',
+        functions: [
+          { name: 'aFn', params: [], description: 'x', line: 1, jsdoc: null },
+        ],
+        routes: [],
+      },
+      {
+        file: '/src/b/util.js',
+        fileName: 'util.js',
+        functions: [
+          { name: 'bFn', params: [], description: 'y', line: 1, jsdoc: null },
+        ],
+        routes: [],
+      },
+    ];
+    const html = generateHTML(data);
+    expect(html).toContain('id="a-util-js"');
+    expect(html).toContain('id="b-util-js"');
+    expect(html).toContain('href="#a-util-js"');
+    expect(html).toContain('href="#b-util-js"');
+    expect(html).toContain('<h2>a/util.js</h2>');
+    expect(html).toContain('<h2>b/util.js</h2>');
+  });
 });

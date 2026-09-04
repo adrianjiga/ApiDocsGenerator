@@ -8,6 +8,7 @@ import {
   getParamTags,
   getReturnTags,
   cleanTagDescription,
+  uniqueFileLabels,
 } from '../src/utils.js';
 
 describe('sanitizeHtmlId', () => {
@@ -243,5 +244,44 @@ describe('cleanTagDescription', () => {
 
   it('passes clean strings through unchanged', () => {
     expect(cleanTagDescription('already clean')).toBe('already clean');
+  });
+});
+
+describe('uniqueFileLabels', () => {
+  it('returns basenames when no collisions occur', () => {
+    const apiData = [
+      { file: '/src/app.js', fileName: 'app.js' },
+      { file: '/src/utils.js', fileName: 'utils.js' },
+    ];
+    const labels = uniqueFileLabels(apiData);
+    expect(labels.get('/src/app.js')).toBe('app.js');
+    expect(labels.get('/src/utils.js')).toBe('utils.js');
+  });
+
+  it('prefixes directory path to disambiguate basename collisions', () => {
+    const apiData = [
+      { file: '/src/a/util.js', fileName: 'util.js' },
+      { file: '/src/b/util.js', fileName: 'util.js' },
+    ];
+    const labels = uniqueFileLabels(apiData);
+    expect(labels.get('/src/a/util.js')).toBe('a/util.js');
+    expect(labels.get('/src/b/util.js')).toBe('b/util.js');
+  });
+
+  it('handles relative paths', () => {
+    const apiData = [
+      { file: './src/a/util.js', fileName: 'util.js' },
+      { file: './src/b/util.js', fileName: 'util.js' },
+      { file: './src/a/other.js', fileName: 'other.js' },
+    ];
+    const labels = uniqueFileLabels(apiData);
+    expect(labels.get('./src/a/util.js')).toBe('a/util.js');
+    expect(labels.get('./src/b/util.js')).toBe('b/util.js');
+    expect(labels.get('./src/a/other.js')).toBe('other.js');
+  });
+
+  it('returns empty map for empty input', () => {
+    expect(uniqueFileLabels([]) instanceof Map).toBe(true);
+    expect(uniqueFileLabels([]).size).toBe(0);
   });
 });

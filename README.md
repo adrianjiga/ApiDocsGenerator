@@ -83,6 +83,11 @@ api-docs-generator generate [options]
 - `-o, --output <directory>` - Output directory for generated docs (default: `./docs`)
 - `-f, --formats <formats>` - Output formats as comma-separated list (default: `markdown,html,json`)
   - Supported: `markdown`, `html`, `json`, `openapi` (alias: `swagger`)
+- `-c, --config <path>` - Path to a config file (default: `apidocs.config.js` in the current directory)
+- `--server-url <url>` - Server URL for generated examples (overrides config)
+- `--api-title <title>` - API title for generated documentation (overrides config)
+- `--api-version <version>` - API version string (overrides config)
+- `--exclude <pattern>` - Directory exclude regex pattern (overrides config)
 
 **Examples:**
 
@@ -101,6 +106,9 @@ api-docs-generator generate --formats markdown,html,json
 
 # OpenAPI/Swagger spec
 api-docs-generator generate --dir ./src --formats openapi
+
+# Override API metadata from the command line
+api-docs-generator generate --server-url https://api.example.com --api-title "My API" --api-version 2.0.0
 ```
 
 ### Command: `audit` (alias: `a`)
@@ -117,11 +125,13 @@ api-docs-generator audit [options]
 - `-t, --threshold <number>` - Coverage threshold percentage (default: `80`)
 - `-f, --format <format>` - Output format: `terminal`, `json`, or `dashboard` (default: `terminal`)
 - `-o, --output <file>` - Output file for dashboard format (default: `coverage-dashboard.html`)
+- `-c, --config <path>` - Path to a config file (default: `apidocs.config.js` in the current directory)
+- `--exclude <pattern>` - Directory exclude regex pattern (overrides config)
 
 **Exit Codes:**
 
 - `0` - Coverage meets or exceeds threshold
-- `1` - Coverage below threshold
+- `1` - Coverage below threshold, or no source files found to audit
 
 **Examples:**
 
@@ -156,6 +166,11 @@ Scan a directory and display found APIs without generating documentation.
 ```bash
 api-docs-generator scan [directory]
 ```
+
+**Options:**
+
+- `-c, --config <path>` - Path to a config file (default: `apidocs.config.js` in the current directory)
+- `--exclude <pattern>` - Directory exclude regex pattern (overrides config)
 
 **Examples:**
 
@@ -296,7 +311,7 @@ my-api/
 │   └── utils/
 │       └── helpers.js
 ├── package.json
-└── api-docs-generator.config.js (optional)
+└── apidocs.config.js (optional)
 ```
 
 Generate documentation:
@@ -432,7 +447,7 @@ The built-in coverage analyzer helps you maintain high documentation quality acr
 **Terminal Format** (default):
 
 ```
-[████████████░░░░░░░░░] 65.2%
+[█████████████░░░░░░░] 65.2%
 Function Coverage: 65.2% (15/23)
 Route Coverage: 0% (0/0)
 Documentation Gaps: 8
@@ -510,7 +525,7 @@ JSDoc comments placed within 2 lines above a route definition are automatically 
 
 ## Performance
 
-- **Fast AST parsing** with espree
+- **Fast AST parsing** with `@typescript-eslint/typescript-estree`
 - **Recursive scanning** with efficient directory traversal
 - **Minimal dependencies** for small bundle size
 - Handles projects with hundreds of files efficiently

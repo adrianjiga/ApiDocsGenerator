@@ -62,7 +62,15 @@ program
     const config = await resolveConfig(options);
 
     console.log('\n🚀 Starting API Documentation Generation...');
-    await generator.generate(sourceDir, outputDir, formats, config);
+    const result = await generator.generate(
+      sourceDir,
+      outputDir,
+      formats,
+      config,
+    );
+    if (!result?.success) {
+      process.exit(1);
+    }
   });
 
 program
@@ -100,8 +108,12 @@ program
       }
     });
 
+    const filesWithItems = apiData.filter(
+      (file) => file.functions.length > 0 || file.routes.length > 0,
+    );
+
     console.log(
-      `\n✅ Found ${apiData.length} file(s) with ${apiData.reduce((s, f) => s + f.functions.length, 0)} function(s) and ${apiData.reduce((s, f) => s + f.routes.length, 0)} route(s)\n`,
+      `\n✅ Found ${filesWithItems.length} file(s) with ${apiData.reduce((s, f) => s + f.functions.length, 0)} function(s) and ${apiData.reduce((s, f) => s + f.routes.length, 0)} route(s)\n`,
     );
   });
 
@@ -137,8 +149,8 @@ program
     const apiData = await parser.parseDirectory(sourceDir, config);
 
     if (apiData.length === 0) {
-      console.log('⚠️  No JavaScript/TypeScript files found');
-      return;
+      console.error('Error: No JavaScript/TypeScript files found to audit');
+      process.exit(1);
     }
 
     const result = analyzeCoverage(apiData);

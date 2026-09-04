@@ -128,6 +128,21 @@ describe('generate command', () => {
       expect.any(Object),
     );
   });
+
+  it('exits with code 1 when generation reports failure', async () => {
+    generator.generate.mockResolvedValue({ success: false });
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {});
+    await program.parseAsync([
+      'node',
+      'cli.js',
+      'generate',
+      '-d',
+      '/tmp/src',
+      '-o',
+      '/tmp/out',
+    ]);
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
 });
 
 describe('scan command', () => {
@@ -175,6 +190,32 @@ describe('scan command', () => {
     expect(summaryCall[0]).toContain('2 file(s)');
     expect(summaryCall[0]).toContain('3 function(s)');
     expect(summaryCall[0]).toContain('1 route(s)');
+  });
+
+  it('only counts files that contain functions or routes', async () => {
+    parser.parseDirectory.mockResolvedValue([
+      {
+        fileName: 'app.js',
+        functions: [{ name: 'foo' }],
+        routes: [],
+      },
+      {
+        fileName: 'empty.js',
+        functions: [],
+        routes: [],
+      },
+    ]);
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    await program.parseAsync(['node', 'cli.js', 'scan', '/tmp/project']);
+
+    const summaryCall = logSpy.mock.calls.find(
+      (call) =>
+        typeof call[0] === 'string' &&
+        call[0].includes('Found') &&
+        call[0].includes('file(s)'),
+    );
+    expect(summaryCall[0]).toContain('1 file(s)');
+    expect(summaryCall[0]).toContain('1 function(s)');
   });
 });
 
@@ -293,6 +334,19 @@ describe('audit command', () => {
 
     await program.parseAsync(['node', 'cli.js', 'audit', '-t', '80']);
 
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it('exits with code 1 when no files are found to audit', async () => {
+    parser.parseDirectory.mockResolvedValue([]);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {});
+
+    await program.parseAsync(['node', 'cli.js', 'audit', '-d', '/tmp/empty']);
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('No JavaScript/TypeScript files found'),
+    );
     expect(exitSpy).toHaveBeenCalledWith(1);
   });
 
