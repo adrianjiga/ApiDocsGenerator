@@ -544,16 +544,33 @@ async function _scanDirectoryImpl(dir, excludeRegex) {
 async function parseDirectory(dir, config = {}) {
   const excludePattern = config.excludePattern || DEFAULT_EXCLUDE_PATTERN;
   const files = await scanDirectory(dir, excludePattern);
-  const results = await Promise.all(
-    files.map(async (file) => {
+
+  // Bound the number of files read/parsed at once to avoid exhausting file
+  // descriptors on large codebases.
+  const MAX_CONCURRENCY = 10;
+  const results = new Array(files.length);
+  let nextIndex = 0;
+
+  const parseNext = async () => {
+    while (nextIndex < files.length) {
+      const file = files[nextIndex];
+      const slot = nextIndex;
+      nextIndex += 1;
       try {
-        return await parseFile(file, config);
+        results[slot] = await parseFile(file, config);
       } catch (err) {
         console.warn(`Error parsing ${file}: ${err.message}`);
-        return null;
+        results[slot] = null;
       }
-    }),
+    }
+  };
+
+  await Promise.all(
+    Array.from({ length: Math.min(MAX_CONCURRENCY, files.length) }, () =>
+      parseNext(),
+    ),
   );
+
   return results.filter((r) => r !== null);
 }
 

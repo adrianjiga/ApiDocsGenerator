@@ -511,6 +511,26 @@ describe('parseDirectory', () => {
       expect(result).toHaveProperty('routes');
     });
   });
+
+  it('preserves file order in output regardless of parse concurrency', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'parse-order-'));
+    const names = Array.from({ length: 25 }, (_, i) => `f${i}.js`);
+    names.forEach((name) =>
+      fs.writeFileSync(
+        path.join(tmpDir, name),
+        `/** Doc for ${name} */\nfunction ${name.replace('.js', '')}() {}\n`,
+      ),
+    );
+    try {
+      const scanOrder = await scanDirectory(tmpDir);
+      const results = await parseDirectory(tmpDir);
+      const files = results.map((r) => r.file);
+      expect(files).toEqual(scanOrder);
+      expect(files.length).toBe(25);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('error scenarios', () => {
