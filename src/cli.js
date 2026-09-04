@@ -62,7 +62,15 @@ program
     const config = await resolveConfig(options);
 
     console.log('\n🚀 Starting API Documentation Generation...');
-    await generator.generate(sourceDir, outputDir, formats, config);
+    const result = await generator.generate(
+      sourceDir,
+      outputDir,
+      formats,
+      config,
+    );
+    if (!result?.success) {
+      process.exit(1);
+    }
   });
 
 program
@@ -141,8 +149,8 @@ program
     const apiData = await parser.parseDirectory(sourceDir, config);
 
     if (apiData.length === 0) {
-      console.log('⚠️  No JavaScript/TypeScript files found');
-      return;
+      console.error('Error: No JavaScript/TypeScript files found to audit');
+      process.exit(1);
     }
 
     const result = analyzeCoverage(apiData);
