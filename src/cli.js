@@ -100,8 +100,12 @@ program
       }
     });
 
+    const filesWithItems = apiData.filter(
+      (file) => file.functions.length > 0 || file.routes.length > 0,
+    );
+
     console.log(
-      `\n✅ Found ${apiData.length} file(s) with ${apiData.reduce((s, f) => s + f.functions.length, 0)} function(s) and ${apiData.reduce((s, f) => s + f.routes.length, 0)} route(s)\n`,
+      `\n✅ Found ${filesWithItems.length} file(s) with ${apiData.reduce((s, f) => s + f.functions.length, 0)} function(s) and ${apiData.reduce((s, f) => s + f.routes.length, 0)} route(s)\n`,
     );
   });
 

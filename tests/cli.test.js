@@ -176,6 +176,32 @@ describe('scan command', () => {
     expect(summaryCall[0]).toContain('3 function(s)');
     expect(summaryCall[0]).toContain('1 route(s)');
   });
+
+  it('only counts files that contain functions or routes', async () => {
+    parser.parseDirectory.mockResolvedValue([
+      {
+        fileName: 'app.js',
+        functions: [{ name: 'foo' }],
+        routes: [],
+      },
+      {
+        fileName: 'empty.js',
+        functions: [],
+        routes: [],
+      },
+    ]);
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    await program.parseAsync(['node', 'cli.js', 'scan', '/tmp/project']);
+
+    const summaryCall = logSpy.mock.calls.find(
+      (call) =>
+        typeof call[0] === 'string' &&
+        call[0].includes('Found') &&
+        call[0].includes('file(s)'),
+    );
+    expect(summaryCall[0]).toContain('1 file(s)');
+    expect(summaryCall[0]).toContain('1 function(s)');
+  });
 });
 
 describe('audit command', () => {
