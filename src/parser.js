@@ -424,6 +424,21 @@ async function parseFile(filePath, config = {}) {
 const JS_TS_FILE_REGEX = /\.(js|ts|jsx|tsx)$/;
 
 /**
+ * Compile an exclude pattern into a segment-anchored regex. The pattern is
+ * anchored to whole path segments so a term like "dist" only excludes a
+ * "dist" directory, not similarly-named ones (e.g. "dist-tools").
+ * Both `/` and `\` separators are accepted so the pattern also works on
+ * Windows paths.
+ * @param {string} excludePattern - Regex pattern to exclude directories
+ * @returns {RegExp} Compiled exclude regex
+ */
+function compileExcludeRegex(excludePattern) {
+  // Four backslashes in the template literal produce the regex source [\\/],
+  // a character class matching either a backslash or a forward slash.
+  return new RegExp(`(^|[\\\\/])(${excludePattern})([\\\\/]|$)`);
+}
+
+/**
  * Recursively scan directory for JS/TS files
  * @param {string} dir - Directory path
  * @param {string} excludePattern - Regex pattern to exclude directories
@@ -432,14 +447,12 @@ const JS_TS_FILE_REGEX = /\.(js|ts|jsx|tsx)$/;
 async function scanDirectory(dir, excludePattern = DEFAULT_EXCLUDE_PATTERN) {
   let excludeRegex;
   try {
-    // Anchor the pattern to whole path segments so a term like "dist" only
-    // excludes a "dist" directory, not similarly-named ones (e.g. "dist-tools").
-    excludeRegex = new RegExp(`(^|/)(${excludePattern})($|/)`);
+    excludeRegex = compileExcludeRegex(excludePattern);
   } catch {
     console.warn(
       `Warning: Invalid exclude pattern "${excludePattern}", falling back to default.`,
     );
-    excludeRegex = new RegExp(`(^|/)(${DEFAULT_EXCLUDE_PATTERN})($|/)`);
+    excludeRegex = compileExcludeRegex(DEFAULT_EXCLUDE_PATTERN);
   }
   return _scanDirectoryImpl(dir, excludeRegex);
 }
@@ -508,4 +521,5 @@ export {
   parseFile,
   scanDirectory,
   parseDirectory,
+  compileExcludeRegex,
 };

@@ -9,6 +9,7 @@ import {
   parseFile,
   scanDirectory,
   parseDirectory,
+  compileExcludeRegex,
 } from '../src/parser.js';
 
 beforeEach(() => {
@@ -384,6 +385,27 @@ describe('parseFile', () => {
     } finally {
       fs.unlinkSync(tmpFile);
     }
+  });
+});
+
+describe('compileExcludeRegex', () => {
+  it('matches excluded directory on posix-style paths', () => {
+    const re = compileExcludeRegex('node_modules|dist|build');
+    expect(re.test('/proj/src/node_modules/pkg/file.js')).toBe(true);
+    expect(re.test('/proj/src/dist/file.js')).toBe(true);
+  });
+
+  it('matches excluded directory on windows-style paths', () => {
+    const re = compileExcludeRegex('node_modules|dist|build');
+    expect(re.test('C:\\proj\\src\\node_modules\\pkg\\file.js')).toBe(true);
+    expect(re.test('C:\\proj\\src\\dist\\file.js')).toBe(true);
+  });
+
+  it('only matches whole path segments', () => {
+    const re = compileExcludeRegex('node_modules|dist|build');
+    expect(re.test('/proj/src/dist-tools/file.js')).toBe(false);
+    expect(re.test('/proj/src/build-output/file.js')).toBe(false);
+    expect(re.test('/proj/src/my-distrust/file.js')).toBe(false);
   });
 });
 
