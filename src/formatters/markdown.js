@@ -20,11 +20,16 @@ function generateMarkdown(apiData, config = {}) {
   // Table of contents
   md += '## Table of Contents\n\n';
 
+  const slugCounts = new Map([['table-of-contents', 1]]);
   let fileIndex = 1;
   apiData.forEach((file) => {
     if (file.functions.length > 0 || file.routes.length > 0) {
       const label = labels.get(file.file);
-      md += `${fileIndex}. [${label}](#${githubSlug(label)})\n`;
+      const slug = githubSlug(label);
+      const seen = slugCounts.get(slug) || 0;
+      slugCounts.set(slug, seen + 1);
+      const anchor = seen === 0 ? slug : `${slug}-${seen}`;
+      md += `${fileIndex}. [${label}](#${anchor})\n`;
       fileIndex++;
     }
   });

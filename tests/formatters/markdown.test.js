@@ -220,4 +220,21 @@ describe('generateMarkdown', () => {
     const utilHeadings = (md.match(/^## .*util\.js$/gm) || []).length;
     expect(utilHeadings).toBe(2);
   });
+
+  it('suffixes repeated anchors the way GitHub does', () => {
+    const fn = {
+      name: 'f',
+      params: [],
+      description: 'x',
+      line: 1,
+      jsdoc: null,
+    };
+    const data = [
+      { file: '/src/ab.js', fileName: 'ab.js', functions: [fn], routes: [] },
+      { file: '/src/a.b.js', fileName: 'a.b.js', functions: [fn], routes: [] },
+    ];
+    const md = generateMarkdown(data);
+    expect(md).toContain('[ab.js](#abjs)');
+    expect(md).toContain('[a.b.js](#abjs-1)');
+  });
 });

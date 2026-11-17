@@ -9,6 +9,25 @@ import {
 import { BASE_CSS } from './shared-styles.js';
 
 /**
+ * Assign a unique HTML id to each file section, suffixing repeats with -2, -3…
+ * @param {Array} fileSections - Files that get a section in the page
+ * @param {Map<string,string>} labels - Display label per file path
+ * @returns {Map<string,string>} Section id per file path
+ */
+function sectionIds(fileSections, labels) {
+  const ids = new Map();
+  const used = new Set();
+  for (const file of fileSections) {
+    const base = sanitizeHtmlId(labels.get(file.file)) || 'file';
+    let id = base;
+    for (let n = 2; used.has(id); n++) id = `${base}-${n}`;
+    used.add(id);
+    ids.set(file.file, id);
+  }
+  return ids;
+}
+
+/**
  * Generate HTML documentation
  * @param {Array} apiData - Array of parsed API metadata
  * @returns {string} HTML formatted documentation
@@ -262,6 +281,8 @@ function generateHTML(apiData, config = {}) {
     (f) => f.functions.length > 0 || f.routes.length > 0,
   );
 
+  const ids = sectionIds(fileSections, labels);
+
   if (fileSections.length > 0) {
     html += `
     <nav aria-label="Table of Contents">
@@ -270,7 +291,7 @@ function generateHTML(apiData, config = {}) {
 
     fileSections.forEach((file) => {
       const label = labels.get(file.file);
-      html += `<li><a href="#${sanitizeHtmlId(label)}">${escapeHtml(label)}</a></li>`;
+      html += `<li><a href="#${ids.get(file.file)}">${escapeHtml(label)}</a></li>`;
     });
 
     html += `
@@ -282,7 +303,7 @@ function generateHTML(apiData, config = {}) {
   fileSections.forEach((file) => {
     const label = labels.get(file.file);
     html += `
-    <div class="file-section" id="${sanitizeHtmlId(label)}">
+    <div class="file-section" id="${ids.get(file.file)}">
       <h2>${escapeHtml(label)}</h2>
       <div class="file-path">📁 ${escapeHtml(file.fileName)}</div>`;
 

@@ -317,4 +317,22 @@ describe('generateHTML', () => {
     expect(html).toContain('<h2>a/util.js</h2>');
     expect(html).toContain('<h2>b/util.js</h2>');
   });
+
+  it('gives distinct ids to labels that sanitize to the same id', () => {
+    const fn = {
+      name: 'f',
+      params: [],
+      description: 'x',
+      line: 1,
+      jsdoc: null,
+    };
+    const data = [
+      { file: '/src/a-b.js', fileName: 'a-b.js', functions: [fn], routes: [] },
+      { file: '/src/a.b.js', fileName: 'a.b.js', functions: [fn], routes: [] },
+    ];
+    const html = generateHTML(data);
+    expect(html).toContain('id="a-b-js"');
+    expect(html).toContain('id="a-b-js-2"');
+    expect(html).toContain('href="#a-b-js-2"');
+  });
 });
