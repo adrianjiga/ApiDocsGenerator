@@ -1,8 +1,15 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { spawnSync } from 'child_process';
+import { fileURLToPath } from 'url';
 import { getDefaultConfig, loadConfig } from '../src/generator.js';
+
+const binPath = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../bin/api-docs-generator',
+);
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -71,5 +78,59 @@ describe('loadConfig', () => {
       fs.unlinkSync(configFile);
       fs.rmdirSync(tmpDir);
     }
+  });
+});
+
+describe('loadConfig default file discovery', () => {
+  let tmpDir;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'apidocs-discovery-'));
+    vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('returns defaults without warning when no config file exists', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const config = await loadConfig();
+    expect(config).toEqual(getDefaultConfig());
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('loads apidocs.config.mjs from the working directory', async () => {
+    fs.writeFileSync(
+      path.join(tmpDir, 'apidocs.config.mjs'),
+      'export default { apiTitle: "From mjs" };\n',
+    );
+    const config = await loadConfig();
+    expect(config.apiTitle).toBe('From mjs');
+  });
+
+  it('loads apidocs.config.cjs from the working directory', async () => {
+    fs.writeFileSync(
+      path.join(tmpDir, 'apidocs.config.cjs'),
+      'module.exports = { apiTitle: "From cjs" };\n',
+    );
+    const config = await loadConfig();
+    expect(config.apiTitle).toBe('From cjs');
+  });
+
+  it('suggests .mjs when an ESM .js config fails in a CommonJS project', () => {
+    fs.writeFileSync(
+      path.join(tmpDir, 'package.json'),
+      '{ "type": "commonjs" }\n',
+    );
+    fs.writeFileSync(
+      path.join(tmpDir, 'apidocs.config.js'),
+      'export default { apiTitle: "ESM" };\n',
+    );
+    const result = spawnSync(process.execPath, [binPath, 'scan', tmpDir], {
+      cwd: tmpDir,
+      encoding: 'utf8',
+    });
+    expect(result.stderr).toContain('rename it to apidocs.config.mjs');
   });
 });

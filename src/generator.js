@@ -28,6 +28,12 @@ function getDefaultConfig() {
   return { ...defaultConfig };
 }
 
+const CONFIG_FILENAMES = [
+  'apidocs.config.js',
+  'apidocs.config.mjs',
+  'apidocs.config.cjs',
+];
+
 /**
  * Check whether a path exists
  * @param {string} filePath - Path to check
@@ -43,27 +49,34 @@ async function pathExists(filePath) {
 }
 
 /**
- * Load configuration from file and merge with defaults
- * @param {string} configPath - Path to the configuration file
- * @returns {Object} Merged configuration object
+ * Find the first default config file present in a directory
+ * @param {string} dir - Directory to search
+ * @returns {Promise<string|undefined>} Path of the config file, if any
+ */
+async function findDefaultConfig(dir) {
+  for (const name of CONFIG_FILENAMES) {
+    const candidate = path.join(dir, name);
+    if (await pathExists(candidate)) return candidate;
+  }
+  return undefined;
+}
+
+/**
+ * Load configuration from file and merge with defaults. Without an explicit
+ * path, looks for apidocs.config.js, .mjs or .cjs in the working directory.
+ * @param {string} [configPath] - Path to the configuration file
+ * @returns {Promise<Object>} Merged configuration object
  */
 async function loadConfig(configPath) {
   const defaults = getDefaultConfig();
-  const filePath = configPath || path.join(process.cwd(), 'apidocs.config.js');
+  const filePath = configPath || (await findDefaultConfig(process.cwd()));
 
-  try {
-    const exists = await pathExists(filePath);
-    if (!exists) {
-      // Only warn when a config path was explicitly requested; a missing
-      // default config at the project root is a normal, quiet fallback.
-      if (configPath) {
-        console.warn(
-          `Warning: Config file not found: ${filePath}. Using defaults.`,
-        );
-      }
-      return defaults;
-    }
-  } catch {
+  if (!filePath) return defaults;
+
+  if (!(await pathExists(filePath))) {
+    console.warn(
+      `Warning: Config file not found: ${filePath}. Using defaults.`,
+    );
     return defaults;
   }
 
@@ -73,8 +86,12 @@ async function loadConfig(configPath) {
     const userConfig = mod.default || mod;
     return { ...defaults, ...userConfig };
   } catch (err) {
+    const hint =
+      err instanceof SyntaxError && path.extname(filePath) === '.js'
+        ? ' If your project is CommonJS, rename it to apidocs.config.mjs or use module.exports.'
+        : '';
     console.warn(
-      `Warning: Failed to load config from ${filePath}: ${err.message}`,
+      `Warning: Failed to load config from ${filePath}: ${err.message}.${hint}`,
     );
     return defaults;
   }
