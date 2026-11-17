@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   calcPercentage,
   cleanTagDescription,
+  coverageLevel,
   escapeHtml,
   getParamName,
   getParamTags,
@@ -300,5 +301,26 @@ describe('stripControlChars', () => {
 
   it('keeps tabs, newlines and non-ASCII text', () => {
     expect(stripControlChars('a\tb\nc — é 📄')).toBe('a\tb\nc — é 📄');
+  });
+});
+
+describe('coverageLevel', () => {
+  it('is good at or above the threshold', () => {
+    expect(coverageLevel(80, 80)).toBe('good');
+    expect(coverageLevel(100, 90)).toBe('good');
+  });
+
+  it('is a warning within 30 points below the threshold', () => {
+    expect(coverageLevel(50, 80)).toBe('warning');
+    expect(coverageLevel(79.9, 80)).toBe('warning');
+  });
+
+  it('is an error further below', () => {
+    expect(coverageLevel(49.9, 80)).toBe('error');
+  });
+
+  it('defaults to a threshold of 80', () => {
+    expect(coverageLevel(80)).toBe('good');
+    expect(coverageLevel(60)).toBe('warning');
   });
 });

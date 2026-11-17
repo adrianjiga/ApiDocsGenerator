@@ -247,6 +247,30 @@ describe('generateMarkdown', () => {
     expect(md).toContain('[functions](#functions-2)');
   });
 
+  it('prints the full @returns description', async () => {
+    const { parseJSDoc } = await import('../../src/parser.js');
+    const [jsdoc] = parseJSDoc(
+      '/**\n * Add\n * @returns {number} The total sum\n */',
+    );
+    const data = [
+      {
+        file: '/src/a.js',
+        fileName: 'a.js',
+        functions: [
+          {
+            name: 'add',
+            params: [],
+            description: 'Add',
+            line: 1,
+            jsdoc: jsdoc.parsed,
+          },
+        ],
+        routes: [],
+      },
+    ];
+    expect(generateMarkdown(data)).toContain('`number`: The total sum');
+  });
+
   it('suffixes repeated anchors the way GitHub does', () => {
     const fn = {
       name: 'f',

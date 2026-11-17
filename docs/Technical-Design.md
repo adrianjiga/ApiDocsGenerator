@@ -37,9 +37,10 @@ segments, with either separator:
 ```
 
 `dist` therefore excludes a `dist` directory but not `dist-tools`. The regex is
-tested against each directory's path **relative to the scan root**, so a parent
-folder of the scan root named `build` or `out` has no effect. It is only applied
-to directories, never to file names.
+tested against each directory's and each source file's path **relative to the
+scan root**, so a parent folder of the scan root named `build` or `out` has no
+effect. A file is excluded when one of its path segments matches, so
+`bundle\.js` skips every file named `bundle.js`.
 
 The default pattern is:
 
@@ -83,7 +84,10 @@ JSDoc blocks come from the parser's comment list, so comment-shaped text inside
 strings or template literals is never mistaken for documentation. A comment
 qualifies when it is a block comment whose text starts with `*` (that is, it
 opens with `/**`). Each block is parsed with `comment-parser`. Line comments
-(`//`) are ignored.
+(`//`) are ignored. `comment-parser` reads every tag as `{type} name
+description`, so for tags that take no name (`@returns`, `@return`, `@throws`,
+`@yields`) `normalizeNamelessTag` moves the word it took as a name back to the
+start of the description.
 
 For each block, `nextTokenLine` binary-searches the token list for the first
 token after the comment and records its line as `nextLine`. This is what JSDoc
@@ -101,27 +105,38 @@ to.
 
 ### Functions
 
-| Source form                                         | Item name             | Notes                                                                        |
-| --------------------------------------------------- | --------------------- | ---------------------------------------------------------------------------- |
-| `function f() {}`                                   | `f`                   | Anywhere in the file, nested ones included                                   |
-| `export default function () {}`                     | `anonymous`           |                                                                              |
-| `const f = () => {}` / `const f = function () {}`   | `f`                   | Anywhere in the file                                                         |
-| `class A { m() {} }` / `const A = class { m() {} }` | `m`, class `A`        | Every method, including `constructor`, getters, setters and abstract methods |
-| `A.prototype.m = function () {}`                    | `m`, class `A`        | Module level only                                                            |
-| `const api = { list() {}, get: () => {} }`          | `api.list`, `api.get` | Module level only; getters and setters skipped                               |
-| `export default { list() {} }`                      | `list`                | Exported                                                                     |
-| `module.exports = function main() {}`               | `main` (or `default`) | Module level only; exported                                                  |
-| `exports.f = () => {}` / `module.exports.f = ...`   | `f`                   | Module level only; exported                                                  |
-| `module.exports = { a() {}, b: () => {} }`          | `a`, `b`              | Module level only; exported                                                  |
+| Source form                                         | Item name             | Notes                                                                                              |
+| --------------------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------- |
+| `function f() {}`                                   | `f`                   | Module level only                                                                                  |
+| `export default function () {}`                     | `anonymous`           |                                                                                                    |
+| `const f = () => {}` / `const f = function () {}`   | `f`                   | Module level only                                                                                  |
+| `class A { m() {} }` / `const A = class { m() {} }` | `m`, class `A`        | Module-level classes; every method, including `constructor`, getters, setters and abstract methods |
+| `class A { m = () => {} }`                          | `m`, class `A`        | Fields (including `accessor` fields) holding an arrow function or function expression              |
+| `A.prototype.m = function () {}`                    | `m`, class `A`        | Module level only                                                                                  |
+| `const api = { list() {}, get: () => {} }`          | `api.list`, `api.get` | Module level only; getters and setters skipped                                                     |
+| `export default { list() {} }`                      | `list`                | Exported                                                                                           |
+| `module.exports = function main() {}`               | `main` (or `default`) | Module level only; exported                                                                        |
+| `exports.f = () => {}` / `module.exports.f = ...`   | `f`                   | Module level only; exported                                                                        |
+| `module.exports = { a() {}, b: () => {} }`          | `a`, `b`              | Module level only; exported                                                                        |
 
-Class property arrow functions (`class A { m = () => {} }`) are not detected.
 Parameter names come from `getParamName`: rest parameters become `...name`,
 default values are dropped, and destructured parameters become `{a, b}` or
 `[a, b]`.
 
-**Module level** means the statement is directly in the program body, or in the
-body of a TypeScript `namespace` / `declare module` block. `collectExports`
-builds this set (`moduleLevel`) in one pass over those statement lists.
+**Module level** means code that runs when the module loads, outside any named
+function or method:
+
+- the program body;
+- the body of a TypeScript `namespace` / `declare module` block;
+- the bodies of top-level `if`/`else`, `try`/`catch`/`finally`, bare blocks
+  and labelled statements;
+- the body of an immediately-invoked function (`(function () {})()`,
+  `(() => {})()`, `!function () {}()`, `(function () {}).call(this)`) and of
+  any function expression passed to it as an argument, which covers the UMD
+  factory pattern.
+
+`collectExports` builds this set (`moduleLevel`) in one pass over those
+statement lists; `immediatelyInvokedBodies` finds the function bodies.
 
 ### The `exported` flag
 
@@ -134,8 +149,9 @@ An item is marked exported when either:
   `export default name`, `module.exports = name`, `exports.x = name` or
   `module.exports = { name }` (`exports.names`).
 
-A nested function that happens to share a name with an exported binding is not
-marked exported. CommonJS export assignments and `export default { ... }`
+Functions and classes nested inside function bodies are not detected at all,
+so they can never be marked exported by sharing a name with an exported
+binding. CommonJS export assignments and `export default { ... }`
 methods are always exported.
 
 ### Routes
@@ -217,8 +233,12 @@ is missing, and **undocumented** (severity `error`) when it has no JSDoc block.
 An undocumented item lists every check as missing, including `params` when it
 has no parameters.
 
-Parameter matching is by exact name. A destructured parameter is named `{a, b}`,
-so a `@param` for `options` does not satisfy it.
+Parameters are matched by name (`isParamDocumented`). A rest parameter
+`...args` matches `@param args`. A destructured parameter (`{a, b}` or
+`[a, b]`) has no name of its own, so it matches the top-level `@param` at the
+same position, such as `@param {Object} options`, as long as that tag is not
+named after one of the function's other parameters. Tags for its properties
+(`options.a`) are allowed but not required.
 
 Percentages use `calcPercentage`: `part / total * 100` rounded to one decimal,
 and `0` when the total is `0`.
@@ -289,7 +309,8 @@ and loads nothing external.
 
 `api.json` mirrors the parser output: a `meta` block and one entry per file
 with its functions and routes. The `jsdoc.tags` arrays are `comment-parser`'s
-tag objects as-is, including its `source` and `problems` fields.
+tag objects, including their `source` and `problems` fields, with nameless
+tags normalized as described under Parsing.
 
 ### Paths in output
 
@@ -353,17 +374,3 @@ the terminal's state.
 
 The terminal report disables colour and switches to ASCII symbols when stdout
 is not a TTY or `NO_COLOR` is set.
-
-## Known issues
-
-- `audit --format json` without `--output` prints the
-  `📊 Auditing documentation coverage...` banner to stdout before the JSON, so
-  the stdout stream is not valid JSON. Use `--output <file>` to get a clean
-  file.
-- `comment-parser` reads the first word after the type in a `@returns` tag as a
-  name, so the Markdown and HTML output drop the first word of every
-  `@returns` description: `@returns {Object} Parsed object` is shown as
-  `object`. The full text is still in `api.json`, split across the tag's `name`
-  and `description`.
-- The `Functions Documented` line in `GENERATION_REPORT.md` is the number of
-  functions found, not the number that are documented.

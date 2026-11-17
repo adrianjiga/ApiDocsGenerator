@@ -1,11 +1,15 @@
-import { stripControlChars } from '../utils.js';
+import {
+  coverageLevel,
+  DEFAULT_COVERAGE_THRESHOLD,
+  stripControlChars,
+} from '../utils.js';
 
 /**
  * Format and print a documentation coverage report to the terminal
  * @param {Object} report - Coverage analysis report from analyzeCoverage()
- * @param {number} threshold - Coverage threshold percentage
+ * @param {number} [threshold=80] - Coverage threshold percentage
  */
-function formatTerminalReport(report, threshold) {
+function formatTerminalReport(report, threshold = DEFAULT_COVERAGE_THRESHOLD) {
   // Disable ANSI colors when not writing to a real TTY (e.g. piped to a file
   // or CI log aggregator) or when the NO_COLOR env var is set.
   const useColor =
@@ -22,7 +26,6 @@ function formatTerminalReport(report, threshold) {
         red: '\x1b[31m',
         green: '\x1b[32m',
         yellow: '\x1b[33m',
-        blue: '\x1b[34m',
         cyan: '\x1b[36m',
         bold: '\x1b[1m',
         dim: '\x1b[2m',
@@ -32,7 +35,6 @@ function formatTerminalReport(report, threshold) {
         red: '',
         green: '',
         yellow: '',
-        blue: '',
         cyan: '',
         bold: '',
         dim: '',
@@ -41,7 +43,6 @@ function formatTerminalReport(report, threshold) {
 
   const { summary, files, gaps } = report;
   const coverage = summary.coveragePercentage;
-  const meetsThreshold = coverage >= threshold;
 
   // Header
   console.log(`\n${c.bold}Documentation Coverage Report${c.reset}\n`);
@@ -56,7 +57,11 @@ function formatTerminalReport(report, threshold) {
   const emptyBar = useUnicode
     ? '░'.repeat(emptyLength)
     : '-'.repeat(emptyLength);
-  const barColor = meetsThreshold ? c.green : c.red;
+  const levelColor = (percentage) =>
+    ({ good: c.green, warning: c.yellow, error: c.red })[
+      coverageLevel(percentage, threshold)
+    ];
+  const barColor = levelColor(coverage);
 
   console.log(`${barColor}[${filledBar}${emptyBar}] ${coverage}%${c.reset}`);
 
@@ -81,12 +86,7 @@ function formatTerminalReport(report, threshold) {
     console.log(`\n${c.cyan}Per-File Breakdown${c.reset}`);
 
     files.forEach((file) => {
-      const fileColor =
-        file.coveragePercentage === 100
-          ? c.green
-          : file.coveragePercentage >= threshold
-            ? c.blue
-            : c.red;
+      const fileColor = levelColor(file.coveragePercentage);
       console.log(
         `\n  ${fileColor}${stripControlChars(file.fileName)}${c.reset} ${c.dim}(${file.coveragePercentage}%)${c.reset}`,
       );

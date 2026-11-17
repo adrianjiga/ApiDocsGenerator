@@ -147,6 +147,9 @@ describe('generate command', () => {
 
 describe('scan command', () => {
   it('calls parser.parseDirectory with resolved dir', async () => {
+    parser.parseDirectory.mockResolvedValue([
+      { fileName: 'a.js', functions: [{ name: 'fn' }], routes: [] },
+    ]);
     vi.spyOn(console, 'log').mockImplementation(() => {});
     await program.parseAsync(['node', 'cli.js', 'scan', '/tmp/src']);
     expect(parser.parseDirectory).toHaveBeenCalledWith(
@@ -155,13 +158,16 @@ describe('scan command', () => {
     );
   });
 
-  it('handles empty results gracefully', async () => {
+  it('exits with code 1 when no files are found', async () => {
     parser.parseDirectory.mockResolvedValue([]);
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {});
     await program.parseAsync(['node', 'cli.js', 'scan', '/tmp/empty']);
-    expect(logSpy).toHaveBeenCalledWith(
+    expect(errorSpy).toHaveBeenCalledWith(
       expect.stringContaining('No JavaScript/TypeScript files found'),
     );
+    expect(exitSpy).toHaveBeenCalledWith(1);
   });
 
   it('prints file, route, and function counts', async () => {
@@ -258,6 +264,44 @@ describe('audit command', () => {
       }
     });
     expect(jsonCall).toBeDefined();
+  });
+
+  it('keeps stdout empty and reports status on stderr when writing a file', async () => {
+    parser.parseDirectory.mockResolvedValue([
+      { fileName: 'a.js', functions: [{ name: 'fn' }], routes: [] },
+    ]);
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cli-status-'));
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      await program.parseAsync([
+        'node',
+        'cli.js',
+        'audit',
+        '-f',
+        'json',
+        '-o',
+        path.join(tmpDir, 'report.json'),
+      ]);
+      expect(logSpy).not.toHaveBeenCalled();
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('json written to'),
+      );
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('writes nothing but the JSON document to stdout when format is json', async () => {
+    parser.parseDirectory.mockResolvedValue([
+      { fileName: 'a.js', functions: [{ name: 'fn' }], routes: [] },
+    ]);
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    await program.parseAsync(['node', 'cli.js', 'audit', '-f', 'json']);
+
+    const stdout = logSpy.mock.calls.map((call) => call.join(' ')).join('\n');
+    expect(() => JSON.parse(stdout)).not.toThrow();
   });
 
   it('writes json to a file when --output is provided', async () => {

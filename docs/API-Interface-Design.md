@@ -156,21 +156,23 @@ for tests and may change between minor versions.
 `src/formatters/registry.js` maps format names to
 `{ generate, filename, type }`. It is not part of the package exports.
 
-| Name        | Alias of | Type     | Output file               | `generate` signature         |
-| ----------- | -------- | -------- | ------------------------- | ---------------------------- |
-| `markdown`  |          | `doc`    | `API.md`                  | `(apiData, config) → string` |
-| `md`        | markdown | `doc`    | `API.md`                  | same                         |
-| `html`      |          | `doc`    | `index.html`              | `(apiData, config) → string` |
-| `json`      |          | `doc`    | `api.json`                | `(apiData, config) → string` |
-| `openapi`   |          | `doc`    | `openapi.yaml`            | `(apiData, config) → string` |
-| `swagger`   | openapi  | `doc`    | `openapi.yaml`            | same                         |
-| `terminal`  |          | `report` | none (stdout)             | `(report, threshold) → void` |
-| `dashboard` |          | `report` | `coverage-dashboard.html` | `(report) → string`          |
+| Name        | Alias of | Type     | Output file               | `generate` signature                |
+| ----------- | -------- | -------- | ------------------------- | ----------------------------------- |
+| `markdown`  |          | `doc`    | `API.md`                  | `(apiData, config) → string`        |
+| `md`        | markdown | `doc`    | `API.md`                  | same                                |
+| `html`      |          | `doc`    | `index.html`              | `(apiData, config) → string`        |
+| `json`      |          | `doc`    | `api.json`                | `(apiData, config) → string`        |
+| `openapi`   |          | `doc`    | `openapi.yaml`            | `(apiData, config) → string`        |
+| `swagger`   | openapi  | `doc`    | `openapi.yaml`            | same                                |
+| `terminal`  |          | `report` | none (stdout)             | `(report, threshold) → void`        |
+| `dashboard` |          | `report` | `coverage-dashboard.html` | `(report, threshold = 80) → string` |
 
 `generate` only accepts `doc` formats and skips the others with a warning.
-`audit` handles `json` itself and accepts the two `report` formats. The
-dashboard's colours use fixed bands (green ≥ 80 %, amber ≥ 50 %, red below),
-independent of `--threshold`.
+`audit` handles `json` itself and accepts the two `report` formats. Both
+report formats colour coverage with `coverageLevel` from `src/utils.js`: green
+at or above the threshold (default `DEFAULT_COVERAGE_THRESHOLD`, 80), amber or
+yellow within `COVERAGE_WARNING_BAND` (30) points below it, and red under
+that.
 
 ## Command-Line Interface
 
@@ -209,10 +211,9 @@ Report documentation coverage.
 | `-c, --config <path>`      |            | Config file to load instead of discovery                                                                 |
 | `--exclude <pattern>`      |            | Overrides `excludePattern`                                                                               |
 
-**Known issue:** `audit --format json` without `--output` prints a
-`📊 Auditing documentation coverage...` line to stdout before the JSON, so the
-stream is not valid JSON on its own. Use `--output <file>` to get a clean JSON
-file.
+Progress and "written to" messages go to stderr; stdout carries only the
+report itself. With `--format json` and no `--output`, that is the JSON
+document alone, so it can be piped (for example into `jq`).
 
 ### scan [directory]
 
@@ -226,12 +227,12 @@ Print the files, functions and routes found, without writing anything.
 
 ### Exit Codes
 
-| Command    | `0`                                       | `1`                                                                                                                                 |
-| ---------- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `generate` | Every requested format was written        | No source files; no valid format requested; any format failed; unexpected error                                                     |
-| `audit`    | Coverage ≥ `--threshold`                  | Coverage below threshold; invalid `--threshold`; no source files; unknown `--format`; unexpected error (e.g. unwritable `--output`) |
-| `scan`     | Always, including when no files are found | Unexpected error only                                                                                                               |
-| (none)     | Help printed                              | Unknown command or option (commander usage error)                                                                                   |
+| Command    | `0`                                | `1`                                                                                                                                 |
+| ---------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `generate` | Every requested format was written | No source files; no valid format requested; any format failed; unexpected error                                                     |
+| `audit`    | Coverage ≥ `--threshold`           | Coverage below threshold; invalid `--threshold`; no source files; unknown `--format`; unexpected error (e.g. unwritable `--output`) |
+| `scan`     | Files were found                   | No source files; unexpected error                                                                                                   |
+| (none)     | Help printed                       | Unknown command or option (commander usage error)                                                                                   |
 
 Unexpected errors print `Error: <message>` to stderr rather than a stack trace.
 
@@ -255,13 +256,13 @@ and continues with the defaults.
 
 The file's values are shallow-merged over the defaults.
 
-| Key              | Type       | Default                                                                                   | Meaning                                                                                                | CLI override    |
-| ---------------- | ---------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | --------------- |
-| `excludePattern` | `string`   | `node_modules\|dist\|build\|\.cache\|coverage\|\.turbo\|\.nx\|\.next\|\.nuxt\|out\|\.git` | Regex of directory names to skip, matched against whole segments of the path relative to the scan root | `--exclude`     |
-| `serverUrl`      | `string`   | `http://localhost:3000`                                                                   | Base URL in curl examples (Markdown, HTML) and OpenAPI `servers`                                       | `--server-url`  |
-| `apiTitle`       | `string`   | `API Documentation`                                                                       | Title of the Markdown, HTML and OpenAPI output                                                         | `--api-title`   |
-| `apiVersion`     | `string`   | `1.0.0`                                                                                   | `info.version` in OpenAPI and `meta.apiVersion` in JSON                                                | `--api-version` |
-| `routeServers`   | `string[]` | `[]`                                                                                      | When non-empty, only calls on these identifiers (e.g. `app`, `router`) count as routes                 | none            |
+| Key              | Type       | Default                                                                                   | Meaning                                                                                                         | CLI override    |
+| ---------------- | ---------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | --------------- |
+| `excludePattern` | `string`   | `node_modules\|dist\|build\|\.cache\|coverage\|\.turbo\|\.nx\|\.next\|\.nuxt\|out\|\.git` | Regex of directory and file names to skip, matched against whole segments of the path relative to the scan root | `--exclude`     |
+| `serverUrl`      | `string`   | `http://localhost:3000`                                                                   | Base URL in curl examples (Markdown, HTML) and OpenAPI `servers`                                                | `--server-url`  |
+| `apiTitle`       | `string`   | `API Documentation`                                                                       | Title of the Markdown, HTML and OpenAPI output                                                                  | `--api-title`   |
+| `apiVersion`     | `string`   | `1.0.0`                                                                                   | `info.version` in OpenAPI and `meta.apiVersion` in JSON                                                         | `--api-version` |
+| `routeServers`   | `string[]` | `[]`                                                                                      | When non-empty, only calls on these identifiers (e.g. `app`, `router`) count as routes                          | none            |
 
 `audit` and `scan` accept `--exclude` but not the three metadata flags, which
 only affect `generate` output.

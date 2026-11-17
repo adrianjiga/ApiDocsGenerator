@@ -7,7 +7,7 @@ import { formatters } from './formatters/registry.js';
 import * as generator from './generator.js';
 import { loadConfig } from './generator.js';
 import * as parser from './parser.js';
-import { stripControlChars } from './utils.js';
+import { DEFAULT_COVERAGE_THRESHOLD, stripControlChars } from './utils.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json');
@@ -48,7 +48,7 @@ program
   )
   .option(
     '-f, --formats <formats>',
-    'Output formats (comma-separated: markdown,html,json)',
+    'Output formats, comma-separated: markdown, html, json, openapi',
     'markdown,html,json',
   )
   .option('-c, --config <path>', 'Path to apidocs.config.js')
@@ -87,7 +87,8 @@ program
     const apiData = await parser.parseDirectory(dir, config);
 
     if (apiData.length === 0) {
-      console.log('⚠️  No JavaScript/TypeScript files found');
+      console.error('⚠️  No JavaScript/TypeScript files found');
+      process.exit(1);
       return;
     }
 
@@ -123,7 +124,11 @@ program
   .alias('a')
   .description('Audit documentation coverage')
   .option('-d, --dir <directory>', 'Source directory to scan', '.')
-  .option('-t, --threshold <number>', 'Coverage threshold percentage', '80')
+  .option(
+    '-t, --threshold <number>',
+    'Coverage threshold percentage',
+    String(DEFAULT_COVERAGE_THRESHOLD),
+  )
   .option(
     '-f, --format <format>',
     'Output format (terminal, json, or dashboard)',
@@ -145,7 +150,7 @@ program
     const format = options.format.toLowerCase();
     const config = await resolveConfig(options);
 
-    console.log(`\n📊 Auditing documentation coverage...\n`);
+    console.error(`\n📊 Auditing documentation coverage...\n`);
 
     const apiData = await parser.parseDirectory(sourceDir, config);
 
@@ -163,7 +168,7 @@ program
         const outputDir = path.dirname(outputPath);
         await fs.mkdir(outputDir, { recursive: true });
         await fs.writeFile(outputPath, json);
-        console.log(`✅ json written to: ${outputPath}\n`);
+        console.error(`✅ json written to: ${outputPath}\n`);
       } else {
         console.log(json);
       }
@@ -174,9 +179,9 @@ program
         const outputPath = path.resolve(outputFile);
         const outputDir = path.dirname(outputPath);
         await fs.mkdir(outputDir, { recursive: true });
-        const content = formatter.generate(result);
+        const content = formatter.generate(result, threshold);
         await fs.writeFile(outputPath, content);
-        console.log(`✅ ${format} written to: ${outputPath}\n`);
+        console.error(`✅ ${format} written to: ${outputPath}\n`);
       } else {
         formatter.generate(result, threshold);
       }

@@ -46,7 +46,8 @@ describe('parseJSDoc', () => {
       type: 'number',
     });
     expect(result[0].parsed.tags[2]).toMatchObject({
-      description: '',
+      description: 'Sum',
+      name: '',
       type: 'number',
     });
   });

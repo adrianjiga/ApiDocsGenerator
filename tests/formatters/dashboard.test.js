@@ -260,4 +260,18 @@ describe('generateDashboard', () => {
     expect(html).toContain('background-color: #ffaa44;');
     expect(html).toContain('background-color: #44bb44;');
   });
+
+  it('colours coverage against the given threshold', () => {
+    const report = makeReport();
+    report.summary.coveragePercentage = 85;
+    expect(generateDashboard(report)).toContain('stroke="#44bb44"');
+    expect(generateDashboard(report, 90)).toContain('stroke="#ffaa44"');
+    expect(generateDashboard(report, 100)).toContain('stroke="#ffaa44"');
+    report.summary.coveragePercentage = 40;
+    expect(generateDashboard(report, 90)).toContain('stroke="#ff4444"');
+  });
+
+  it('shows the threshold under the gauge', () => {
+    expect(generateDashboard(makeReport(), 90)).toContain('threshold 90%');
+  });
 });

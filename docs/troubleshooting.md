@@ -6,10 +6,10 @@ routes were found without writing anything, which narrows most problems down.
 
 ## "No JavaScript/TypeScript files found"
 
-`scan` prints `⚠️  No JavaScript/TypeScript files found` and exits 0. `audit`
-prints `Error: No JavaScript/TypeScript files found to audit` and `generate`
-prints `⚠️  No JavaScript/TypeScript files found or no API documentation
-detected.`; both exit 1.
+`scan` prints `⚠️  No JavaScript/TypeScript files found`, `audit` prints
+`Error: No JavaScript/TypeScript files found to audit` and `generate` prints
+`⚠️  No JavaScript/TypeScript files found or no API documentation detected.`.
+All three exit 1.
 
 Causes, in the order worth checking:
 
@@ -21,14 +21,17 @@ Causes, in the order worth checking:
   `.d.cts`) are skipped on purpose.
 - **Excluded directory.** The default `excludePattern` skips `node_modules`,
   `dist`, `build`, `.cache`, `coverage`, `.turbo`, `.nx`, `.next`, `.nuxt`,
-  `out` and `.git`. It is matched against whole directory names relative to the
-  scanned directory, so a parent folder called `build` does not matter, but a
+  `out` and `.git`. It is matched against whole directory and file names
+  relative to the scanned directory, so a parent folder called `build` does not matter, but a
   source folder called `out` inside the project does. Override it with
   `--exclude` or `excludePattern` in the config.
 - **File too large.** Files over 1 MB are skipped with
   `Warning: Skipping <file> (<size> KB) — exceeds 1 MB limit.` These are almost
-  always bundles or generated code. `excludePattern` only matches directories,
-  so to silence the warning move the file into a directory you exclude.
+  always bundles or generated code. The warning ends with the file name
+  escaped for a regex (e.g. `vendor\.bundle\.js`); add that to
+  `excludePattern` to skip the file silently, e.g.
+  `--exclude 'node_modules|dist|vendor\.bundle\.js'`. Keep the backslashes: an
+  unescaped `.` matches any character.
 
 ## An item shows as undocumented although it has a comment
 
@@ -50,7 +53,8 @@ If the comment is matched but the item still shows as a gap, look at
 
 - `description`: the comment has tags but no text before them.
 - `params`: a `@param` is missing, or its name does not match the parameter.
-  Destructured parameters are named like `{a, b}`.
+  A destructured parameter needs a top-level `@param` in its position (e.g.
+  `@param {Object} options`); a rest parameter `...args` needs `@param args`.
 - `returns`: functions need `@returns` (or `@return`); `@returns {void}` is
   enough. Routes do not need it.
 
@@ -74,6 +78,10 @@ If `routeServers` is set in the config, only calls on those identifiers count:
 
 ## A function is not detected
 
+- **Nested functions and classes** are ignored. Function declarations,
+  `const f = () => {}` and classes count only at module level, not inside
+  another function. Top-level `if`/`try` blocks, TypeScript namespaces and
+  immediately-invoked wrappers (IIFE and UMD) count as module level.
 - **Object literal methods** are only read from objects declared at module
   level (`const api = { list() {} }` or `module.exports = { ... }`). Option or
   callback objects inside function bodies are ignored on purpose.
@@ -141,18 +149,6 @@ Any other error (a typo, a throw in the file) produces the same
   formats are still written; the run ends with
   `❌ Documentation generated with errors: <format> failed`. Please open an
   issue with the error.
-
-## `audit --format json` is not valid JSON when piped
-
-Known issue: `audit` prints the `📊 Auditing documentation coverage...` line to
-standard output before the JSON, so `audit --format json | jq` or
-`> report.json` gets an extra line in front.
-
-Write the report with `--output` instead, which contains only the JSON:
-
-```bash
-api-docs-generator audit --format json --output coverage.json
-```
 
 ## Table of contents links in `API.md` go to the wrong section
 

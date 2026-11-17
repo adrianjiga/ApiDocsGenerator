@@ -60,7 +60,7 @@ Calculate the sum of two numbers
 
 **Returns:**
 
-- `number`: of a and b
+- `number`: Sum of a and b
 
 **Usage Example:**
 
@@ -93,9 +93,6 @@ curl -X GET http://localhost:3000/users/:id
   placeholders left in.
 - TOC anchors follow GitHub's heading rules, including the `-1`, `-2` suffixes
   GitHub adds to repeated headings.
-- The `Returns` line drops the first word of the `@returns` description (here
-  `Sum of a and b` became `of a and b`). See
-  [Known issues](Technical-Design.md#known-issues).
 
 ## index.html
 
@@ -127,7 +124,7 @@ section per file.
       </div>
       <div class="returns">
         <h5>📤 Returns</h5>
-        <div class="param-item"><code>number</code> — of a and b</div>
+        <div class="param-item"><code>number</code> — Sum of a and b</div>
       </div>
       <h5 style="margin-top: 15px;">💡 Usage Example</h5>
       <div class="code-block">sum(a, b);</div>
@@ -280,7 +277,7 @@ Generated: <timestamp>
 ## Statistics
 
 - Files Scanned: 2
-- Functions Documented: 6
+- Functions Found: 6
 - API Routes Found: 5
 - Output Formats: markdown, html, json, openapi
 
@@ -298,13 +295,14 @@ All files generated in: `docs`
 
 `Output Formats` lists the formats as requested, including skipped ones;
 `Generated Files` lists only what was written. `Location` is relative to the
-working directory. `Functions Documented` is the number of functions found,
-documented or not.
+working directory. `Functions Found` counts every function, documented or
+not; use `audit` for coverage.
 
 ## Terminal report
 
-The default `audit` output. The bar is green when coverage meets the threshold
-and red when it doesn't. Without a colour terminal (not a TTY, or `NO_COLOR`
+The default `audit` output. The bar and each file name are coloured like the
+dashboard: green at or above the threshold, yellow within 30 points below it,
+red under that. Without a colour terminal (not a TTY, or `NO_COLOR`
 set) it uses `#`, `-`, `x`, `!` and `ok` instead of block characters and
 symbols.
 
@@ -393,9 +391,9 @@ file with no gaps shows `All items documented`; a run with no gaps ends with
 | `gaps[].existing`               | What the JSDoc block does have; `existing.voidReturn` is set for `@returns {void}`, `{undefined}` or `{never}` |
 | `filePath`                      | Path relative to the scanned directory                                                                         |
 
-Without `--output`, the JSON is printed to stdout after a
-`📊 Auditing documentation coverage...` banner line, so redirecting stdout does
-not give valid JSON. Use `--output <file>`.
+Without `--output`, the JSON is printed to stdout with nothing else around it,
+so it can be piped or redirected. With `--output <file>` it is written to that
+file instead.
 
 ## coverage-dashboard.html
 
@@ -438,9 +436,9 @@ A self-contained page (inline CSS and SVG, no scripts, no external requests).
 </div>
 ```
 
-- The gauge and the per-file bars are green from 80%, yellow from 50% and red
-  below 50%. The function and route cards use the same bands; the gaps card is
-  red whenever there is at least one gap. These colours are fixed and do not
-  follow `--threshold`.
+- The gauge and the per-file bars are green at or above `--threshold` (default
+  80%), yellow within 30 points below it and red under that. The function and
+  route cards use the same bands; the gaps card is red whenever there is at
+  least one gap. The gauge label shows the threshold.
 - The timestamp uses the machine's locale, unlike the ISO timestamps elsewhere.
 - File names, item names and the missing list are HTML-escaped.

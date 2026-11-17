@@ -35,6 +35,27 @@ function parseSource(sourceCode, filePath) {
   }
 }
 
+const NAMELESS_TAGS = new Set(['returns', 'return', 'throws', 'yields']);
+
+/**
+ * Put back the first word of tags that take no name. comment-parser reads
+ * every tag as `{type} name description`, so `@returns {number} The sum`
+ * would otherwise lose "The" to the name field.
+ * @param {Object} tag - Tag parsed by comment-parser
+ * @returns {Object} The tag with its full description and an empty name
+ */
+function normalizeNamelessTag(tag) {
+  if (!NAMELESS_TAGS.has(tag.tag) || !tag.name) return tag;
+  const word = tag.source?.[0]?.tokens?.name || tag.name;
+  const { default: _default, ...rest } = tag;
+  return {
+    ...rest,
+    name: '',
+    optional: false,
+    description: `${word} ${tag.description}`.trim(),
+  };
+}
+
 /**
  * Parse the text of a single JSDoc block
  * @param {string} raw - Comment text between the opening `/*` and closing `*\/`
@@ -46,9 +67,10 @@ function toJSDoc(raw, startLine, endLine) {
   try {
     const parsed = parse(`/*${raw}*/`);
     if (parsed && parsed.length > 0) {
+      const [block] = parsed;
       return {
         raw,
-        parsed: parsed[0],
+        parsed: { ...block, tags: block.tags.map(normalizeNamelessTag) },
         loc: {
           start: { line: startLine, column: 0 },
           end: { line: endLine, column: 0 },
@@ -419,21 +441,23 @@ function handleClassDeclaration(node, functions, exported, className) {
   const name = node.id?.name || className || 'anonymous';
 
   for (const member of node.body.body) {
-    if (
-      member.type !== 'MethodDefinition' &&
-      member.type !== 'TSAbstractMethodDefinition'
-    )
-      continue;
-    if (!member.value) continue;
+    const isMethod =
+      member.type === 'MethodDefinition' ||
+      member.type === 'TSAbstractMethodDefinition';
+    const isFunctionField =
+      (member.type === 'PropertyDefinition' ||
+        member.type === 'AccessorProperty') &&
+      FUNCTION_TYPES.includes(member.value?.type);
+    if ((!isMethod && !isFunctionField) || !member.value) continue;
 
     pushFunction(functions, member.value, {
       name: member.key?.name || member.key?.value || 'anonymous',
       line: member.loc?.start.line || 0,
-      nodeType: 'MethodDefinition',
+      nodeType: isMethod ? 'MethodDefinition' : 'PropertyDefinition',
       exported,
       className: name,
       static: member.static,
-      methodKind: member.kind || 'method',
+      methodKind: isMethod ? member.kind || 'method' : 'method',
     });
   }
 }
@@ -467,9 +491,40 @@ function traverse(root, visit) {
 }
 
 /**
+ * Statement lists of functions that run immediately at module load:
+ * `(function () {})()`, `(() => {})()`, `!function () {}()`,
+ * `(function () {}).call(this)`, plus function expressions passed as arguments
+ * to such a call, as in the UMD pattern `(function (root, factory) {})(this,
+ * function () { ... })`
+ * @param {Object} expression - Expression of a top-level expression statement
+ * @returns {Array<Array>} Statement lists to treat as module level
+ */
+function immediatelyInvokedBodies(expression) {
+  const call =
+    expression?.type === 'UnaryExpression' ? expression.argument : expression;
+  if (call?.type !== 'CallExpression') return [];
+
+  const callee =
+    call.callee?.type === 'MemberExpression' &&
+    ['call', 'apply'].includes(call.callee.property?.name)
+      ? call.callee.object
+      : call.callee;
+  if (!FUNCTION_TYPES.includes(callee?.type)) return [];
+
+  return [callee, ...call.arguments]
+    .filter(
+      (fn) =>
+        FUNCTION_TYPES.includes(fn?.type) && fn.body?.type === 'BlockStatement',
+    )
+    .map((fn) => fn.body.body);
+}
+
+/**
  * Collect module-level declarations, exported declaration nodes and exported
- * local names. TypeScript namespace and `declare module` bodies count as
- * module level.
+ * local names. Besides the program body, these count as module level:
+ * TypeScript namespace and `declare module` bodies, top-level blocks (`if`,
+ * `try`, bare blocks, labels) and the bodies of immediately-invoked functions,
+ * including function arguments passed to them (the UMD factory pattern).
  * @param {Object} ast - Program AST
  * @returns {{declarations: Set<Object>, names: Set<string>, moduleLevel: Set<Object>, exportLines: Map<Object, number>}} Export information
  */
@@ -523,6 +578,32 @@ function collectExports(ast) {
       if (decl?.type === 'TSModuleDeclaration' && decl.body?.body) {
         scan(decl.body.body);
       }
+      enterNested(node);
+    }
+  };
+
+  const enterNested = (node) => {
+    switch (node.type) {
+      case 'BlockStatement':
+        scan(node.body);
+        break;
+      case 'IfStatement':
+        enterNested(node.consequent);
+        if (node.alternate) enterNested(node.alternate);
+        break;
+      case 'TryStatement':
+        scan(node.block.body);
+        if (node.handler) scan(node.handler.body.body);
+        if (node.finalizer) scan(node.finalizer.body);
+        break;
+      case 'LabeledStatement':
+        enterNested(node.body);
+        break;
+      case 'ExpressionStatement':
+        for (const body of immediatelyInvokedBodies(node.expression)) {
+          scan(body);
+        }
+        break;
     }
   };
 
@@ -540,14 +621,14 @@ function collectItems(ast, routeServers) {
   const functions = [];
   const exports = collectExports(ast);
   const isExported = (node, name) =>
-    exports.declarations.has(node) ||
-    (!!name && exports.moduleLevel.has(node) && exports.names.has(name));
+    exports.declarations.has(node) || (!!name && exports.names.has(name));
   const exportDocLines = (node) =>
     exports.exportLines.has(node) ? [exports.exportLines.get(node)] : undefined;
 
   traverse(ast, (node) => {
     switch (node.type) {
       case 'FunctionDeclaration':
+        if (!exports.moduleLevel.has(node)) break;
         pushFunction(functions, node, {
           name: node.id?.name || 'anonymous',
           line: node.loc?.start.line || 0,
@@ -556,6 +637,7 @@ function collectItems(ast, routeServers) {
         });
         break;
       case 'ClassDeclaration':
+        if (!exports.moduleLevel.has(node)) break;
         handleClassDeclaration(
           node,
           functions,
@@ -563,6 +645,7 @@ function collectItems(ast, routeServers) {
         );
         break;
       case 'VariableDeclarator': {
+        if (!exports.moduleLevel.has(node)) break;
         const name = node.id?.type === 'Identifier' ? node.id.name : undefined;
         const exported = isExported(node, name);
         if (FUNCTION_TYPES.includes(node.init?.type)) {
@@ -574,11 +657,7 @@ function collectItems(ast, routeServers) {
           });
         } else if (node.init?.type === 'ClassExpression') {
           handleClassDeclaration(node.init, functions, exported, name);
-        } else if (
-          node.init?.type === 'ObjectExpression' &&
-          name &&
-          exports.moduleLevel.has(node)
-        ) {
+        } else if (node.init?.type === 'ObjectExpression' && name) {
           handleObjectMethods(node.init, functions, { prefix: name, exported });
         }
         break;
@@ -695,6 +774,15 @@ function matchJSDocToItems(jsdocs, items) {
   return { jsdocMap, itemKey };
 }
 
+/**
+ * Escape a string so it matches literally inside a regular expression
+ * @param {string} text - Text to escape
+ * @returns {string} Regex-safe text
+ */
+function escapeRegex(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /** Maximum file size to parse (1 MB). Files larger than this are likely
  *  minified bundles or machine-generated code — skip them with a warning. */
 const MAX_FILE_SIZE_BYTES = 1024 * 1024;
@@ -709,7 +797,7 @@ async function parseFile(filePath, config = {}) {
   const stat = await fs.stat(filePath);
   if (stat.size > MAX_FILE_SIZE_BYTES) {
     console.warn(
-      `Warning: Skipping ${filePath} (${(stat.size / 1024).toFixed(0)} KB) — exceeds 1 MB limit. Add it to excludePattern to suppress this warning.`,
+      `Warning: Skipping ${filePath} (${(stat.size / 1024).toFixed(0)} KB) — exceeds 1 MB limit. To skip it without this warning, add ${escapeRegex(path.basename(filePath))} to excludePattern.`,
     );
     return null;
   }
@@ -809,7 +897,8 @@ async function scanDirectory(dir, excludePattern = DEFAULT_EXCLUDE_PATTERN) {
  * Internal recursive implementation of directory scanning
  * @param {string} dir - Directory path
  * @param {RegExp} excludeRegex - Compiled regex for exclusion
- * @param {string} rootDir - Scan root; exclusion is tested against paths relative to it
+ * @param {string} rootDir - Scan root; exclusion is tested against directory
+ *   and file paths relative to it
  * @returns {Array} Array of file paths
  */
 async function _scanDirectoryImpl(dir, excludeRegex, rootDir) {
@@ -831,7 +920,8 @@ async function _scanDirectoryImpl(dir, excludeRegex, rootDir) {
       } else if (
         entry.isFile() &&
         JS_TS_FILE_REGEX.test(entry.name) &&
-        !DECLARATION_FILE_REGEX.test(entry.name)
+        !DECLARATION_FILE_REGEX.test(entry.name) &&
+        !excludeRegex.test(path.relative(rootDir, fullPath))
       ) {
         files.push(fullPath);
       }

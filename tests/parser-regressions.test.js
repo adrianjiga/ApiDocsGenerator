@@ -6,6 +6,7 @@ import {
   extractFunctions,
   parseDirectory,
   parseFile,
+  parseJSDoc,
   scanDirectory,
 } from '../src/parser.js';
 
@@ -47,6 +48,34 @@ describe('scanDirectory exclusion is relative to the scan root', () => {
 
     const files = await scanDirectory(tmpDir);
     expect(files.map((f) => path.basename(f))).toEqual(['app.js']);
+  });
+});
+
+describe('scanDirectory file exclusion', () => {
+  it('skips files whose name matches the exclude pattern', async () => {
+    writeFile('src/app.js', 'function app() {}');
+    writeFile('src/vendor.bundle.js', 'function big() {}');
+    writeFile('src/vendor.bundle-extra.js', 'function keep() {}');
+
+    const files = await scanDirectory(tmpDir, 'vendor\\.bundle\\.js');
+    expect(files.map((f) => path.basename(f)).sort()).toEqual([
+      'app.js',
+      'vendor.bundle-extra.js',
+    ]);
+  });
+});
+
+describe('large file warning', () => {
+  it('suggests an escaped pattern that skips the file', async () => {
+    const file = writeFile(
+      'vendor.bundle.js',
+      `// ${'x'.repeat(1024 * 1024)}\n`,
+    );
+    const result = await parseFile(file);
+    expect(result).toBeNull();
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('add vendor\\.bundle\\.js to excludePattern'),
+    );
   });
 });
 
@@ -129,6 +158,55 @@ function documented() {}
   });
 });
 
+describe('tags without a name', () => {
+  it('keeps the whole description of @returns, @throws and @yields', () => {
+    const [jsdoc] = parseJSDoc(`/**
+ * Sum
+ * @returns {number} The total sum
+ * @throws {RangeError} When the input is empty
+ * @yields {number} Each partial sum
+ */
+function f() {}`);
+    const tags = Object.fromEntries(
+      jsdoc.parsed.tags.map((t) => [t.tag, t.description]),
+    );
+    expect(tags).toEqual({
+      returns: 'The total sum',
+      throws: 'When the input is empty',
+      yields: 'Each partial sum',
+    });
+  });
+
+  it('keeps brackets and defaults the parser read as an optional name', () => {
+    const [jsdoc] = parseJSDoc(`/**
+ * @returns {string} [deprecated] the id
+ * @throws {Error} [when=closed] Closed connection
+ */`);
+    expect(
+      jsdoc.parsed.tags.map(({ description, optional, default: d }) => ({
+        description,
+        optional,
+        d,
+      })),
+    ).toEqual([
+      { description: '[deprecated] the id', optional: false, d: undefined },
+      {
+        description: '[when=closed] Closed connection',
+        optional: false,
+        d: undefined,
+      },
+    ]);
+  });
+
+  it('leaves @param names alone', () => {
+    const [jsdoc] = parseJSDoc('/**\n * @param {number} a - First\n */');
+    expect(jsdoc.parsed.tags[0]).toMatchObject({
+      name: 'a',
+      description: '- First',
+    });
+  });
+});
+
 describe('TypeScript parsing by file extension', () => {
   it('parses angle-bracket type assertions in .ts files', async () => {
     const file = writeFile(
@@ -204,7 +282,7 @@ module.exports = { b };
 });
 
 describe('module-level scope', () => {
-  it('does not mark a nested function exported because an export shares its name', () => {
+  it('reports only the module-level function when a nested one shares its name', () => {
     const result = extractFunctions(`
 function outer() {
   function handler(a) {}
@@ -213,7 +291,129 @@ function handler() {}
 module.exports = { handler };
 `);
     const handlers = result.filter((f) => f.name === 'handler');
-    expect(handlers.map((f) => f.exported)).toEqual([false, true]);
+    expect(handlers.map((f) => [f.params, f.exported])).toEqual([[[], true]]);
+  });
+
+  it('ignores functions, arrow functions and classes nested in function bodies', () => {
+    const result = extractFunctions(`
+export function outer() {
+  function helper() {}
+  const format = (x) => x;
+  class Local { run() {} }
+}
+`);
+    expect(result.map((f) => f.name)).toEqual(['outer']);
+  });
+
+  it('detects functions inside immediately-invoked functions', () => {
+    const result = extractFunctions(`
+(function () {
+  function add(a, b) {}
+  const sub = (a, b) => a - b;
+})();
+(() => { function arrowWrapped() {} })();
+!function () { function bang() {} }();
+(function () { function called() {} }).call(this);
+`);
+    expect(result.map((f) => f.name)).toEqual([
+      'add',
+      'sub',
+      'arrowWrapped',
+      'bang',
+      'called',
+    ]);
+  });
+
+  it('detects the factory API of a UMD wrapper', () => {
+    const result = extractFunctions(`
+(function (root, factory) {
+  if (typeof module === 'object') module.exports = factory();
+  else root.lib = factory();
+})(this, function () {
+  function parse(text) {}
+  class Parser { run() {} }
+  return { parse, Parser };
+});
+`);
+    expect(result.map((f) => f.name)).toEqual(['parse', 'run']);
+  });
+
+  it('detects declarations in top-level if, try and bare blocks', () => {
+    const result = extractFunctions(`
+if (typeof window !== 'undefined') { function inIf() {} } else { function inElse() {} }
+try { function inTry() {} } catch (e) { function inCatch() {} } finally { function inFinally() {} }
+{ function inBlock() {} }
+`);
+    expect(result.map((f) => f.name).sort()).toEqual([
+      'inBlock',
+      'inCatch',
+      'inElse',
+      'inFinally',
+      'inIf',
+      'inTry',
+    ]);
+  });
+
+  it('still ignores functions inside a named function that is called later', () => {
+    const result = extractFunctions(`
+function setup() { function helper() {} }
+setup();
+`);
+    expect(result.map((f) => f.name)).toEqual(['setup']);
+  });
+
+  it('detects auto-accessor class fields holding a function', () => {
+    const result = extractFunctions(`
+export class Widget {
+  accessor onChange = (value) => {};
+  accessor count = 0;
+}
+`);
+    expect(result.map((f) => [f.name, f.params, f.className])).toEqual([
+      ['onChange', ['value'], 'Widget'],
+    ]);
+  });
+
+  it('detects arrow functions and function expressions assigned as class fields', () => {
+    const result = extractFunctions(`
+export class Handlers {
+  onClick = (event) => {};
+  static create = function (opts) {};
+  label = 'x';
+  run() {}
+}
+`);
+    expect(
+      result.map((f) => ({
+        name: f.name,
+        params: f.params,
+        className: f.className,
+        static: f.static,
+        exported: f.exported,
+      })),
+    ).toEqual([
+      {
+        name: 'onClick',
+        params: ['event'],
+        className: 'Handlers',
+        static: false,
+        exported: true,
+      },
+      {
+        name: 'create',
+        params: ['opts'],
+        className: 'Handlers',
+        static: true,
+        exported: true,
+      },
+      {
+        name: 'run',
+        params: [],
+        className: 'Handlers',
+        static: false,
+        exported: true,
+      },
+    ]);
   });
 
   it('ignores object literals declared inside function bodies', () => {
