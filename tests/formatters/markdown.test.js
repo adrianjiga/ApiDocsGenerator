@@ -221,6 +221,32 @@ describe('generateMarkdown', () => {
     expect(utilHeadings).toBe(2);
   });
 
+  it('accounts for earlier non-file headings when numbering anchors', () => {
+    const fn = (name) => ({
+      name,
+      params: [],
+      description: 'x',
+      line: 1,
+      jsdoc: null,
+    });
+    const data = [
+      {
+        file: '/src/first.js',
+        fileName: 'first.js',
+        functions: [fn('functions')],
+        routes: [],
+      },
+      {
+        file: '/src/functions',
+        fileName: 'functions',
+        functions: [fn('g')],
+        routes: [],
+      },
+    ];
+    const md = generateMarkdown(data);
+    expect(md).toContain('[functions](#functions-2)');
+  });
+
   it('suffixes repeated anchors the way GitHub does', () => {
     const fn = {
       name: 'f',

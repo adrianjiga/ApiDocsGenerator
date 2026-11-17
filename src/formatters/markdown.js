@@ -7,6 +7,22 @@ import {
 } from '../utils.js';
 
 /**
+ * Compute the anchors GitHub gives a document's headings, in order. Repeated
+ * slugs get -1, -2… suffixes across all headings, whatever their level.
+ * @param {string[]} headings - Heading texts in document order
+ * @returns {string[]} Anchor for each heading
+ */
+function githubAnchors(headings) {
+  const counts = new Map();
+  return headings.map((text) => {
+    const slug = githubSlug(text);
+    const seen = counts.get(slug) || 0;
+    counts.set(slug, seen + 1);
+    return seen === 0 ? slug : `${slug}-${seen}`;
+  });
+}
+
+/**
  * Generate Markdown documentation
  * @param {Array} apiData - Array of parsed API metadata
  * @returns {string} Markdown formatted documentation
@@ -14,42 +30,30 @@ import {
 function generateMarkdown(apiData, config = {}) {
   const docTitle = config.apiTitle || 'API Documentation';
   const labels = uniqueFileLabels(apiData);
-  let md = `# ${docTitle}\n\n`;
-  md += `Generated: ${new Date().toISOString()}\n\n`;
+  const headings = [docTitle, 'Table of Contents'];
+  const fileHeadingIndex = new Map();
+  const heading = (level, text) => {
+    headings.push(text);
+    return `${'#'.repeat(level)} ${text}\n\n`;
+  };
 
-  // Table of contents
-  md += '## Table of Contents\n\n';
-
-  const slugCounts = new Map([['table-of-contents', 1]]);
-  let fileIndex = 1;
-  apiData.forEach((file) => {
-    if (file.functions.length > 0 || file.routes.length > 0) {
-      const label = labels.get(file.file);
-      const slug = githubSlug(label);
-      const seen = slugCounts.get(slug) || 0;
-      slugCounts.set(slug, seen + 1);
-      const anchor = seen === 0 ? slug : `${slug}-${seen}`;
-      md += `${fileIndex}. [${label}](#${anchor})\n`;
-      fileIndex++;
-    }
-  });
-
-  md += '\n---\n\n';
+  let md = '';
 
   // Detailed documentation
   apiData.forEach((file) => {
     if (file.functions.length === 0 && file.routes.length === 0) return;
 
     const label = labels.get(file.file);
-    md += `## ${label}\n\n`;
+    fileHeadingIndex.set(file.file, headings.length);
+    md += heading(2, label);
     md += `**File:** \`${file.fileName}\`\n\n`;
 
     // Functions
     if (file.functions.length > 0) {
-      md += '### Functions\n\n';
+      md += heading(3, 'Functions');
 
       file.functions.forEach((fn) => {
-        md += `#### \`${fn.name}(${fn.params.join(', ')})\`\n\n`;
+        md += heading(4, `\`${fn.name}(${fn.params.join(', ')})\``);
         md += `**Line:** ${fn.line}\n\n`;
 
         if (fn.jsdoc) {
@@ -90,10 +94,10 @@ function generateMarkdown(apiData, config = {}) {
 
     // Routes
     if (file.routes.length > 0) {
-      md += '### API Routes\n\n';
+      md += heading(3, 'API Routes');
 
       file.routes.forEach((route) => {
-        md += `#### \`${route.method} ${route.path}\`\n\n`;
+        md += heading(4, `\`${route.method} ${route.path}\``);
         md += `**Line:** ${route.line}\n\n`;
 
         if (route.jsdoc?.description) {
@@ -112,7 +116,24 @@ function generateMarkdown(apiData, config = {}) {
     }
   });
 
-  return md;
+  const anchors = githubAnchors(headings);
+  let toc = '';
+  let fileIndex = 1;
+  for (const [filePath, index] of fileHeadingIndex) {
+    toc += `${fileIndex}. [${labels.get(filePath)}](#${anchors[index]})\n`;
+    fileIndex++;
+  }
+
+  return `# ${docTitle}
+
+Generated: ${new Date().toISOString()}
+
+## Table of Contents
+
+${toc}
+---
+
+${md}`;
 }
 
 export { generateMarkdown };
