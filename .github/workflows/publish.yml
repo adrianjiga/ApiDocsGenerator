@@ -46,5 +46,5 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Publish to npm
-        run: npm publish --provenance --access public
+      - name: Stage on npm
+        run: npm stage publish --provenance --access public
