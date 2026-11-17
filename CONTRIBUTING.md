@@ -104,6 +104,11 @@ Releases are maintainers-only:
    pull request.
 2. After it merges, create a GitHub release with the tag `v<version>`.
 3. The `publish.yml` workflow checks that the tag matches `package.json`, runs
-   `npm run check` and the tests, and publishes to npm through trusted
-   publishing (OIDC) with provenance. No npm token is stored in the
-   repository.
+   `npm run check` and the tests, and stages the package on npm
+   (`npm stage publish`) through trusted publishing (OIDC) with provenance. No
+   npm token is stored in the repository.
+4. Approve the staged version with two-factor authentication, either on
+   npmjs.com under **Staged Packages** or with
+   `npm stage list @adrianjiga/api-docs-generator` and then
+   `npm stage approve <stage-id>`. Until it is approved, the version is not
+   public.
