@@ -19,14 +19,14 @@ Node.js CLI (npm package `@adrianjiga/api-docs-generator`, CLI command `api-docs
   - `type: 'doc'` — `generate(apiData, config)` returns a string written to its `filename` (e.g. markdown → `API.md`).
   - `type: 'report'` — `generate(report, threshold?)`; `filename: null` means print to stdout (terminal).
   - Aliases exist: `md`→markdown, `swagger`→openapi. `generate` skips unknown formats rather than failing.
-- Config: `apidocs.config.js` (ESM default export) loaded via dynamic `import()` in `generator.js:loadConfig`, merged over defaults. Keys: `excludePattern`, `serverUrl`, `apiTitle`, `apiVersion`. Repo root has `apidocs.config.js` — don't break it.
+- Config: first of `apidocs.config.js`/`.mjs`/`.cjs` in cwd (or `--config`), loaded via dynamic `import()` in `generator.js:loadConfig`, merged over defaults. Keys: `excludePattern`, `serverUrl`, `apiTitle`, `apiVersion`, `routeServers`. Vitest's loader accepts ESM in CommonJS packages where Node doesn't, so test real-Node config behaviour by spawning the CLI. Repo root has `apidocs.config.js` — don't break it.
 
 ## Gotchas
 
-- JSDoc matching is proximity-based: a comment must end within 2 lines above the function/route (`matchJSDocToItems`). `/** */` only; `//` comments are ignored.
-- Route detection is narrow: `app.<get|post|put|delete|patch>('/path', ...)` with a string-literal first arg (only CallExpressions with a `.property` callee).
+- JSDoc matching (`matchJSDocToItems`): a comment must end within 2 lines above the item, and the first code token after it must be on the item's line. Each comment documents at most one item. `/** */` only; `//` comments are ignored.
+- Route detection: `x.<get|post|put|delete|patch>('/path', ...)`, chained `x.route('/path').get(...)`, and Fastify `x.route({ method, url })`. Paths must be string literals starting with `/`; `routeServers` config restricts `x`.
 - Files over 1 MB are skipped with a warning (`MAX_FILE_SIZE_BYTES`). Minified bundles: add to `excludePattern`.
-- `@returns {void|undefined|never}` counts as fully documented; a missing `@returns` is a gap.
+- `@returns {void|undefined|never}` counts as fully documented; a missing `@returns` is a gap for functions only — routes don't need one.
 - Audit coverage = fully documented items / total items. Dashboard output default filename is `coverage-dashboard.html`.
 - Output filenames are fixed: `API.md`, `index.html`, `api.json`, `openapi.yaml`, `GENERATION_REPORT.md`.
 
