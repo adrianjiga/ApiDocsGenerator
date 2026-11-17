@@ -8,7 +8,11 @@ lerna-debug.log*
 
 # Generated documentation (api-docs-generator)
 examples/docs/
-docs/
+/docs/API.md
+/docs/index.html
+/docs/api.json
+/docs/openapi.yaml
+/docs/GENERATION_REPORT.md
 .output/
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
