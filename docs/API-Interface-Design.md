@@ -168,9 +168,11 @@ for tests and may change between minor versions.
 | `dashboard` |          | `report` | `coverage-dashboard.html` | `(report, threshold = 80) → string` |
 
 `generate` only accepts `doc` formats and skips the others with a warning.
-`audit` handles `json` itself and accepts the two `report` formats. The
-dashboard is green at or above the threshold, amber within 30 points below it,
-and red under that.
+`audit` handles `json` itself and accepts the two `report` formats. Both
+report formats colour coverage with `coverageLevel` from `src/utils.js`: green
+at or above the threshold (default `DEFAULT_COVERAGE_THRESHOLD`, 80), amber or
+yellow within `COVERAGE_WARNING_BAND` (30) points below it, and red under
+that.
 
 ## Command-Line Interface
 

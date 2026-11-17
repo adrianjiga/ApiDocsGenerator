@@ -300,8 +300,9 @@ not; use `audit` for coverage.
 
 ## Terminal report
 
-The default `audit` output. The bar is green when coverage meets the threshold
-and red when it doesn't. Without a colour terminal (not a TTY, or `NO_COLOR`
+The default `audit` output. The bar and each file name are coloured like the
+dashboard: green at or above the threshold, yellow within 30 points below it,
+red under that. Without a colour terminal (not a TTY, or `NO_COLOR`
 set) it uses `#`, `-`, `x`, `!` and `ok` instead of block characters and
 symbols.
 

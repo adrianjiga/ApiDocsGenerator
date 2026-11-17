@@ -193,9 +193,38 @@ function calcPercentage(part, total) {
   return parseFloat(((part / total) * 100).toFixed(1));
 }
 
+/**
+ * Coverage percentage `audit` requires when no --threshold is given
+ * @type {number}
+ */
+const DEFAULT_COVERAGE_THRESHOLD = 80;
+
+/**
+ * Points below the threshold that still count as a warning rather than an error
+ * @type {number}
+ */
+const COVERAGE_WARNING_BAND = 30;
+
+/**
+ * Classify a coverage percentage against the audit threshold: `good` at or
+ * above it, `warning` within COVERAGE_WARNING_BAND points below it, `error`
+ * otherwise. Shared by the terminal and dashboard reports.
+ * @param {number} percentage - Coverage percentage
+ * @param {number} [threshold] - Coverage threshold percentage
+ * @returns {'good'|'warning'|'error'} Coverage level
+ */
+function coverageLevel(percentage, threshold = DEFAULT_COVERAGE_THRESHOLD) {
+  if (percentage >= threshold) return 'good';
+  if (percentage >= threshold - COVERAGE_WARNING_BAND) return 'warning';
+  return 'error';
+}
+
 export {
+  COVERAGE_WARNING_BAND,
   calcPercentage,
   cleanTagDescription,
+  coverageLevel,
+  DEFAULT_COVERAGE_THRESHOLD,
   DEFAULT_EXCLUDE_PATTERN,
   escapeHtml,
   getParamName,

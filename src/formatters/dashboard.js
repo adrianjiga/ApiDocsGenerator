@@ -1,22 +1,11 @@
-import { escapeHtml } from '../utils.js';
+import {
+  coverageLevel,
+  DEFAULT_COVERAGE_THRESHOLD,
+  escapeHtml,
+} from '../utils.js';
 import { BASE_CSS } from './shared-styles.js';
 
-const DEFAULT_THRESHOLD = 80;
-const WARNING_BAND = 30;
 const LEVEL_COLORS = { good: '#44bb44', warning: '#ffaa44', error: '#ff4444' };
-
-/**
- * Classify a coverage percentage against the audit threshold: `good` at or
- * above it, `warning` within WARNING_BAND points below it, `error` otherwise
- * @param {number} percentage - Coverage percentage
- * @param {number} threshold - Coverage threshold percentage
- * @returns {'good'|'warning'|'error'} Coverage level
- */
-function coverageLevel(percentage, threshold) {
-  if (percentage >= threshold) return 'good';
-  if (percentage >= threshold - WARNING_BAND) return 'warning';
-  return 'error';
-}
 
 /**
  * Get the color for a coverage percentage
@@ -49,7 +38,7 @@ const GAUGE_CIRCUMFERENCE = 2 * Math.PI * GAUGE_RADIUS;
  * @param {number} [threshold=80] - Coverage threshold the colors are judged against
  * @returns {string} Self-contained HTML dashboard
  */
-function generateDashboard(report, threshold = DEFAULT_THRESHOLD) {
+function generateDashboard(report, threshold = DEFAULT_COVERAGE_THRESHOLD) {
   const { summary, files, gaps } = report;
   const coverage = summary.coveragePercentage;
 

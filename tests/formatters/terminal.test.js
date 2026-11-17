@@ -240,8 +240,15 @@ describe('formatTerminalReport', () => {
     expect(output).toContain('\x1b[32m[');
   });
 
-  it('uses red progress bar when coverage is below threshold', () => {
+  it('uses a yellow progress bar within 30 points below the threshold', () => {
     const report = makeReport({ summary: { coveragePercentage: 60 } });
+    withTTY(() => formatTerminalReport(report, 80));
+    const output = logOutput.join('\n');
+    expect(output).toContain('\x1b[33m[');
+  });
+
+  it('uses a red progress bar more than 30 points below the threshold', () => {
+    const report = makeReport({ summary: { coveragePercentage: 40 } });
     withTTY(() => formatTerminalReport(report, 80));
     const output = logOutput.join('\n');
     expect(output).toContain('\x1b[31m[');

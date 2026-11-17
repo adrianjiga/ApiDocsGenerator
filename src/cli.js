@@ -7,7 +7,7 @@ import { formatters } from './formatters/registry.js';
 import * as generator from './generator.js';
 import { loadConfig } from './generator.js';
 import * as parser from './parser.js';
-import { stripControlChars } from './utils.js';
+import { DEFAULT_COVERAGE_THRESHOLD, stripControlChars } from './utils.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json');
@@ -124,7 +124,11 @@ program
   .alias('a')
   .description('Audit documentation coverage')
   .option('-d, --dir <directory>', 'Source directory to scan', '.')
-  .option('-t, --threshold <number>', 'Coverage threshold percentage', '80')
+  .option(
+    '-t, --threshold <number>',
+    'Coverage threshold percentage',
+    String(DEFAULT_COVERAGE_THRESHOLD),
+  )
   .option(
     '-f, --format <format>',
     'Output format (terminal, json, or dashboard)',
