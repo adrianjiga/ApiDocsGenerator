@@ -127,11 +127,21 @@ All files generated in: \`${results.outputDir}\`
 }
 
 /**
+ * Names of formats that `generate` can write
+ * @returns {string[]} Document format names, including aliases
+ */
+function docFormatNames() {
+  return Object.keys(formatters).filter(
+    (name) => formatters[name].type === 'doc',
+  );
+}
+
+/**
  * Generate documentation in specified formats
  * @param {string} sourceDir - Source directory to parse
  * @param {string} outputDir - Output directory for generated docs
  * @param {Array} formats - Array of formats: ['markdown', 'html', 'json']
- * @returns {Object} Generation result with summary
+ * @returns {Promise<Object>} Generation result; success is false when nothing was generated or any format failed
  */
 async function generate(
   sourceDir,
@@ -179,6 +189,17 @@ async function generate(
         continue;
       }
 
+      if (formatter.type !== 'doc') {
+        console.warn(
+          `⚠️  "${format}" is a coverage report format; use the audit command`,
+        );
+        results.skipped.push({
+          format: lowerFormat,
+          reason: 'Report format; use audit',
+        });
+        continue;
+      }
+
       try {
         const content = formatter.generate(apiData, config);
         const filename = formatter.filename;
@@ -194,9 +215,11 @@ async function generate(
       } catch (err) {
         console.warn(`⚠️  Failed to generate ${format}: ${err.message}`);
         results.failed.push({ format: lowerFormat, error: err.message });
-        continue;
       }
     }
+
+    results.success =
+      results.generated.length > 0 && results.failed.length === 0;
 
     // Generate summary report
     const summary = buildSummaryReport(apiData, formats, results);
@@ -207,7 +230,17 @@ async function generate(
     );
     console.log(`\n📊 Generation Report: GENERATION_REPORT.md`);
 
-    console.log(`\n✨ Documentation generated successfully!`);
+    if (results.success) {
+      console.log(`\n✨ Documentation generated successfully!`);
+    } else if (results.generated.length === 0) {
+      console.error(
+        `\n❌ No documentation was generated. Valid formats: ${docFormatNames().join(', ')}`,
+      );
+    } else {
+      console.error(
+        `\n❌ Documentation generated with errors: ${results.failed.map((f) => f.format).join(', ')} failed`,
+      );
+    }
     console.log(`📁 Output directory: ${path.resolve(outputDir)}`);
 
     return results;

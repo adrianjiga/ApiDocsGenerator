@@ -104,10 +104,32 @@ describe('generate', () => {
     expect(result.success).toBe(false);
   });
 
-  it('succeeds with empty formats array', async () => {
+  it('fails when no formats are requested', async () => {
     const result = await generate(examplesDir, outputDir, []);
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
     expect(result.generated).toHaveLength(0);
+  });
+
+  it('fails when every requested format is unknown', async () => {
+    const result = await generate(examplesDir, outputDir, ['bogus']);
+    expect(result.success).toBe(false);
+    expect(result.skipped).toEqual([
+      { format: 'bogus', reason: 'Unknown format' },
+    ]);
+  });
+
+  it('skips report formats instead of calling them with API data', async () => {
+    const result = await generate(examplesDir, outputDir, [
+      'dashboard',
+      'terminal',
+      'json',
+    ]);
+    expect(result.success).toBe(true);
+    expect(result.generated.map((g) => g.format)).toEqual(['json']);
+    expect(result.skipped.map((s) => s.format)).toEqual([
+      'dashboard',
+      'terminal',
+    ]);
   });
 
   it('normalizes format names with different casing and whitespace', async () => {
@@ -132,7 +154,7 @@ describe('generate', () => {
     expect(result.generated[0].file).toBe('openapi.yaml');
   });
 
-  it('continues generating other formats when one formatter throws', async () => {
+  it('continues generating other formats but reports failure when one formatter throws', async () => {
     const original = formatters.json.generate;
     formatters.json.generate = () => {
       throw new Error('boom');
@@ -142,7 +164,7 @@ describe('generate', () => {
         'json',
         'markdown',
       ]);
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
       expect(result.generated).toHaveLength(1);
       expect(result.generated[0].format).toBe('markdown');
       expect(result.failed).toHaveLength(1);
