@@ -360,9 +360,5 @@ is not a TTY or `NO_COLOR` is set.
 
 ## Known issues
 
-- `audit --format json` without `--output` prints the
-  `📊 Auditing documentation coverage...` banner to stdout before the JSON, so
-  the stdout stream is not valid JSON. Use `--output <file>` to get a clean
-  file.
 - The `Functions Documented` line in `GENERATION_REPORT.md` is the number of
   functions found, not the number that are documented.

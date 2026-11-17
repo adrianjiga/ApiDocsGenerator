@@ -142,18 +142,6 @@ Any other error (a typo, a throw in the file) produces the same
   `❌ Documentation generated with errors: <format> failed`. Please open an
   issue with the error.
 
-## `audit --format json` is not valid JSON when piped
-
-Known issue: `audit` prints the `📊 Auditing documentation coverage...` line to
-standard output before the JSON, so `audit --format json | jq` or
-`> report.json` gets an extra line in front.
-
-Write the report with `--output` instead, which contains only the JSON:
-
-```bash
-api-docs-generator audit --format json --output coverage.json
-```
-
 ## Table of contents links in `API.md` go to the wrong section
 
 The TOC links use GitHub's anchor rules: headings are lowercased, punctuation is

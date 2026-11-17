@@ -390,9 +390,9 @@ file with no gaps shows `All items documented`; a run with no gaps ends with
 | `gaps[].existing`               | What the JSDoc block does have; `existing.voidReturn` is set for `@returns {void}`, `{undefined}` or `{never}` |
 | `filePath`                      | Path relative to the scanned directory                                                                         |
 
-Without `--output`, the JSON is printed to stdout after a
-`📊 Auditing documentation coverage...` banner line, so redirecting stdout does
-not give valid JSON. Use `--output <file>`.
+Without `--output`, the JSON is printed to stdout with nothing else around it,
+so it can be piped or redirected. With `--output <file>` it is written to that
+file instead.
 
 ## coverage-dashboard.html
 

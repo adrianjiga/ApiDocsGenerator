@@ -209,10 +209,8 @@ Report documentation coverage.
 | `-c, --config <path>`      |            | Config file to load instead of discovery                                                                 |
 | `--exclude <pattern>`      |            | Overrides `excludePattern`                                                                               |
 
-**Known issue:** `audit --format json` without `--output` prints a
-`📊 Auditing documentation coverage...` line to stdout before the JSON, so the
-stream is not valid JSON on its own. Use `--output <file>` to get a clean JSON
-file.
+With `--format json` and no `--output`, stdout carries only the JSON
+document, so it can be piped (for example into `jq`).
 
 ### scan [directory]
 

@@ -260,6 +260,18 @@ describe('audit command', () => {
     expect(jsonCall).toBeDefined();
   });
 
+  it('writes nothing but the JSON document to stdout when format is json', async () => {
+    parser.parseDirectory.mockResolvedValue([
+      { fileName: 'a.js', functions: [{ name: 'fn' }], routes: [] },
+    ]);
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    await program.parseAsync(['node', 'cli.js', 'audit', '-f', 'json']);
+
+    const stdout = logSpy.mock.calls.map((call) => call.join(' ')).join('\n');
+    expect(() => JSON.parse(stdout)).not.toThrow();
+  });
+
   it('writes json to a file when --output is provided', async () => {
     parser.parseDirectory.mockResolvedValue([
       { fileName: 'a.js', functions: [{ name: 'fn' }], routes: [] },

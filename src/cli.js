@@ -145,7 +145,9 @@ program
     const format = options.format.toLowerCase();
     const config = await resolveConfig(options);
 
-    console.log(`\n📊 Auditing documentation coverage...\n`);
+    if (format !== 'json') {
+      console.log(`\n📊 Auditing documentation coverage...\n`);
+    }
 
     const apiData = await parser.parseDirectory(sourceDir, config);
 
