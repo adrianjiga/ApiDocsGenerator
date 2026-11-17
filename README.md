@@ -154,7 +154,7 @@ api-docs-generator audit --dir ./src --threshold 75 --format terminal
 
 **Coverage Metrics:**
 
-- **Fully Documented**: Function has JSDoc, description, @param for all params, and @returns (or @return) tag
+- **Fully Documented**: Function has JSDoc, description, @param for all params, and @returns (or @return) tag. Routes need a description and @param for each path parameter; @returns is optional for routes
 - **Partially Documented**: Function has JSDoc but missing required elements
 - **Undocumented**: No JSDoc comment
 - **Coverage Percentage**: (Fully documented items) / (Total items) × 100
@@ -430,8 +430,8 @@ The built-in coverage analyzer helps you maintain high documentation quality acr
 
 - ✅ JSDoc comment block
 - ✅ Description text
-- ✅ @param tags for all parameters
-- ✅ @returns tag (or @return alias)
+- ✅ @param tags for all parameters (path parameters for routes)
+- ✅ @returns tag (or @return alias) — functions only
 
 **Partially Documented Items** have:
 
