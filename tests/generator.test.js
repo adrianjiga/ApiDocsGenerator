@@ -1,21 +1,27 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import fs from 'fs-extra';
+import fs from 'fs/promises';
 import path from 'path';
 import { generate } from '../src/generator.js';
 import { formatters } from '../src/formatters/registry.js';
 
 const outputDir = path.resolve('tests/.tmp-generator-output');
+
+const pathExists = (p) =>
+  fs.access(p).then(
+    () => true,
+    () => false,
+  );
 const examplesDir = path.resolve('examples');
 
 beforeEach(async () => {
-  await fs.remove(outputDir);
+  await fs.rm(outputDir, { recursive: true, force: true });
   vi.spyOn(console, 'log').mockImplementation(() => {});
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
 afterEach(async () => {
-  await fs.remove(outputDir);
+  await fs.rm(outputDir, { recursive: true, force: true });
   vi.restoreAllMocks();
 });
 
@@ -28,12 +34,12 @@ describe('generate', () => {
     ]);
     expect(result.success).toBe(true);
     expect(result.generated).toHaveLength(3);
-    expect(await fs.pathExists(path.join(outputDir, 'API.md'))).toBe(true);
-    expect(await fs.pathExists(path.join(outputDir, 'index.html'))).toBe(true);
-    expect(await fs.pathExists(path.join(outputDir, 'api.json'))).toBe(true);
-    expect(
-      await fs.pathExists(path.join(outputDir, 'GENERATION_REPORT.md')),
-    ).toBe(true);
+    expect(await pathExists(path.join(outputDir, 'API.md'))).toBe(true);
+    expect(await pathExists(path.join(outputDir, 'index.html'))).toBe(true);
+    expect(await pathExists(path.join(outputDir, 'api.json'))).toBe(true);
+    expect(await pathExists(path.join(outputDir, 'GENERATION_REPORT.md'))).toBe(
+      true,
+    );
   });
 
   it('generates only markdown when requested', async () => {
@@ -41,8 +47,8 @@ describe('generate', () => {
     expect(result.success).toBe(true);
     expect(result.generated).toHaveLength(1);
     expect(result.generated[0].format).toBe('markdown');
-    expect(await fs.pathExists(path.join(outputDir, 'API.md'))).toBe(true);
-    expect(await fs.pathExists(path.join(outputDir, 'index.html'))).toBe(false);
+    expect(await pathExists(path.join(outputDir, 'API.md'))).toBe(true);
+    expect(await pathExists(path.join(outputDir, 'index.html'))).toBe(false);
   });
 
   it('accepts "md" as alias for markdown', async () => {
@@ -65,7 +71,7 @@ describe('generate', () => {
 
   it('returns failure for empty directory', async () => {
     const emptyDir = path.join(outputDir, 'empty-src');
-    await fs.ensureDir(emptyDir);
+    await fs.mkdir(emptyDir, { recursive: true });
     const result = await generate(emptyDir, outputDir, ['json']);
     expect(result.success).toBe(false);
   });
@@ -73,7 +79,7 @@ describe('generate', () => {
   it('creates output directory if it does not exist', async () => {
     const nested = path.join(outputDir, 'deep', 'nested');
     await generate(examplesDir, nested, ['json']);
-    expect(await fs.pathExists(nested)).toBe(true);
+    expect(await pathExists(nested)).toBe(true);
   });
 
   it('writes valid JSON to api.json', async () => {
@@ -117,9 +123,7 @@ describe('generate', () => {
     expect(result.success).toBe(true);
     expect(result.generated).toHaveLength(1);
     expect(result.generated[0].format).toBe('openapi');
-    expect(await fs.pathExists(path.join(outputDir, 'openapi.yaml'))).toBe(
-      true,
-    );
+    expect(await pathExists(path.join(outputDir, 'openapi.yaml'))).toBe(true);
   });
 
   it('accepts "swagger" as alias for openapi', async () => {

@@ -1,4 +1,4 @@
-import fs from 'fs-extra';
+import fs from 'fs/promises';
 import path from 'path';
 import { pathToFileURL } from 'url';
 import * as parser from './parser.js';
@@ -29,6 +29,20 @@ function getDefaultConfig() {
 }
 
 /**
+ * Check whether a path exists
+ * @param {string} filePath - Path to check
+ * @returns {Promise<boolean>} True when the path exists
+ */
+async function pathExists(filePath) {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Load configuration from file and merge with defaults
  * @param {string} configPath - Path to the configuration file
  * @returns {Object} Merged configuration object
@@ -38,7 +52,7 @@ async function loadConfig(configPath) {
   const filePath = configPath || path.join(process.cwd(), 'apidocs.config.js');
 
   try {
-    const exists = await fs.pathExists(filePath);
+    const exists = await pathExists(filePath);
     if (!exists) {
       // Only warn when a config path was explicitly requested; a missing
       // default config at the project root is a normal, quiet fallback.
@@ -126,7 +140,7 @@ async function generate(
     console.log(`✅ Parsed ${apiData.length} file(s)`);
 
     // Ensure output directory exists
-    await fs.ensureDir(outputDir);
+    await fs.mkdir(outputDir, { recursive: true });
 
     const results = {
       success: true,

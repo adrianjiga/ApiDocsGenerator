@@ -1,6 +1,6 @@
 import path from 'path';
 import { createRequire } from 'module';
-import fs from 'fs-extra';
+import fs from 'fs/promises';
 import { program } from 'commander';
 import * as generator from './generator.js';
 import * as parser from './parser.js';
@@ -160,7 +160,7 @@ program
       if (options.output) {
         const outputPath = path.resolve(options.output);
         const outputDir = path.dirname(outputPath);
-        await fs.ensureDir(outputDir);
+        await fs.mkdir(outputDir, { recursive: true });
         await fs.writeFile(outputPath, json);
         console.log(`✅ json written to: ${outputPath}\n`);
       } else {
@@ -172,7 +172,7 @@ program
         const outputFile = options.output || formatter.filename;
         const outputPath = path.resolve(outputFile);
         const outputDir = path.dirname(outputPath);
-        await fs.ensureDir(outputDir);
+        await fs.mkdir(outputDir, { recursive: true });
         const content = formatter.generate(result);
         await fs.writeFile(outputPath, content);
         console.log(`✅ ${format} written to: ${outputPath}\n`);

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import fs from 'fs-extra';
+import fs from 'fs/promises';
 import path from 'path';
 import { generate } from '../src/generator.js';
 import { parseDirectory } from '../src/parser.js';
@@ -9,14 +9,14 @@ const examplesDir = path.resolve('examples');
 const outputDir = path.resolve('tests/.tmp-integration-output');
 
 beforeEach(async () => {
-  await fs.remove(outputDir);
+  await fs.rm(outputDir, { recursive: true, force: true });
   vi.spyOn(console, 'log').mockImplementation(() => {});
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
 afterEach(async () => {
-  await fs.remove(outputDir);
+  await fs.rm(outputDir, { recursive: true, force: true });
   vi.restoreAllMocks();
 });
 
@@ -63,15 +63,13 @@ describe('full pipeline: parse → analyze → generate', () => {
 
     // Verify files actually exist on disk
     for (const entry of result.generated) {
-      const exists = await fs.pathExists(entry.path);
-      expect(exists).toBe(true);
+      await expect(fs.access(entry.path)).resolves.toBeUndefined();
     }
 
     // Verify report file was created
-    const reportExists = await fs.pathExists(
-      path.join(outputDir, 'GENERATION_REPORT.md'),
-    );
-    expect(reportExists).toBe(true);
+    await expect(
+      fs.access(path.join(outputDir, 'GENERATION_REPORT.md')),
+    ).resolves.toBeUndefined();
   });
 
   it('generated markdown contains function names from source', async () => {
