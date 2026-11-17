@@ -65,6 +65,20 @@ describe('scanDirectory file exclusion', () => {
   });
 });
 
+describe('large file warning', () => {
+  it('suggests an escaped pattern that skips the file', async () => {
+    const file = writeFile(
+      'vendor.bundle.js',
+      `// ${'x'.repeat(1024 * 1024)}\n`,
+    );
+    const result = await parseFile(file);
+    expect(result).toBeNull();
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('add vendor\\.bundle\\.js to excludePattern'),
+    );
+  });
+});
+
 describe('scanDirectory file types', () => {
   it('includes module-specific extensions and skips declaration files', async () => {
     for (const name of [

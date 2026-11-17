@@ -620,8 +620,7 @@ function collectItems(ast, routeServers) {
   const functions = [];
   const exports = collectExports(ast);
   const isExported = (node, name) =>
-    exports.declarations.has(node) ||
-    (!!name && exports.moduleLevel.has(node) && exports.names.has(name));
+    exports.declarations.has(node) || (!!name && exports.names.has(name));
   const exportDocLines = (node) =>
     exports.exportLines.has(node) ? [exports.exportLines.get(node)] : undefined;
 
@@ -774,6 +773,15 @@ function matchJSDocToItems(jsdocs, items) {
   return { jsdocMap, itemKey };
 }
 
+/**
+ * Escape a string so it matches literally inside a regular expression
+ * @param {string} text - Text to escape
+ * @returns {string} Regex-safe text
+ */
+function escapeRegex(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /** Maximum file size to parse (1 MB). Files larger than this are likely
  *  minified bundles or machine-generated code — skip them with a warning. */
 const MAX_FILE_SIZE_BYTES = 1024 * 1024;
@@ -788,7 +796,7 @@ async function parseFile(filePath, config = {}) {
   const stat = await fs.stat(filePath);
   if (stat.size > MAX_FILE_SIZE_BYTES) {
     console.warn(
-      `Warning: Skipping ${filePath} (${(stat.size / 1024).toFixed(0)} KB) — exceeds 1 MB limit. Add its file name to excludePattern to skip it without this warning.`,
+      `Warning: Skipping ${filePath} (${(stat.size / 1024).toFixed(0)} KB) — exceeds 1 MB limit. To skip it without this warning, add ${escapeRegex(path.basename(filePath))} to excludePattern.`,
     );
     return null;
   }

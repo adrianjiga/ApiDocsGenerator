@@ -27,8 +27,11 @@ Causes, in the order worth checking:
   `--exclude` or `excludePattern` in the config.
 - **File too large.** Files over 1 MB are skipped with
   `Warning: Skipping <file> (<size> KB) — exceeds 1 MB limit.` These are almost
-  always bundles or generated code. To skip such a file without the warning,
-  add its name to `excludePattern`, e.g. `--exclude 'node_modules|dist|vendor\.bundle\.js'`.
+  always bundles or generated code. The warning ends with the file name
+  escaped for a regex (e.g. `vendor\.bundle\.js`); add that to
+  `excludePattern` to skip the file silently, e.g.
+  `--exclude 'node_modules|dist|vendor\.bundle\.js'`. Keep the backslashes: an
+  unescaped `.` matches any character.
 
 ## An item shows as undocumented although it has a comment
 
