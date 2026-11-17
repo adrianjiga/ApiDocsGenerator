@@ -133,4 +133,21 @@ describe('loadConfig default file discovery', () => {
     });
     expect(result.stderr).toContain('rename it to apidocs.config.mjs');
   });
+
+  it('suggests export default when a CommonJS .js config fails in an ES module project', () => {
+    fs.writeFileSync(
+      path.join(tmpDir, 'package.json'),
+      '{ "type": "module" }\n',
+    );
+    fs.writeFileSync(
+      path.join(tmpDir, 'apidocs.config.js'),
+      'module.exports = { apiTitle: "CJS" };\n',
+    );
+    const result = spawnSync(process.execPath, [binPath, 'scan', tmpDir], {
+      cwd: tmpDir,
+      encoding: 'utf8',
+    });
+    expect(result.stderr).toContain('use export default');
+    expect(result.stderr).not.toContain('..');
+  });
 });

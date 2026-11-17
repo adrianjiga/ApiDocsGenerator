@@ -62,6 +62,26 @@ async function findDefaultConfig(dir) {
 }
 
 /**
+ * Suggest a fix for a config file written in the wrong module format
+ * @param {Error} err - Error thrown while importing the config
+ * @param {string} filePath - Path of the config file
+ * @returns {string} Hint text, or an empty string when none applies
+ */
+function configLoadHint(err, filePath) {
+  if (path.extname(filePath) !== '.js') return '';
+  if (err instanceof SyntaxError) {
+    return ' If your project is CommonJS, rename it to apidocs.config.mjs or use module.exports.';
+  }
+  if (
+    err instanceof ReferenceError &&
+    /\b(module|exports|require) is not defined\b/.test(err.message)
+  ) {
+    return ' If your project is an ES module ("type": "module"), use export default or rename it to apidocs.config.cjs.';
+  }
+  return '';
+}
+
+/**
  * Load configuration from file and merge with defaults. Without an explicit
  * path, looks for apidocs.config.js, .mjs or .cjs in the working directory.
  * @param {string} [configPath] - Path to the configuration file
@@ -86,12 +106,9 @@ async function loadConfig(configPath) {
     const userConfig = mod.default || mod;
     return { ...defaults, ...userConfig };
   } catch (err) {
-    const hint =
-      err instanceof SyntaxError && path.extname(filePath) === '.js'
-        ? ' If your project is CommonJS, rename it to apidocs.config.mjs or use module.exports.'
-        : '';
+    const message = err.message.replace(/\.$/, '');
     console.warn(
-      `Warning: Failed to load config from ${filePath}: ${err.message}.${hint}`,
+      `Warning: Failed to load config from ${filePath}: ${message}. Using defaults.${configLoadHint(err, filePath)}`,
     );
     return defaults;
   }
@@ -232,13 +249,16 @@ async function generate(
 
     if (results.success) {
       console.log(`\n✨ Documentation generated successfully!`);
-    } else if (results.generated.length === 0) {
+    } else if (results.failed.length > 0) {
+      const failedFormats = results.failed.map((f) => f.format).join(', ');
       console.error(
-        `\n❌ No documentation was generated. Valid formats: ${docFormatNames().join(', ')}`,
+        results.generated.length > 0
+          ? `\n❌ Documentation generated with errors: ${failedFormats} failed`
+          : `\n❌ No documentation was generated: ${failedFormats} failed`,
       );
     } else {
       console.error(
-        `\n❌ Documentation generated with errors: ${results.failed.map((f) => f.format).join(', ')} failed`,
+        `\n❌ No documentation was generated. Valid formats: ${docFormatNames().join(', ')}`,
       );
     }
     console.log(`📁 Output directory: ${path.resolve(outputDir)}`);

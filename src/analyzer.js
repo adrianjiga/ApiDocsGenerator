@@ -249,9 +249,8 @@ function checkFunctionDocumentation(func) {
 }
 
 /**
- * Check documentation status of a route. Routes need a description and a
- * @param for each path parameter; @returns is optional because a handler's
- * response is not its return value.
+ * Check documentation status of a route: a description and a @param for each
+ * path parameter are required, @returns is not
  * @param {Object} route - Route object with method, path, params, jsdoc
  * @returns {Object} Status object with isFullyDocumented, isPartiallyDocumented, missing, existing
  */

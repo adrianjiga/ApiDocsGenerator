@@ -183,6 +183,21 @@ describe('generate', () => {
     }
   });
 
+  it('reports the failed format instead of listing valid formats when every format throws', async () => {
+    const original = formatters.markdown.generate;
+    formatters.markdown.generate = () => {
+      throw new Error('boom');
+    };
+    try {
+      await generate(examplesDir, outputDir, ['markdown']);
+      const messages = console.error.mock.calls.flat().join('\n');
+      expect(messages).toContain('markdown failed');
+      expect(messages).not.toContain('Valid formats');
+    } finally {
+      formatters.markdown.generate = original;
+    }
+  });
+
   it('includes failed format details in results', async () => {
     const original = formatters.html.generate;
     formatters.html.generate = () => {
