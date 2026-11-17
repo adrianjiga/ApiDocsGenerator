@@ -105,20 +105,20 @@ to.
 
 ### Functions
 
-| Source form                                         | Item name             | Notes                                                                        |
-| --------------------------------------------------- | --------------------- | ---------------------------------------------------------------------------- |
-| `function f() {}`                                   | `f`                   | Anywhere in the file, nested ones included                                   |
-| `export default function () {}`                     | `anonymous`           |                                                                              |
-| `const f = () => {}` / `const f = function () {}`   | `f`                   | Anywhere in the file                                                         |
-| `class A { m() {} }` / `const A = class { m() {} }` | `m`, class `A`        | Every method, including `constructor`, getters, setters and abstract methods |
-| `A.prototype.m = function () {}`                    | `m`, class `A`        | Module level only                                                            |
-| `const api = { list() {}, get: () => {} }`          | `api.list`, `api.get` | Module level only; getters and setters skipped                               |
-| `export default { list() {} }`                      | `list`                | Exported                                                                     |
-| `module.exports = function main() {}`               | `main` (or `default`) | Module level only; exported                                                  |
-| `exports.f = () => {}` / `module.exports.f = ...`   | `f`                   | Module level only; exported                                                  |
-| `module.exports = { a() {}, b: () => {} }`          | `a`, `b`              | Module level only; exported                                                  |
+| Source form                                         | Item name             | Notes                                                                                              |
+| --------------------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------- |
+| `function f() {}`                                   | `f`                   | Module level only                                                                                  |
+| `export default function () {}`                     | `anonymous`           |                                                                                                    |
+| `const f = () => {}` / `const f = function () {}`   | `f`                   | Module level only                                                                                  |
+| `class A { m() {} }` / `const A = class { m() {} }` | `m`, class `A`        | Module-level classes; every method, including `constructor`, getters, setters and abstract methods |
+| `class A { m = () => {} }`                          | `m`, class `A`        | Fields holding an arrow function or function expression                                            |
+| `A.prototype.m = function () {}`                    | `m`, class `A`        | Module level only                                                                                  |
+| `const api = { list() {}, get: () => {} }`          | `api.list`, `api.get` | Module level only; getters and setters skipped                                                     |
+| `export default { list() {} }`                      | `list`                | Exported                                                                                           |
+| `module.exports = function main() {}`               | `main` (or `default`) | Module level only; exported                                                                        |
+| `exports.f = () => {}` / `module.exports.f = ...`   | `f`                   | Module level only; exported                                                                        |
+| `module.exports = { a() {}, b: () => {} }`          | `a`, `b`              | Module level only; exported                                                                        |
 
-Class property arrow functions (`class A { m = () => {} }`) are not detected.
 Parameter names come from `getParamName`: rest parameters become `...name`,
 default values are dropped, and destructured parameters become `{a, b}` or
 `[a, b]`.
@@ -138,8 +138,9 @@ An item is marked exported when either:
   `export default name`, `module.exports = name`, `exports.x = name` or
   `module.exports = { name }` (`exports.names`).
 
-A nested function that happens to share a name with an exported binding is not
-marked exported. CommonJS export assignments and `export default { ... }`
+Functions and classes nested inside function bodies are not detected at all,
+so they can never be marked exported by sharing a name with an exported
+binding. CommonJS export assignments and `export default { ... }`
 methods are always exported.
 
 ### Routes

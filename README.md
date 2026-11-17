@@ -105,9 +105,9 @@ The command is `api-docs-generator` in every case.
 
 - **Files**: `.js`, `.mjs`, `.cjs`, `.jsx`, `.ts`, `.mts`, `.cts` and `.tsx`.
   TypeScript declaration files and files over 1 MB are skipped.
-- **Functions**: declarations, arrow functions and function expressions, class
-  and prototype methods, methods of module-level object literals, and CommonJS
-  exports.
+- **Functions**: module-level declarations, arrow functions and function
+  expressions, class methods and function-valued class fields, prototype
+  methods, methods of module-level object literals, and CommonJS exports.
 - **Routes**: Express `app.get('/path')` (also `post`, `put`, `delete` and
   `patch`), chained `app.route('/path').get()`, and Fastify
   `fastify.route({ method, url })`.

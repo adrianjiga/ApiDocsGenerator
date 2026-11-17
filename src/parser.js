@@ -438,21 +438,22 @@ function handleClassDeclaration(node, functions, exported, className) {
   const name = node.id?.name || className || 'anonymous';
 
   for (const member of node.body.body) {
-    if (
-      member.type !== 'MethodDefinition' &&
-      member.type !== 'TSAbstractMethodDefinition'
-    )
-      continue;
-    if (!member.value) continue;
+    const isMethod =
+      member.type === 'MethodDefinition' ||
+      member.type === 'TSAbstractMethodDefinition';
+    const isFunctionField =
+      member.type === 'PropertyDefinition' &&
+      FUNCTION_TYPES.includes(member.value?.type);
+    if ((!isMethod && !isFunctionField) || !member.value) continue;
 
     pushFunction(functions, member.value, {
       name: member.key?.name || member.key?.value || 'anonymous',
       line: member.loc?.start.line || 0,
-      nodeType: 'MethodDefinition',
+      nodeType: isMethod ? 'MethodDefinition' : 'PropertyDefinition',
       exported,
       className: name,
       static: member.static,
-      methodKind: member.kind || 'method',
+      methodKind: isMethod ? member.kind || 'method' : 'method',
     });
   }
 }
@@ -567,6 +568,7 @@ function collectItems(ast, routeServers) {
   traverse(ast, (node) => {
     switch (node.type) {
       case 'FunctionDeclaration':
+        if (!exports.moduleLevel.has(node)) break;
         pushFunction(functions, node, {
           name: node.id?.name || 'anonymous',
           line: node.loc?.start.line || 0,
@@ -575,6 +577,7 @@ function collectItems(ast, routeServers) {
         });
         break;
       case 'ClassDeclaration':
+        if (!exports.moduleLevel.has(node)) break;
         handleClassDeclaration(
           node,
           functions,
@@ -582,6 +585,7 @@ function collectItems(ast, routeServers) {
         );
         break;
       case 'VariableDeclarator': {
+        if (!exports.moduleLevel.has(node)) break;
         const name = node.id?.type === 'Identifier' ? node.id.name : undefined;
         const exported = isExported(node, name);
         if (FUNCTION_TYPES.includes(node.init?.type)) {
@@ -593,11 +597,7 @@ function collectItems(ast, routeServers) {
           });
         } else if (node.init?.type === 'ClassExpression') {
           handleClassDeclaration(node.init, functions, exported, name);
-        } else if (
-          node.init?.type === 'ObjectExpression' &&
-          name &&
-          exports.moduleLevel.has(node)
-        ) {
+        } else if (node.init?.type === 'ObjectExpression' && name) {
           handleObjectMethods(node.init, functions, { prefix: name, exported });
         }
         break;

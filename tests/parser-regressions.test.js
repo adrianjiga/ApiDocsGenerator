@@ -247,7 +247,7 @@ module.exports = { b };
 });
 
 describe('module-level scope', () => {
-  it('does not mark a nested function exported because an export shares its name', () => {
+  it('reports only the module-level function when a nested one shares its name', () => {
     const result = extractFunctions(`
 function outer() {
   function handler(a) {}
@@ -256,7 +256,60 @@ function handler() {}
 module.exports = { handler };
 `);
     const handlers = result.filter((f) => f.name === 'handler');
-    expect(handlers.map((f) => f.exported)).toEqual([false, true]);
+    expect(handlers.map((f) => [f.params, f.exported])).toEqual([[[], true]]);
+  });
+
+  it('ignores functions, arrow functions and classes nested in function bodies', () => {
+    const result = extractFunctions(`
+export function outer() {
+  function helper() {}
+  const format = (x) => x;
+  class Local { run() {} }
+}
+`);
+    expect(result.map((f) => f.name)).toEqual(['outer']);
+  });
+
+  it('detects arrow functions and function expressions assigned as class fields', () => {
+    const result = extractFunctions(`
+export class Handlers {
+  onClick = (event) => {};
+  static create = function (opts) {};
+  label = 'x';
+  run() {}
+}
+`);
+    expect(
+      result.map((f) => ({
+        name: f.name,
+        params: f.params,
+        className: f.className,
+        static: f.static,
+        exported: f.exported,
+      })),
+    ).toEqual([
+      {
+        name: 'onClick',
+        params: ['event'],
+        className: 'Handlers',
+        static: false,
+        exported: true,
+      },
+      {
+        name: 'create',
+        params: ['opts'],
+        className: 'Handlers',
+        static: true,
+        exported: true,
+      },
+      {
+        name: 'run',
+        params: [],
+        className: 'Handlers',
+        static: false,
+        exported: true,
+      },
+    ]);
   });
 
   it('ignores object literals declared inside function bodies', () => {

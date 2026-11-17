@@ -10,7 +10,9 @@ change can weigh the original trade-off before unpicking it.
   instead of the nearest item within 2 lines.
 - [0003-module-level-detection](0003-module-level-detection.md) — object
   literal methods, export assignments and export-by-name only count at module
-  level; object accessors are skipped.
+  level; object accessors are skipped (amended by **0003A**: functions and
+  classes are module level only too, and class fields holding functions are
+  detected).
 - [0004-routes-do-not-require-returns](0004-routes-do-not-require-returns.md) —
   a route is documented with a description and its path parameters.
 - [0005-typescript-6-not-7](0005-typescript-6-not-7.md) — stay on TypeScript
