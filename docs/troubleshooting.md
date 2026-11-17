@@ -76,8 +76,9 @@ If `routeServers` is set in the config, only calls on those identifiers count:
 ## A function is not detected
 
 - **Nested functions and classes** are ignored. Function declarations,
-  `const f = () => {}` and classes count only at module level (or inside a
-  TypeScript `namespace`), not inside another function.
+  `const f = () => {}` and classes count only at module level, not inside
+  another function. Top-level `if`/`try` blocks, TypeScript namespaces and
+  immediately-invoked wrappers (IIFE and UMD) count as module level.
 - **Object literal methods** are only read from objects declared at module
   level (`const api = { list() {} }` or `module.exports = { ... }`). Option or
   callback objects inside function bodies are ignored on purpose.

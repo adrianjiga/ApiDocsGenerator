@@ -270,6 +270,63 @@ export function outer() {
     expect(result.map((f) => f.name)).toEqual(['outer']);
   });
 
+  it('detects functions inside immediately-invoked functions', () => {
+    const result = extractFunctions(`
+(function () {
+  function add(a, b) {}
+  const sub = (a, b) => a - b;
+})();
+(() => { function arrowWrapped() {} })();
+!function () { function bang() {} }();
+(function () { function called() {} }).call(this);
+`);
+    expect(result.map((f) => f.name)).toEqual([
+      'add',
+      'sub',
+      'arrowWrapped',
+      'bang',
+      'called',
+    ]);
+  });
+
+  it('detects the factory API of a UMD wrapper', () => {
+    const result = extractFunctions(`
+(function (root, factory) {
+  if (typeof module === 'object') module.exports = factory();
+  else root.lib = factory();
+})(this, function () {
+  function parse(text) {}
+  class Parser { run() {} }
+  return { parse, Parser };
+});
+`);
+    expect(result.map((f) => f.name)).toEqual(['parse', 'run']);
+  });
+
+  it('detects declarations in top-level if, try and bare blocks', () => {
+    const result = extractFunctions(`
+if (typeof window !== 'undefined') { function inIf() {} } else { function inElse() {} }
+try { function inTry() {} } catch (e) { function inCatch() {} } finally { function inFinally() {} }
+{ function inBlock() {} }
+`);
+    expect(result.map((f) => f.name).sort()).toEqual([
+      'inBlock',
+      'inCatch',
+      'inElse',
+      'inFinally',
+      'inIf',
+      'inTry',
+    ]);
+  });
+
+  it('still ignores functions inside a named function that is called later', () => {
+    const result = extractFunctions(`
+function setup() { function helper() {} }
+setup();
+`);
+    expect(result.map((f) => f.name)).toEqual(['setup']);
+  });
+
   it('detects arrow functions and function expressions assigned as class fields', () => {
     const result = extractFunctions(`
 export class Handlers {

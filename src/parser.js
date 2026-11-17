@@ -487,9 +487,40 @@ function traverse(root, visit) {
 }
 
 /**
+ * Statement lists of functions that run immediately at module load:
+ * `(function () {})()`, `(() => {})()`, `!function () {}()`,
+ * `(function () {}).call(this)`, plus function expressions passed as arguments
+ * to such a call, as in the UMD pattern `(function (root, factory) {})(this,
+ * function () { ... })`
+ * @param {Object} expression - Expression of a top-level expression statement
+ * @returns {Array<Array>} Statement lists to treat as module level
+ */
+function immediatelyInvokedBodies(expression) {
+  const call =
+    expression?.type === 'UnaryExpression' ? expression.argument : expression;
+  if (call?.type !== 'CallExpression') return [];
+
+  const callee =
+    call.callee?.type === 'MemberExpression' &&
+    ['call', 'apply'].includes(call.callee.property?.name)
+      ? call.callee.object
+      : call.callee;
+  if (!FUNCTION_TYPES.includes(callee?.type)) return [];
+
+  return [callee, ...call.arguments]
+    .filter(
+      (fn) =>
+        FUNCTION_TYPES.includes(fn?.type) && fn.body?.type === 'BlockStatement',
+    )
+    .map((fn) => fn.body.body);
+}
+
+/**
  * Collect module-level declarations, exported declaration nodes and exported
- * local names. TypeScript namespace and `declare module` bodies count as
- * module level.
+ * local names. Besides the program body, these count as module level:
+ * TypeScript namespace and `declare module` bodies, top-level blocks (`if`,
+ * `try`, bare blocks, labels) and the bodies of immediately-invoked functions,
+ * including function arguments passed to them (the UMD factory pattern).
  * @param {Object} ast - Program AST
  * @returns {{declarations: Set<Object>, names: Set<string>, moduleLevel: Set<Object>, exportLines: Map<Object, number>}} Export information
  */
@@ -543,6 +574,32 @@ function collectExports(ast) {
       if (decl?.type === 'TSModuleDeclaration' && decl.body?.body) {
         scan(decl.body.body);
       }
+      enterNested(node);
+    }
+  };
+
+  const enterNested = (node) => {
+    switch (node.type) {
+      case 'BlockStatement':
+        scan(node.body);
+        break;
+      case 'IfStatement':
+        enterNested(node.consequent);
+        if (node.alternate) enterNested(node.alternate);
+        break;
+      case 'TryStatement':
+        scan(node.block.body);
+        if (node.handler) scan(node.handler.body.body);
+        if (node.finalizer) scan(node.finalizer.body);
+        break;
+      case 'LabeledStatement':
+        enterNested(node.body);
+        break;
+      case 'ExpressionStatement':
+        for (const body of immediatelyInvokedBodies(node.expression)) {
+          scan(body);
+        }
+        break;
     }
   };
 

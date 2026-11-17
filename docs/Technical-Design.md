@@ -123,9 +123,20 @@ Parameter names come from `getParamName`: rest parameters become `...name`,
 default values are dropped, and destructured parameters become `{a, b}` or
 `[a, b]`.
 
-**Module level** means the statement is directly in the program body, or in the
-body of a TypeScript `namespace` / `declare module` block. `collectExports`
-builds this set (`moduleLevel`) in one pass over those statement lists.
+**Module level** means code that runs when the module loads, outside any named
+function or method:
+
+- the program body;
+- the body of a TypeScript `namespace` / `declare module` block;
+- the bodies of top-level `if`/`else`, `try`/`catch`/`finally`, bare blocks
+  and labelled statements;
+- the body of an immediately-invoked function (`(function () {})()`,
+  `(() => {})()`, `!function () {}()`, `(function () {}).call(this)`) and of
+  any function expression passed to it as an argument, which covers the UMD
+  factory pattern.
+
+`collectExports` builds this set (`moduleLevel`) in one pass over those
+statement lists; `immediatelyInvokedBodies` finds the function bodies.
 
 ### The `exported` flag
 

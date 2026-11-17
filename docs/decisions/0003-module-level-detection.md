@@ -64,3 +64,6 @@ set. Class fields that hold an arrow function or function expression
   covers the module's surface and nothing inside function bodies.
 - Factory-style code that defines its functions inside another function lists
   only the outer function.
+- Immediately-invoked wrappers (IIFE and the UMD factory argument) and
+  top-level `if`/`try` blocks count as module level, since their code runs at
+  load time and is how many libraries expose their API.
