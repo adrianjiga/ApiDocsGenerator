@@ -225,6 +225,28 @@ function outer() {
     expect(result.map((f) => f.name)).toEqual(['outer']);
   });
 
+  it('ignores assignments to exports and prototypes inside function bodies', () => {
+    const result = extractFunctions(`
+function setup() {
+  exports.handler = () => {};
+  module.exports = { a() {} };
+  Foo.prototype.bar = function () {};
+}
+`);
+    expect(result.map((f) => f.name)).toEqual(['setup']);
+  });
+
+  it('skips getters and setters in object literals', () => {
+    const result = extractFunctions(`
+const api = {
+  get value() { return 1; },
+  set value(v) {},
+  load() {},
+};
+`);
+    expect(result.map((f) => f.name)).toEqual(['api.load']);
+  });
+
   it('treats exports inside TypeScript namespaces as exported', () => {
     const result = extractFunctions(`
 export namespace Api {

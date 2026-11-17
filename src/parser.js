@@ -212,7 +212,11 @@ function commonJsExportDepth(target) {
  */
 function handleObjectMethods(objectNode, functions, { prefix, exported }) {
   for (const prop of objectNode.properties) {
-    if (prop.type !== 'Property' || !FUNCTION_TYPES.includes(prop.value?.type))
+    if (
+      prop.type !== 'Property' ||
+      prop.kind !== 'init' ||
+      !FUNCTION_TYPES.includes(prop.value?.type)
+    )
       continue;
     const key = propertyKey(prop);
     if (!key) continue;
@@ -449,10 +453,8 @@ const SKIPPED_AST_KEYS = new Set([
  * @param {Function} visit - Called with each node
  */
 function traverse(root, visit) {
-  const visited = new Set();
   const walk = (node) => {
-    if (!node || typeof node !== 'object' || visited.has(node)) return;
-    visited.add(node);
+    if (!node || typeof node !== 'object') return;
     if (typeof node.type === 'string') visit(node);
     for (const key in node) {
       if (SKIPPED_AST_KEYS.has(key)) continue;
@@ -508,6 +510,7 @@ function collectExports(ast) {
         for (const s of node.specifiers ?? []) addValueName(s.local);
       }
       const expr = node.type === 'ExpressionStatement' && node.expression;
+      if (expr) moduleLevel.add(expr);
       if (expr?.type === 'AssignmentExpression') {
         const target = memberPath(expr.left);
         if (target && commonJsExportDepth(target) >= 0) {
@@ -586,7 +589,9 @@ function collectItems(ast, routeServers) {
         }
         break;
       case 'AssignmentExpression':
-        if (node.operator === '=') handleAssignment(node, functions);
+        if (node.operator === '=' && exports.moduleLevel.has(node)) {
+          handleAssignment(node, functions);
+        }
         break;
       case 'CallExpression':
         if (node.callee?.property) {
