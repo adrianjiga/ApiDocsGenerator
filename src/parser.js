@@ -697,7 +697,9 @@ async function parseFile(filePath, config = {}) {
   return api;
 }
 
-const JS_TS_FILE_REGEX = /\.(js|ts|jsx|tsx)$/;
+const JS_TS_FILE_REGEX = /\.(js|jsx|ts|tsx|mjs|cjs|mts|cts)$/;
+
+const DECLARATION_FILE_REGEX = /\.d\.(ts|mts|cts)$/;
 
 /**
  * Compile an exclude pattern into a segment-anchored regex. The pattern is
@@ -756,7 +758,11 @@ async function _scanDirectoryImpl(dir, excludeRegex, rootDir) {
             _scanDirectoryImpl(fullPath, excludeRegex, rootDir),
           );
         }
-      } else if (entry.isFile() && JS_TS_FILE_REGEX.test(entry.name)) {
+      } else if (
+        entry.isFile() &&
+        JS_TS_FILE_REGEX.test(entry.name) &&
+        !DECLARATION_FILE_REGEX.test(entry.name)
+      ) {
         files.push(fullPath);
       }
     }

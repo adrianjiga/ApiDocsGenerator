@@ -45,6 +45,29 @@ describe('scanDirectory exclusion is relative to the scan root', () => {
   });
 });
 
+describe('scanDirectory file types', () => {
+  it('includes module-specific extensions and skips declaration files', async () => {
+    for (const name of [
+      'a.mjs',
+      'b.cjs',
+      'c.mts',
+      'd.cts',
+      'e.d.ts',
+      'f.d.mts',
+    ]) {
+      writeFile(name, 'export {};');
+    }
+
+    const files = await scanDirectory(tmpDir);
+    expect(files.map((f) => path.basename(f)).sort()).toEqual([
+      'a.mjs',
+      'b.cjs',
+      'c.mts',
+      'd.cts',
+    ]);
+  });
+});
+
 describe('JSDoc matching', () => {
   it('does not credit one comment to the function after the documented one', async () => {
     const file = writeFile(
