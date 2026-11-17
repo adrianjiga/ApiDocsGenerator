@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Node.js CLI (npm package `api-docs-generator`) that scans JS/TS source and generates API docs + coverage audits. Pure ESM, plain JS with JSDoc types — no build step, no TypeScript source.
+Node.js CLI (npm package `@adrianjiga/api-docs-generator`, CLI command `api-docs-generator`) that scans JS/TS source and generates API docs + coverage audits. Pure ESM, plain JS with JSDoc types — no build step, no TypeScript source.
 
 ## Commands
 

@@ -5,7 +5,7 @@ Get up and running with api-docs-generator in 2 minutes.
 ## Installation
 
 ```bash
-npm install -g api-docs-generator
+npm install -g @adrianjiga/api-docs-generator
 ```
 
 ## Basic Usage

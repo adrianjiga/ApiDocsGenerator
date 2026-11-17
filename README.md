@@ -37,14 +37,14 @@ A powerful Node.js CLI tool that auto-generates API documentation from JavaScrip
 ## Installation
 
 ```bash
-npm install -g api-docs-generator
+npm install -g @adrianjiga/api-docs-generator
 ```
 
 Or use locally:
 
 ```bash
-npm install api-docs-generator
-npm run start -- generate --dir ./src --output ./docs
+npm install --save-dev @adrianjiga/api-docs-generator
+npx api-docs-generator generate --dir ./src --output ./docs
 ```
 
 ## Quick Start

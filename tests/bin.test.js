@@ -2,6 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { spawnSync } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
+
+const pkg = createRequire(import.meta.url)('../package.json');
 
 const binPath = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -14,7 +17,7 @@ describe('bin entrypoint', () => {
       encoding: 'utf8',
     });
     expect(result.status).toBe(0);
-    expect(result.stdout.trim()).toBe('1.0.0');
+    expect(result.stdout.trim()).toBe(pkg.version);
   });
 
   it('runs the scan command against real examples', () => {
