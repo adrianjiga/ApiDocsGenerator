@@ -799,7 +799,11 @@ async function parseDirectory(dir, config = {}) {
       const slot = nextIndex;
       nextIndex += 1;
       try {
-        results[slot] = await parseFile(file, config);
+        const api = await parseFile(file, config);
+        if (api) {
+          api.relativePath = path.relative(dir, file).split(path.sep).join('/');
+        }
+        results[slot] = api;
       } catch (err) {
         console.warn(`Error parsing ${file}: ${err.message}`);
         results[slot] = null;

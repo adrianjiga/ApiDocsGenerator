@@ -132,6 +132,15 @@ describe('generate', () => {
     ]);
   });
 
+  it('does not embed the absolute output path in the report', async () => {
+    await generate(examplesDir, outputDir, ['markdown']);
+    const report = await fs.readFile(
+      path.join(outputDir, 'GENERATION_REPORT.md'),
+      'utf8',
+    );
+    expect(report).not.toContain(path.resolve(outputDir));
+  });
+
   it('normalizes format names with different casing and whitespace', async () => {
     const result = await generate(examplesDir, outputDir, [' HTML ', 'JSON']);
     expect(result.success).toBe(true);

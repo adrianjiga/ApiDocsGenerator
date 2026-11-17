@@ -17,7 +17,7 @@ function generateJSON(apiData, config = {}) {
       apiVersion: config.apiVersion || '1.0.0',
     },
     files: apiData.map((file) => ({
-      file: file.file,
+      file: file.relativePath ?? file.file,
       fileName: file.fileName,
       functions: file.functions.map((fn) => ({
         name: fn.name,

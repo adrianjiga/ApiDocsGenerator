@@ -17,6 +17,18 @@ describe('generateJSON', () => {
     expect(parsed.meta.generated).toBeDefined();
   });
 
+  it('writes the scan-relative path instead of the absolute path', () => {
+    const data = [
+      {
+        ...mockApiData[0],
+        file: '/home/me/project/src/app.js',
+        relativePath: 'src/app.js',
+      },
+    ];
+    const parsed = JSON.parse(generateJSON(data));
+    expect(parsed.files[0].file).toBe('src/app.js');
+  });
+
   it('includes files array with correct structure', () => {
     const parsed = JSON.parse(generateJSON(mockApiData));
     expect(parsed.files).toHaveLength(1);

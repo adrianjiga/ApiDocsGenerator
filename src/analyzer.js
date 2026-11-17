@@ -62,7 +62,7 @@ function analyzeCoverage(apiData) {
               type: 'function',
               name: func.name,
               fileName: fileData.fileName,
-              filePath: fileData.file,
+              filePath: fileData.relativePath ?? fileData.file,
               line: func.line,
               severity: docStatus.isPartiallyDocumented ? 'warning' : 'error',
               missing: docStatus.missing,
@@ -99,7 +99,7 @@ function analyzeCoverage(apiData) {
               type: 'route',
               name: `${route.method} ${route.path}`,
               fileName: fileData.fileName,
-              filePath: fileData.file,
+              filePath: fileData.relativePath ?? fileData.file,
               line: route.line,
               severity: docStatus.isPartiallyDocumented ? 'warning' : 'error',
               missing: docStatus.missing,
@@ -125,7 +125,7 @@ function analyzeCoverage(apiData) {
 
         files.push({
           fileName: fileData.fileName,
-          filePath: fileData.file,
+          filePath: fileData.relativePath ?? fileData.file,
           totalItems: fileTotalItems,
           documentedItems: fileDocumentedItems,
           coveragePercentage: fileCoveragePercentage,

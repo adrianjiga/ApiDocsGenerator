@@ -122,7 +122,7 @@ Generated: ${new Date().toISOString()}
 ${results.generated.map((g) => `- ${g.format.toUpperCase()}: \`${g.file}\``).join('\n')}
 
 ## Location
-All files generated in: \`${results.outputDir}\`
+All files generated in: \`${path.relative(process.cwd(), results.outputDir) || '.'}\`
 `;
 }
 

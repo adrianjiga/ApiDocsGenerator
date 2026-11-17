@@ -2,7 +2,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { extractFunctions, parseFile, scanDirectory } from '../src/parser.js';
+import {
+  extractFunctions,
+  parseDirectory,
+  parseFile,
+  scanDirectory,
+} from '../src/parser.js';
 
 let tmpDir;
 
@@ -240,5 +245,14 @@ app.route('/z').get(h);
       ['app'],
     );
     expect(result.map((r) => r.path)).toEqual(['/z']);
+  });
+});
+
+describe('parseDirectory relative paths', () => {
+  it('records each file path relative to the scan root with / separators', async () => {
+    writeFile('src/lib/util.js', 'function util() {}');
+    const result = await parseDirectory(tmpDir);
+    expect(result[0].relativePath).toBe('src/lib/util.js');
+    expect(path.isAbsolute(result[0].file)).toBe(true);
   });
 });
