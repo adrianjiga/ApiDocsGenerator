@@ -220,8 +220,11 @@ is missing, and **undocumented** (severity `error`) when it has no JSDoc block.
 An undocumented item lists every check as missing, including `params` when it
 has no parameters.
 
-Parameter matching is by exact name. A destructured parameter is named `{a, b}`,
-so a `@param` for `options` does not satisfy it.
+Parameters are matched by name (`isParamDocumented`). A rest parameter
+`...args` matches `@param args`. A destructured parameter (`{a, b}` or
+`[a, b]`) has no name of its own, so it matches the top-level `@param` at the
+same position, such as `@param {Object} options`; tags for its properties
+(`options.a`) are allowed but not required.
 
 Percentages use `calcPercentage`: `part / total * 100` rounded to one decimal,
 and `0` when the total is `0`.

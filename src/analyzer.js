@@ -167,6 +167,25 @@ function analyzeCoverage(apiData) {
 }
 
 /**
+ * Whether a parameter has a matching @param tag. Rest parameters (`...args`)
+ * match `@param args`. Destructured parameters (`{a, b}`, `[a, b]`) have no
+ * name of their own, so they match the top-level @param at the same position,
+ * e.g. `@param {Object} options` for the first parameter.
+ * @param {string} paramName - Parameter name from the parser
+ * @param {number} index - Position of the parameter
+ * @param {string[]} documentedNames - Names of all @param tags
+ * @param {Array} topLevelTags - @param tags whose name has no `.`
+ * @returns {boolean} True when the parameter is documented
+ */
+function isParamDocumented(paramName, index, documentedNames, topLevelTags) {
+  const name = paramName.startsWith('...') ? paramName.slice(3) : paramName;
+  if (documentedNames.includes(paramName) || documentedNames.includes(name)) {
+    return true;
+  }
+  return /^[{[]/.test(name) && index < topLevelTags.length;
+}
+
+/**
  * Check documentation status of an item (function or route)
  * @param {Object} item - Item with params and jsdoc properties
  * @param {Object} [options] - Check options
@@ -205,11 +224,18 @@ function checkDocumentation(item, { requireReturns = true } = {}) {
   const documentedParamNames = paramTags.map((tag) => tag.name);
   existing.params = documentedParamNames;
 
-  item.params.forEach((paramName) => {
-    if (!documentedParamNames.includes(paramName)) {
-      if (!missing.includes('params')) {
-        missing.push('params');
-      }
+  const topLevelParamTags = paramTags.filter((tag) => !tag.name?.includes('.'));
+  item.params.forEach((paramName, index) => {
+    if (
+      !isParamDocumented(
+        paramName,
+        index,
+        documentedParamNames,
+        topLevelParamTags,
+      ) &&
+      !missing.includes('params')
+    ) {
+      missing.push('params');
     }
   });
 

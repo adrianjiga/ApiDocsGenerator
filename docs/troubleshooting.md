@@ -50,7 +50,8 @@ If the comment is matched but the item still shows as a gap, look at
 
 - `description`: the comment has tags but no text before them.
 - `params`: a `@param` is missing, or its name does not match the parameter.
-  Destructured parameters are named like `{a, b}`.
+  A destructured parameter needs a top-level `@param` in its position (e.g.
+  `@param {Object} options`); a rest parameter `...args` needs `@param args`.
 - `returns`: functions need `@returns` (or `@return`); `@returns {void}` is
   enough. Routes do not need it.
 

@@ -317,6 +317,44 @@ describe('analyzeCoverage', () => {
   });
 });
 
+describe('parameter matching', () => {
+  const docWith = (params) => ({
+    description: 'Doc',
+    tags: [
+      ...params.map((name) => ({ tag: 'param', name, type: 'any' })),
+      { tag: 'returns', type: 'void', description: '' },
+    ],
+  });
+  const coverageOf = (fn) =>
+    analyzeCoverage([
+      { file: '/a.js', fileName: 'a.js', functions: [fn], routes: [] },
+    ]).summary.documentedFunctions;
+
+  it('matches a destructured parameter to the @param in its position', () => {
+    const fn = makeFunction(
+      'f',
+      ['{a, b}', 'cb'],
+      docWith(['options', 'options.a', 'cb']),
+    );
+    expect(coverageOf(fn)).toBe(1);
+  });
+
+  it('matches an array pattern parameter the same way', () => {
+    const fn = makeFunction('f', ['[x, y]'], docWith(['point']));
+    expect(coverageOf(fn)).toBe(1);
+  });
+
+  it('still reports a destructured parameter with no @param in its position', () => {
+    const fn = makeFunction('f', ['first', '{a, b}'], docWith(['first']));
+    expect(coverageOf(fn)).toBe(0);
+  });
+
+  it('matches a rest parameter to @param without the dots', () => {
+    const fn = makeFunction('f', ['...args'], docWith(['args']));
+    expect(coverageOf(fn)).toBe(1);
+  });
+});
+
 describe('checkRouteDocumentation', () => {
   it('returns all missing when jsdoc is null', () => {
     const route = makeRoute('GET', '/users', []);
