@@ -497,16 +497,17 @@ async function scanDirectory(dir, excludePattern = DEFAULT_EXCLUDE_PATTERN) {
     );
     excludeRegex = compileExcludeRegex(DEFAULT_EXCLUDE_PATTERN);
   }
-  return _scanDirectoryImpl(dir, excludeRegex);
+  return _scanDirectoryImpl(dir, excludeRegex, dir);
 }
 
 /**
  * Internal recursive implementation of directory scanning
  * @param {string} dir - Directory path
  * @param {RegExp} excludeRegex - Compiled regex for exclusion
+ * @param {string} rootDir - Scan root; exclusion is tested against paths relative to it
  * @returns {Array} Array of file paths
  */
-async function _scanDirectoryImpl(dir, excludeRegex) {
+async function _scanDirectoryImpl(dir, excludeRegex, rootDir) {
   const files = [];
 
   try {
@@ -517,8 +518,10 @@ async function _scanDirectoryImpl(dir, excludeRegex) {
       const fullPath = path.join(dir, entry.name);
 
       if (entry.isDirectory()) {
-        if (!excludeRegex.test(fullPath)) {
-          subdirPromises.push(_scanDirectoryImpl(fullPath, excludeRegex));
+        if (!excludeRegex.test(path.relative(rootDir, fullPath))) {
+          subdirPromises.push(
+            _scanDirectoryImpl(fullPath, excludeRegex, rootDir),
+          );
         }
       } else if (entry.isFile() && JS_TS_FILE_REGEX.test(entry.name)) {
         files.push(fullPath);
