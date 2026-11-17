@@ -111,7 +111,7 @@ to.
 | `export default function () {}`                     | `anonymous`           |                                                                                                    |
 | `const f = () => {}` / `const f = function () {}`   | `f`                   | Module level only                                                                                  |
 | `class A { m() {} }` / `const A = class { m() {} }` | `m`, class `A`        | Module-level classes; every method, including `constructor`, getters, setters and abstract methods |
-| `class A { m = () => {} }`                          | `m`, class `A`        | Fields holding an arrow function or function expression                                            |
+| `class A { m = () => {} }`                          | `m`, class `A`        | Fields (including `accessor` fields) holding an arrow function or function expression              |
 | `A.prototype.m = function () {}`                    | `m`, class `A`        | Module level only                                                                                  |
 | `const api = { list() {}, get: () => {} }`          | `api.list`, `api.get` | Module level only; getters and setters skipped                                                     |
 | `export default { list() {} }`                      | `list`                | Exported                                                                                           |

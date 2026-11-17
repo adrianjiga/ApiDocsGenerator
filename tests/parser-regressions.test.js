@@ -362,6 +362,18 @@ setup();
     expect(result.map((f) => f.name)).toEqual(['setup']);
   });
 
+  it('detects auto-accessor class fields holding a function', () => {
+    const result = extractFunctions(`
+export class Widget {
+  accessor onChange = (value) => {};
+  accessor count = 0;
+}
+`);
+    expect(result.map((f) => [f.name, f.params, f.className])).toEqual([
+      ['onChange', ['value'], 'Widget'],
+    ]);
+  });
+
   it('detects arrow functions and function expressions assigned as class fields', () => {
     const result = extractFunctions(`
 export class Handlers {

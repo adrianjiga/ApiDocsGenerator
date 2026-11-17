@@ -445,7 +445,8 @@ function handleClassDeclaration(node, functions, exported, className) {
       member.type === 'MethodDefinition' ||
       member.type === 'TSAbstractMethodDefinition';
     const isFunctionField =
-      member.type === 'PropertyDefinition' &&
+      (member.type === 'PropertyDefinition' ||
+        member.type === 'AccessorProperty') &&
       FUNCTION_TYPES.includes(member.value?.type);
     if ((!isMethod && !isFunctionField) || !member.value) continue;
 
