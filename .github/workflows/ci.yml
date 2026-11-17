@@ -10,6 +10,9 @@ on:
       - main
       - master
 
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Test, Lint & Format Check (Node ${{ matrix.node-version }})
