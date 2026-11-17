@@ -131,7 +131,7 @@ Generated: ${new Date().toISOString()}
 
 ## Statistics
 - Files Scanned: ${apiData.length}
-- Functions Documented: ${functionCount}
+- Functions Found: ${functionCount}
 - API Routes Found: ${routeCount}
 - Output Formats: ${formats.join(', ')}
 

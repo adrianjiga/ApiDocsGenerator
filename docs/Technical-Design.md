@@ -361,8 +361,3 @@ the terminal's state.
 
 The terminal report disables colour and switches to ASCII symbols when stdout
 is not a TTY or `NO_COLOR` is set.
-
-## Known issues
-
-- The `Functions Documented` line in `GENERATION_REPORT.md` is the number of
-  functions found, not the number that are documented.

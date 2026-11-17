@@ -6,10 +6,10 @@ routes were found without writing anything, which narrows most problems down.
 
 ## "No JavaScript/TypeScript files found"
 
-`scan` prints `⚠️  No JavaScript/TypeScript files found` and exits 0. `audit`
-prints `Error: No JavaScript/TypeScript files found to audit` and `generate`
-prints `⚠️  No JavaScript/TypeScript files found or no API documentation
-detected.`; both exit 1.
+`scan` prints `⚠️  No JavaScript/TypeScript files found`, `audit` prints
+`Error: No JavaScript/TypeScript files found to audit` and `generate` prints
+`⚠️  No JavaScript/TypeScript files found or no API documentation detected.`.
+All three exit 1.
 
 Causes, in the order worth checking:
 

@@ -48,7 +48,7 @@ program
   )
   .option(
     '-f, --formats <formats>',
-    'Output formats (comma-separated: markdown,html,json)',
+    'Output formats, comma-separated: markdown, html, json, openapi',
     'markdown,html,json',
   )
   .option('-c, --config <path>', 'Path to apidocs.config.js')
@@ -87,7 +87,8 @@ program
     const apiData = await parser.parseDirectory(dir, config);
 
     if (apiData.length === 0) {
-      console.log('⚠️  No JavaScript/TypeScript files found');
+      console.error('⚠️  No JavaScript/TypeScript files found');
+      process.exit(1);
       return;
     }
 

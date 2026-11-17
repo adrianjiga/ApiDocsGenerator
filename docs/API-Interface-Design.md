@@ -224,12 +224,12 @@ Print the files, functions and routes found, without writing anything.
 
 ### Exit Codes
 
-| Command    | `0`                                       | `1`                                                                                                                                 |
-| ---------- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `generate` | Every requested format was written        | No source files; no valid format requested; any format failed; unexpected error                                                     |
-| `audit`    | Coverage ≥ `--threshold`                  | Coverage below threshold; invalid `--threshold`; no source files; unknown `--format`; unexpected error (e.g. unwritable `--output`) |
-| `scan`     | Always, including when no files are found | Unexpected error only                                                                                                               |
-| (none)     | Help printed                              | Unknown command or option (commander usage error)                                                                                   |
+| Command    | `0`                                | `1`                                                                                                                                 |
+| ---------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `generate` | Every requested format was written | No source files; no valid format requested; any format failed; unexpected error                                                     |
+| `audit`    | Coverage ≥ `--threshold`           | Coverage below threshold; invalid `--threshold`; no source files; unknown `--format`; unexpected error (e.g. unwritable `--output`) |
+| `scan`     | Files were found                   | No source files; unexpected error                                                                                                   |
+| (none)     | Help printed                       | Unknown command or option (commander usage error)                                                                                   |
 
 Unexpected errors print `Error: <message>` to stderr rather than a stack trace.
 

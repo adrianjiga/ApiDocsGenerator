@@ -95,7 +95,7 @@ describe('generate', () => {
       'utf8',
     );
     expect(report).toContain('Files Scanned');
-    expect(report).toContain('Functions Documented');
+    expect(report).toContain('Functions Found');
     expect(report).toContain('API Routes Found');
   });
 

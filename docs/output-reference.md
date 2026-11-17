@@ -277,7 +277,7 @@ Generated: <timestamp>
 ## Statistics
 
 - Files Scanned: 2
-- Functions Documented: 6
+- Functions Found: 6
 - API Routes Found: 5
 - Output Formats: markdown, html, json, openapi
 
@@ -295,8 +295,8 @@ All files generated in: `docs`
 
 `Output Formats` lists the formats as requested, including skipped ones;
 `Generated Files` lists only what was written. `Location` is relative to the
-working directory. `Functions Documented` is the number of functions found,
-documented or not.
+working directory. `Functions Found` counts every function, documented or
+not; use `audit` for coverage.
 
 ## Terminal report
 
