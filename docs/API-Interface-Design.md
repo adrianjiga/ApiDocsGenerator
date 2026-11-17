@@ -156,21 +156,21 @@ for tests and may change between minor versions.
 `src/formatters/registry.js` maps format names to
 `{ generate, filename, type }`. It is not part of the package exports.
 
-| Name        | Alias of | Type     | Output file               | `generate` signature         |
-| ----------- | -------- | -------- | ------------------------- | ---------------------------- |
-| `markdown`  |          | `doc`    | `API.md`                  | `(apiData, config) → string` |
-| `md`        | markdown | `doc`    | `API.md`                  | same                         |
-| `html`      |          | `doc`    | `index.html`              | `(apiData, config) → string` |
-| `json`      |          | `doc`    | `api.json`                | `(apiData, config) → string` |
-| `openapi`   |          | `doc`    | `openapi.yaml`            | `(apiData, config) → string` |
-| `swagger`   | openapi  | `doc`    | `openapi.yaml`            | same                         |
-| `terminal`  |          | `report` | none (stdout)             | `(report, threshold) → void` |
-| `dashboard` |          | `report` | `coverage-dashboard.html` | `(report) → string`          |
+| Name        | Alias of | Type     | Output file               | `generate` signature                |
+| ----------- | -------- | -------- | ------------------------- | ----------------------------------- |
+| `markdown`  |          | `doc`    | `API.md`                  | `(apiData, config) → string`        |
+| `md`        | markdown | `doc`    | `API.md`                  | same                                |
+| `html`      |          | `doc`    | `index.html`              | `(apiData, config) → string`        |
+| `json`      |          | `doc`    | `api.json`                | `(apiData, config) → string`        |
+| `openapi`   |          | `doc`    | `openapi.yaml`            | `(apiData, config) → string`        |
+| `swagger`   | openapi  | `doc`    | `openapi.yaml`            | same                                |
+| `terminal`  |          | `report` | none (stdout)             | `(report, threshold) → void`        |
+| `dashboard` |          | `report` | `coverage-dashboard.html` | `(report, threshold = 80) → string` |
 
 `generate` only accepts `doc` formats and skips the others with a warning.
 `audit` handles `json` itself and accepts the two `report` formats. The
-dashboard's colours use fixed bands (green ≥ 80 %, amber ≥ 50 %, red below),
-independent of `--threshold`.
+dashboard is green at or above the threshold, amber within 30 points below it,
+and red under that.
 
 ## Command-Line Interface
 

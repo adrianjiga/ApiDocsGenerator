@@ -1,31 +1,59 @@
 import { escapeHtml } from '../utils.js';
 import { BASE_CSS } from './shared-styles.js';
 
+const DEFAULT_THRESHOLD = 80;
+const WARNING_BAND = 30;
+const LEVEL_COLORS = { good: '#44bb44', warning: '#ffaa44', error: '#ff4444' };
+
 /**
- * Get color based on coverage percentage
+ * Classify a coverage percentage against the audit threshold: `good` at or
+ * above it, `warning` within WARNING_BAND points below it, `error` otherwise
  * @param {number} percentage - Coverage percentage
- * @returns {string} Hex color code
+ * @param {number} threshold - Coverage threshold percentage
+ * @returns {'good'|'warning'|'error'} Coverage level
  */
-function getCoverageColor(percentage) {
-  if (percentage >= 80) return '#44bb44'; // green
-  if (percentage >= 50) return '#ffaa44'; // yellow
-  return '#ff4444'; // red
+function coverageLevel(percentage, threshold) {
+  if (percentage >= threshold) return 'good';
+  if (percentage >= threshold - WARNING_BAND) return 'warning';
+  return 'error';
 }
 
 /**
- * Generate a self-contained HTML dashboard showing documentation coverage
- * @param {Object} report - Coverage analysis report from analyzeCoverage()
- * @returns {string} Self-contained HTML dashboard
+ * Get the color for a coverage percentage
+ * @param {number} percentage - Coverage percentage
+ * @param {number} threshold - Coverage threshold percentage
+ * @returns {string} Hex color code
  */
+function getCoverageColor(percentage, threshold) {
+  return LEVEL_COLORS[coverageLevel(percentage, threshold)];
+}
+
+/**
+ * CSS class for a stat card at a given coverage
+ * @param {number} percentage - Coverage percentage
+ * @param {number} threshold - Coverage threshold percentage
+ * @returns {string} Empty for good coverage, otherwise `warning` or `error`
+ */
+function statCardClass(percentage, threshold) {
+  const level = coverageLevel(percentage, threshold);
+  return level === 'good' ? '' : level;
+}
+
 /** SVG gauge circle radius. The circumference is 2 * PI * GAUGE_RADIUS. */
 const GAUGE_RADIUS = 90;
 const GAUGE_CIRCUMFERENCE = 2 * Math.PI * GAUGE_RADIUS;
 
-function generateDashboard(report) {
+/**
+ * Generate a self-contained HTML dashboard showing documentation coverage
+ * @param {Object} report - Coverage analysis report from analyzeCoverage()
+ * @param {number} [threshold=80] - Coverage threshold the colors are judged against
+ * @returns {string} Self-contained HTML dashboard
+ */
+function generateDashboard(report, threshold = DEFAULT_THRESHOLD) {
   const { summary, files, gaps } = report;
   const coverage = summary.coveragePercentage;
 
-  const gaugeColor = getCoverageColor(coverage);
+  const gaugeColor = getCoverageColor(coverage, threshold);
 
   /**
    * Generate documentation gap rows
@@ -59,7 +87,7 @@ function generateDashboard(report) {
         <td class="file-documented">${file.documentedItems}</td>
         <td class="file-coverage">
           <div class="progress-bar">
-            <div class="progress-fill" style="width: ${file.coveragePercentage}%; background-color: ${getCoverageColor(file.coveragePercentage)};"></div>
+            <div class="progress-fill" style="width: ${file.coveragePercentage}%; background-color: ${getCoverageColor(file.coveragePercentage, threshold)};"></div>
           </div>
           <span class="coverage-text">${file.coveragePercentage}%</span>
         </td>
@@ -476,18 +504,18 @@ function generateDashboard(report) {
         
         <div class="gauge-label">
           <div class="gauge-percentage">${coverage}%</div>
-          <div class="gauge-text">Overall Coverage</div>
+          <div class="gauge-text">Overall Coverage · threshold ${threshold}%</div>
         </div>
       </div>
 
       <div class="stats-grid">
-        <div class="stat-card ${summary.functionCoverage >= 80 ? '' : summary.functionCoverage >= 50 ? 'warning' : 'error'}">
+        <div class="stat-card ${statCardClass(summary.functionCoverage, threshold)}">
           <div class="stat-label">Function Coverage</div>
           <div class="stat-value">${summary.functionCoverage}%</div>
           <div class="stat-detail">${summary.documentedFunctions} of ${summary.totalFunctions}</div>
         </div>
 
-        <div class="stat-card ${summary.routeCoverage >= 80 ? '' : summary.routeCoverage >= 50 ? 'warning' : 'error'}">
+        <div class="stat-card ${statCardClass(summary.routeCoverage, threshold)}">
           <div class="stat-label">Route Coverage</div>
           <div class="stat-value">${summary.routeCoverage}%</div>
           <div class="stat-detail">${summary.documentedRoutes} of ${summary.totalRoutes}</div>

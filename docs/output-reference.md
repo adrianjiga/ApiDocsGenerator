@@ -435,9 +435,9 @@ A self-contained page (inline CSS and SVG, no scripts, no external requests).
 </div>
 ```
 
-- The gauge and the per-file bars are green from 80%, yellow from 50% and red
-  below 50%. The function and route cards use the same bands; the gaps card is
-  red whenever there is at least one gap. These colours are fixed and do not
-  follow `--threshold`.
+- The gauge and the per-file bars are green at or above `--threshold` (default
+  80%), yellow within 30 points below it and red under that. The function and
+  route cards use the same bands; the gaps card is red whenever there is at
+  least one gap. The gauge label shows the threshold.
 - The timestamp uses the machine's locale, unlike the ISO timestamps elsewhere.
 - File names, item names and the missing list are HTML-escaped.

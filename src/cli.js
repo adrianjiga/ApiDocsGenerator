@@ -177,7 +177,7 @@ program
         const outputPath = path.resolve(outputFile);
         const outputDir = path.dirname(outputPath);
         await fs.mkdir(outputDir, { recursive: true });
-        const content = formatter.generate(result);
+        const content = formatter.generate(result, threshold);
         await fs.writeFile(outputPath, content);
         console.log(`✅ ${format} written to: ${outputPath}\n`);
       } else {
