@@ -6,6 +6,125 @@ import { getParamName, DEFAULT_EXCLUDE_PATTERN } from './utils.js';
 
 const JSDOC_REGEX = /\/\*\*\s*([\s\S]*?)\*\//g;
 
+const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch'];
+
+const FUNCTION_TYPES = ['FunctionExpression', 'ArrowFunctionExpression'];
+
+/**
+ * Parse source code into an AST with comments and tokens attached
+ * @param {string} sourceCode - JavaScript/TypeScript source code
+ * @param {string} [filePath] - Source path, used to pick JSX/TypeScript mode from the extension
+ * @returns {Object|null} AST, or null when the source cannot be parsed
+ */
+function parseSource(sourceCode, filePath) {
+  try {
+    return tsParse(sourceCode, {
+      loc: true,
+      range: true,
+      jsx: true,
+      allowInvalidAST: true,
+      comment: true,
+      tokens: true,
+      ...(filePath && { filePath }),
+    });
+  } catch (err) {
+    console.warn(
+      `Warning: Failed to parse ${filePath || 'source code'}: ${err.message}`,
+    );
+    return null;
+  }
+}
+
+/**
+ * Parse the text of a single JSDoc block
+ * @param {string} raw - Comment text between the opening `/*` and closing `*\/`
+ * @param {number} startLine - Line the comment starts on
+ * @param {number} endLine - Line the comment ends on
+ * @returns {Object|null} Parsed JSDoc object, or null if it has no content
+ */
+function toJSDoc(raw, startLine, endLine) {
+  try {
+    const parsed = parse('/*' + raw + '*/');
+    if (parsed && parsed.length > 0) {
+      return {
+        raw,
+        parsed: parsed[0],
+        loc: {
+          start: { line: startLine, column: 0 },
+          end: { line: endLine, column: 0 },
+        },
+      };
+    }
+  } catch (parseErr) {
+    console.warn(
+      `Warning: Failed to parse JSDoc at line ${startLine}: ${parseErr.message}`,
+    );
+  }
+  return null;
+}
+
+/**
+ * Find the line of the first code token starting at or after an offset
+ * @param {Array} tokens - Tokens sorted by position
+ * @param {number} offset - Character offset
+ * @returns {number|null} Line number, or null when no token follows
+ */
+function nextTokenLine(tokens, offset) {
+  let lo = 0;
+  let hi = tokens.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (tokens[mid].range[0] < offset) lo = mid + 1;
+    else hi = mid;
+  }
+  return tokens[lo] ? tokens[lo].loc.start.line : null;
+}
+
+/**
+ * Collect JSDoc blocks from a parsed AST
+ * @param {Object} ast - AST produced by parseSource
+ * @returns {Array} Parsed JSDoc objects, each with the line of the code that follows it
+ */
+function collectJSDoc(ast) {
+  const comments = [];
+  const tokens = ast.tokens || [];
+
+  for (const comment of ast.comments || []) {
+    if (comment.type !== 'Block' || !comment.value.startsWith('*')) continue;
+    const jsdoc = toJSDoc(
+      comment.value,
+      comment.loc.start.line,
+      comment.loc.end.line,
+    );
+    if (jsdoc) {
+      jsdoc.nextLine = nextTokenLine(tokens, comment.range[1]);
+      comments.push(jsdoc);
+    }
+  }
+
+  return comments;
+}
+
+/**
+ * Locate JSDoc blocks with a regex, for source that fails to parse
+ * @param {string} sourceCode - JavaScript/TypeScript source code
+ * @returns {Array} Parsed JSDoc objects
+ */
+function scanJSDocText(sourceCode) {
+  const comments = [];
+  JSDOC_REGEX.lastIndex = 0;
+  let match;
+
+  while ((match = JSDOC_REGEX.exec(sourceCode)) !== null) {
+    const startLine = sourceCode.substring(0, match.index).split('\n').length;
+    const endLine = startLine + match[0].split('\n').length - 1;
+    const jsdoc = toJSDoc(match[1], startLine, endLine);
+    if (jsdoc) comments.push(jsdoc);
+  }
+
+  return comments;
+}
+
 /**
  * Parse JSDoc comments from source code.
  * Comments are taken from the tokenizer so that JSDoc-shaped text inside
@@ -16,124 +135,218 @@ const JSDOC_REGEX = /\/\*\*\s*([\s\S]*?)\*\//g;
  * @returns {Array} Array of parsed JSDoc objects
  */
 function parseJSDoc(sourceCode) {
-  const comments = [];
+  const ast = parseSource(sourceCode);
+  return ast ? collectJSDoc(ast) : scanJSDocText(sourceCode);
+}
 
-  try {
-    const ast = tsParse(sourceCode, {
-      loc: true,
-      range: true,
-      jsx: true,
-      allowInvalidAST: true,
-      comment: true,
+/**
+ * Push function metadata for a function node
+ * @param {Array} functions - Accumulator array for extracted function metadata
+ * @param {Object} fnNode - Function AST node (declaration, expression or arrow)
+ * @param {Object} info - Name, line, export flag and optional class details
+ */
+function pushFunction(functions, fnNode, info) {
+  const item = {
+    type: 'function',
+    name: info.name,
+    params: fnNode.params.map((p) => getParamName(p)),
+    line: info.line,
+    nodeType: info.nodeType || fnNode.type,
+    async: !!fnNode.async,
+    generator: !!fnNode.generator,
+    exported: !!info.exported,
+  };
+  if (info.className) {
+    item.className = info.className;
+    item.static = !!info.static;
+    item.methodKind = info.methodKind || 'method';
+  }
+  functions.push(item);
+}
+
+/**
+ * Read a non-computed property key as a string
+ * @param {Object} prop - Property or MethodDefinition node
+ * @returns {string|undefined} Key name
+ */
+function propertyKey(prop) {
+  if (prop.computed) return undefined;
+  const key = prop.key?.name ?? prop.key?.value;
+  return typeof key === 'string' ? key : undefined;
+}
+
+/**
+ * Flatten a non-computed member expression into its identifier names
+ * @param {Object} node - Identifier or MemberExpression node
+ * @returns {string[]|null} e.g. ['module', 'exports', 'foo'], or null if not a plain chain
+ */
+function memberPath(node) {
+  if (node?.type === 'Identifier') return [node.name];
+  if (
+    node?.type === 'MemberExpression' &&
+    !node.computed &&
+    node.property.type === 'Identifier'
+  ) {
+    const base = memberPath(node.object);
+    return base && [...base, node.property.name];
+  }
+  return null;
+}
+
+/**
+ * Number of leading segments that make a member path refer to CommonJS exports
+ * @param {string[]} target - Member path from memberPath
+ * @returns {number} 2 for module.exports, 1 for exports, -1 otherwise
+ */
+function commonJsExportDepth(target) {
+  if (target[0] === 'module' && target[1] === 'exports') return 2;
+  if (target[0] === 'exports') return 1;
+  return -1;
+}
+
+/**
+ * Extract function-valued properties of an object literal
+ * @param {Object} objectNode - ObjectExpression node
+ * @param {Array} functions - Accumulator array for extracted function metadata
+ * @param {Object} options - Optional name prefix and export flag
+ */
+function handleObjectMethods(objectNode, functions, { prefix, exported }) {
+  for (const prop of objectNode.properties) {
+    if (prop.type !== 'Property' || !FUNCTION_TYPES.includes(prop.value?.type))
+      continue;
+    const key = propertyKey(prop);
+    if (!key) continue;
+    pushFunction(functions, prop.value, {
+      name: prefix ? `${prefix}.${key}` : key,
+      line: prop.loc?.start.line || 0,
+      exported,
     });
-
-    for (const comment of ast.comments || []) {
-      // Only block comments opened with `/**` qualify as JSDoc — comment-parser
-      // will still drop single-line `/** x */` blocks (it returns no tokens).
-      if (comment.type !== 'Block' || !comment.value.startsWith('*')) continue;
-
-      try {
-        const parsed = parse('/*' + comment.value + '*/');
-        if (parsed && parsed.length > 0) {
-          comments.push({
-            raw: comment.value,
-            parsed: parsed[0],
-            loc: {
-              start: { line: comment.loc.start.line, column: 0 },
-              end: { line: comment.loc.end.line, column: 0 },
-            },
-          });
-        }
-      } catch (parseErr) {
-        // JSDoc parse error - continue
-        console.warn(
-          `Warning: Failed to parse JSDoc at line ${comment.loc.start.line}: ${parseErr.message}`,
-        );
-      }
-    }
-
-    return comments;
-  } catch (err) {
-    console.warn(`Warning: Failed to parse source code: ${err.message}`);
   }
-
-  // Fallback: locate JSDoc blocks with a regex over the raw source.
-  try {
-    JSDOC_REGEX.lastIndex = 0;
-    let match;
-
-    while ((match = JSDOC_REGEX.exec(sourceCode)) !== null) {
-      // Calculate line number by counting newlines before this match
-      const beforeMatch = sourceCode.substring(0, match.index);
-      const lineNumber = beforeMatch.split('\n').length;
-
-      try {
-        const parsed = parse('/*' + match[1] + '*/');
-        if (parsed && parsed.length > 0) {
-          comments.push({
-            raw: match[1],
-            parsed: parsed[0],
-            loc: {
-              start: { line: lineNumber, column: 0 },
-              end: {
-                line: lineNumber + match[0].split('\n').length - 1,
-                column: 0,
-              },
-            },
-          });
-        }
-      } catch (parseErr) {
-        // JSDoc parse error - continue
-        console.warn(
-          `Warning: Failed to parse JSDoc at line ${lineNumber}: ${parseErr.message}`,
-        );
-      }
-    }
-  } catch (err) {
-    console.warn(`Warning: Failed to parse JSDoc: ${err.message}`);
-  }
-
-  return comments;
 }
 
-const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch'];
-
 /**
- * Handle a FunctionDeclaration AST node and push its metadata
- * @param {Object} node - AST FunctionDeclaration node
+ * Handle assignments of functions to CommonJS exports or class prototypes
+ * @param {Object} node - AssignmentExpression node
  * @param {Array} functions - Accumulator array for extracted function metadata
  */
-function handleFunctionDeclaration(node, functions, exported) {
-  const params = node.params.map((p) => getParamName(p));
+function handleAssignment(node, functions) {
+  const target = memberPath(node.left);
+  if (!target || target.length < 2) return;
+
+  const value = node.right;
+  const line = node.loc?.start.line || 0;
+  const depth = commonJsExportDepth(target);
+
+  if (depth >= 0) {
+    const rest = target.slice(depth);
+    if (rest.length === 0 && value.type === 'ObjectExpression') {
+      handleObjectMethods(value, functions, { exported: true });
+      return;
+    }
+    if (rest.length > 1 || !FUNCTION_TYPES.includes(value.type)) return;
+    pushFunction(functions, value, {
+      name: rest[0] || value.id?.name || 'default',
+      line,
+      exported: true,
+    });
+    return;
+  }
+
+  if (
+    target.length === 3 &&
+    target[1] === 'prototype' &&
+    FUNCTION_TYPES.includes(value.type)
+  ) {
+    pushFunction(functions, value, {
+      name: target[2],
+      line,
+      className: target[0],
+    });
+  }
+}
+
+/**
+ * Whether a route's server object passes the optional routeServers filter
+ * @param {Object} serverNode - Callee object node (e.g. `app` in `app.get`)
+ * @param {string[]} [routeServers] - Allowed server identifiers
+ * @returns {boolean} True when the route should be reported
+ */
+function isAllowedServer(serverNode, routeServers) {
+  if (!routeServers || routeServers.length === 0) return true;
+  return (
+    serverNode?.type === 'Identifier' && routeServers.includes(serverNode.name)
+  );
+}
+
+/**
+ * Push route metadata when the path is server-relative
+ * @param {Array} functions - Accumulator array for extracted function/route metadata
+ * @param {string} methodName - Lowercase HTTP method
+ * @param {*} routePath - Candidate route path
+ * @param {number} line - Line the route is declared on
+ */
+function pushRoute(functions, methodName, routePath, line) {
+  if (typeof routePath !== 'string' || !routePath.startsWith('/')) return;
   functions.push({
-    type: 'function',
-    name: node.id?.name || 'anonymous',
-    params,
-    line: node.loc?.start.line || 0,
-    nodeType: node.type,
-    async: !!node.async,
-    generator: !!node.generator,
-    exported,
+    type: 'route',
+    method: methodName.toUpperCase(),
+    path: routePath,
+    line,
+    params: extractRouteParams(routePath),
   });
 }
 
 /**
- * Handle a VariableDeclarator node whose init is an ArrowFunctionExpression or FunctionExpression
- * @param {Object} node - AST VariableDeclarator node
- * @param {Array} functions - Accumulator array for extracted function metadata
+ * Find the `.route('/path')` call at the base of a chained route definition
+ * such as `app.route('/users').get(h).post(h)`
+ * @param {Object} node - Callee object of an HTTP method call
+ * @returns {Object|null} The `.route()` CallExpression, or null
  */
-function handleFunctionExpression(node, functions, exported) {
-  const params = node.init.params.map((p) => getParamName(p));
-  functions.push({
-    type: 'function',
-    name: node.id?.name || 'anonymous',
-    params,
-    line: node.loc?.start.line || 0,
-    nodeType: node.init.type,
-    async: !!node.init.async,
-    generator: !!node.init.generator,
-    exported,
-  });
+function findRouteChainRoot(node) {
+  let current = node;
+  while (
+    current?.type === 'CallExpression' &&
+    current.callee?.type === 'MemberExpression'
+  ) {
+    const name = current.callee.property?.name;
+    if (name === 'route') return current;
+    if (!HTTP_METHODS.includes(name)) return null;
+    current = current.callee.object;
+  }
+  return null;
+}
+
+/**
+ * Handle a Fastify-style `server.route({ method, url, handler })` call
+ * @param {Object} node - AST CallExpression node
+ * @param {Array} functions - Accumulator array for extracted function/route metadata
+ * @param {string[]} [routeServers] - Optional list of allowed server identifiers
+ */
+function handleRouteObject(node, functions, routeServers) {
+  const options = node.arguments[0];
+  if (options?.type !== 'ObjectExpression') return;
+  if (!isAllowedServer(node.callee.object, routeServers)) return;
+
+  const props = new Map();
+  for (const prop of options.properties) {
+    const key = prop.type === 'Property' ? propertyKey(prop) : undefined;
+    if (key) props.set(key, prop.value);
+  }
+
+  const routePath = (props.get('url') || props.get('path'))?.value;
+  const methodNode = props.get('method');
+  const methods =
+    methodNode?.type === 'ArrayExpression'
+      ? methodNode.elements.map((el) => el?.value)
+      : [methodNode?.value];
+
+  for (const method of methods) {
+    if (typeof method !== 'string') continue;
+    const methodName = method.toLowerCase();
+    if (HTTP_METHODS.includes(methodName)) {
+      pushRoute(functions, methodName, routePath, node.loc?.start.line || 0);
+    }
+  }
 }
 
 /**
@@ -147,29 +360,35 @@ function handleFunctionExpression(node, functions, exported) {
  */
 function handleRouteExpression(node, functions, routeServers) {
   const methodName = node.callee?.property?.name;
+  if (methodName === 'route') {
+    handleRouteObject(node, functions, routeServers);
+    return;
+  }
   if (!methodName || !HTTP_METHODS.includes(methodName)) return;
 
-  if (routeServers && routeServers.length > 0) {
-    const serverName = node.callee?.object?.name;
-    if (!serverName || !routeServers.includes(serverName)) return;
+  const chainRoot = findRouteChainRoot(node.callee.object);
+  if (chainRoot) {
+    if (!isAllowedServer(chainRoot.callee.object, routeServers)) return;
+    pushRoute(
+      functions,
+      methodName,
+      chainRoot.arguments[0]?.value,
+      node.callee.property.loc?.start.line || 0,
+    );
+    return;
   }
 
-  const method = methodName.toUpperCase();
-  const pathArg = node.arguments[0];
-  const routePath = pathArg?.value || '';
+  if (!isAllowedServer(node.callee.object, routeServers)) return;
 
   // Only treat the call as a route when the first argument is a server-relative
   // path (e.g. "/users/:id"). This avoids misreporting unrelated HTTP-client
   // calls such as `http.get('https://...')` as API routes.
-  if (typeof routePath !== 'string' || !routePath.startsWith('/')) return;
-
-  functions.push({
-    type: 'route',
-    method,
-    path: routePath,
-    line: node.loc?.start.line || 0,
-    params: extractRouteParams(routePath),
-  });
+  pushRoute(
+    functions,
+    methodName,
+    node.arguments[0]?.value,
+    node.loc?.start.line || 0,
+  );
 }
 
 /**
@@ -177,10 +396,11 @@ function handleRouteExpression(node, functions, routeServers) {
  * @param {Object} node - AST ClassDeclaration or ClassExpression node
  * @param {Array} functions - Accumulator array for extracted function metadata
  * @param {boolean} exported - Whether the class is exported
+ * @param {string} [className] - Name to use when the class itself is anonymous
  */
-function handleClassDeclaration(node, functions, exported) {
-  const className = node.id?.name || 'anonymous';
+function handleClassDeclaration(node, functions, exported, className) {
   if (!node.body?.body) return;
+  const name = node.id?.name || className || 'anonymous';
 
   for (const member of node.body.body) {
     if (
@@ -188,26 +408,143 @@ function handleClassDeclaration(node, functions, exported) {
       member.type !== 'TSAbstractMethodDefinition'
     )
       continue;
+    if (!member.value) continue;
 
-    const methodName = member.key?.name || member.key?.value || 'anonymous';
-    const fnNode = member.value;
-    if (!fnNode) continue;
-
-    const params = fnNode.params.map((p) => getParamName(p));
-    functions.push({
-      type: 'function',
-      name: methodName,
-      params,
+    pushFunction(functions, member.value, {
+      name: member.key?.name || member.key?.value || 'anonymous',
       line: member.loc?.start.line || 0,
       nodeType: 'MethodDefinition',
-      async: !!fnNode.async,
-      generator: !!fnNode.generator,
       exported,
-      className,
-      static: !!member.static,
+      className: name,
+      static: member.static,
       methodKind: member.kind || 'method',
     });
   }
+}
+
+/**
+ * Visit every node of an AST (excluding parent links) depth-first
+ * @param {Object} root - AST root
+ * @param {Function} visit - Called with each node
+ */
+function traverse(root, visit) {
+  const visited = new Set();
+  const walk = (node) => {
+    if (!node || typeof node !== 'object' || visited.has(node)) return;
+    visited.add(node);
+    if (typeof node.type === 'string') visit(node);
+    for (const key in node) {
+      if (key === 'parent' || key === 'loc' || key === 'range') continue;
+      const child = node[key];
+      if (Array.isArray(child)) child.forEach(walk);
+      else if (child && typeof child === 'object') walk(child);
+    }
+  };
+  walk(root);
+}
+
+/**
+ * Collect exported declaration nodes and exported local names
+ * @param {Object} ast - Program AST
+ * @returns {{declarations: Set<Object>, names: Set<string>}} Export information
+ */
+function collectExports(ast) {
+  const declarations = new Set();
+  const names = new Set();
+
+  const addValueName = (value) => {
+    if (value?.type === 'Identifier') names.add(value.name);
+  };
+
+  for (const node of ast.body || []) {
+    if (
+      (node.type === 'ExportNamedDeclaration' ||
+        node.type === 'ExportDefaultDeclaration') &&
+      node.declaration
+    ) {
+      declarations.add(node.declaration);
+      node.declaration.declarations?.forEach((d) => declarations.add(d));
+      addValueName(node.declaration);
+    }
+    if (node.type === 'ExportNamedDeclaration' && !node.source) {
+      node.specifiers?.forEach((s) => addValueName(s.local));
+    }
+    const expr = node.type === 'ExpressionStatement' && node.expression;
+    if (expr?.type === 'AssignmentExpression') {
+      const target = memberPath(expr.left);
+      if (target && commonJsExportDepth(target) >= 0) {
+        addValueName(expr.right);
+        if (expr.right.type === 'ObjectExpression') {
+          expr.right.properties.forEach((p) => addValueName(p.value));
+        }
+      }
+    }
+  }
+
+  return { declarations, names };
+}
+
+/**
+ * Collect functions, class methods and routes from a parsed AST
+ * @param {Object} ast - Program AST
+ * @param {string[]} [routeServers] - Optional list of allowed server identifiers
+ * @returns {Array} Array of function and route metadata objects
+ */
+function collectItems(ast, routeServers) {
+  const functions = [];
+  const exports = collectExports(ast);
+  const isExported = (node, name) =>
+    exports.declarations.has(node) || (!!name && exports.names.has(name));
+
+  traverse(ast, (node) => {
+    switch (node.type) {
+      case 'FunctionDeclaration':
+        pushFunction(functions, node, {
+          name: node.id?.name || 'anonymous',
+          line: node.loc?.start.line || 0,
+          exported: isExported(node, node.id?.name),
+        });
+        break;
+      case 'ClassDeclaration':
+        handleClassDeclaration(
+          node,
+          functions,
+          isExported(node, node.id?.name),
+        );
+        break;
+      case 'VariableDeclarator': {
+        const name = node.id?.type === 'Identifier' ? node.id.name : undefined;
+        const exported = isExported(node, name);
+        if (FUNCTION_TYPES.includes(node.init?.type)) {
+          pushFunction(functions, node.init, {
+            name: name || 'anonymous',
+            line: node.loc?.start.line || 0,
+            exported,
+          });
+        } else if (node.init?.type === 'ClassExpression') {
+          handleClassDeclaration(node.init, functions, exported, name);
+        } else if (node.init?.type === 'ObjectExpression' && name) {
+          handleObjectMethods(node.init, functions, { prefix: name, exported });
+        }
+        break;
+      }
+      case 'ExportDefaultDeclaration':
+        if (node.declaration?.type === 'ObjectExpression') {
+          handleObjectMethods(node.declaration, functions, { exported: true });
+        }
+        break;
+      case 'AssignmentExpression':
+        if (node.operator === '=') handleAssignment(node, functions);
+        break;
+      case 'CallExpression':
+        if (node.callee?.property) {
+          handleRouteExpression(node, functions, routeServers);
+        }
+        break;
+    }
+  });
+
+  return functions;
 }
 
 /**
@@ -218,121 +555,8 @@ function handleClassDeclaration(node, functions, exported) {
  * @returns {Array} Array of function metadata objects
  */
 function extractFunctions(sourceCode, routeServers) {
-  const functions = [];
-
-  try {
-    const ast = tsParse(sourceCode, {
-      loc: true,
-      range: true,
-      jsx: true,
-      allowInvalidAST: true,
-    });
-
-    // Pre-pass: collect exported declaration nodes
-    const exportedDeclarations = new Set();
-    (function collectExports(node, visited = new Set()) {
-      if (!node || typeof node !== 'object' || visited.has(node)) return;
-      visited.add(node);
-      if (
-        (node.type === 'ExportNamedDeclaration' ||
-          node.type === 'ExportDefaultDeclaration') &&
-        node.declaration
-      ) {
-        exportedDeclarations.add(node.declaration);
-        if (node.declaration.type === 'VariableDeclaration') {
-          node.declaration.declarations?.forEach((d) =>
-            exportedDeclarations.add(d),
-          );
-        }
-      }
-      for (const key in node) {
-        if (key === 'parent') continue;
-        const child = node[key];
-        if (child && typeof child === 'object') {
-          if (Array.isArray(child)) {
-            child.forEach((c) => {
-              if (c && typeof c === 'object') collectExports(c, visited);
-            });
-          } else {
-            collectExports(child, visited);
-          }
-        }
-      }
-    })(ast);
-
-    const walk = (node, visited = new Set()) => {
-      if (!node || typeof node !== 'object' || visited.has(node)) return;
-      visited.add(node);
-
-      if (node.type === 'FunctionDeclaration') {
-        handleFunctionDeclaration(
-          node,
-          functions,
-          exportedDeclarations.has(node),
-        );
-      }
-
-      if (
-        node.type === 'VariableDeclarator' &&
-        (node.init?.type === 'ArrowFunctionExpression' ||
-          node.init?.type === 'FunctionExpression')
-      ) {
-        handleFunctionExpression(
-          node,
-          functions,
-          exportedDeclarations.has(node),
-        );
-      }
-
-      if (node.type === 'CallExpression' && node.callee?.property) {
-        handleRouteExpression(node, functions, routeServers);
-      }
-
-      // Class declarations
-      if (node.type === 'ClassDeclaration') {
-        handleClassDeclaration(node, functions, exportedDeclarations.has(node));
-      }
-
-      // Class expressions assigned to variables
-      if (
-        node.type === 'VariableDeclarator' &&
-        node.init?.type === 'ClassExpression'
-      ) {
-        const classNode = node.init;
-        if (!classNode.id && node.id?.name) {
-          classNode.id = { name: node.id.name };
-        }
-        handleClassDeclaration(
-          classNode,
-          functions,
-          exportedDeclarations.has(node),
-        );
-      }
-
-      // Walk child nodes
-      for (const key in node) {
-        if (key === 'parent') continue;
-        const child = node[key];
-        if (child !== null && typeof child === 'object') {
-          if (Array.isArray(child)) {
-            child.forEach((item) => {
-              if (item && typeof item === 'object') {
-                walk(item, visited);
-              }
-            });
-          } else {
-            walk(child, visited);
-          }
-        }
-      }
-    };
-
-    walk(ast);
-  } catch (err) {
-    console.warn(`Warning: Failed to extract functions: ${err.message}`);
-  }
-
-  return functions;
+  const ast = parseSource(sourceCode);
+  return ast ? collectItems(ast, routeServers) : [];
 }
 
 /**
@@ -353,13 +577,18 @@ function extractRouteParams(routePath) {
 }
 
 /**
- * Match JSDoc comments to code items by proximity
+ * Match JSDoc comments to code items. A comment documents at most one item:
+ * the nearest item starting within 2 lines below it. When the comment carries
+ * `nextLine` (the line of the first code token after it), the item must also
+ * start on that line, so a comment never documents code past an intervening
+ * statement. If several comments target the same item, the closest one wins.
  * @param {Array} jsdocs - Array of parsed JSDoc objects
  * @param {Array} items - Array of function/route metadata objects
  * @returns {Object} Object with jsdocMap and itemKey function
  */
 function matchJSDocToItems(jsdocs, items) {
   const jsdocMap = new Map();
+  const claimedDistance = new Map();
 
   const itemKey = (fn) =>
     fn.type === 'route'
@@ -368,27 +597,30 @@ function matchJSDocToItems(jsdocs, items) {
         ? `fn:${fn.className}.${fn.name}:${fn.line}`
         : `fn:${fn.name}:${fn.line}`;
 
-  items.forEach((fn) => {
-    let closestJsdoc = null;
-    let closestDistance = Infinity;
+  for (const jsdoc of jsdocs) {
+    if (!jsdoc.loc) continue;
+    const endLine = jsdoc.loc.end.line;
+    const hasNextLine = jsdoc.nextLine !== undefined;
 
-    jsdocs.forEach((jsdoc) => {
-      if (jsdoc.loc) {
-        const jsdocEndLine = jsdoc.loc.end.line;
-        const distance =
-          fn.line >= jsdocEndLine ? fn.line - jsdocEndLine : Infinity;
-
-        if (distance < closestDistance && distance >= 0 && distance <= 2) {
-          closestDistance = distance;
-          closestJsdoc = jsdoc;
-        }
+    let best = null;
+    let bestDistance = Infinity;
+    for (const item of items) {
+      const distance = item.line - endLine;
+      if (distance < 0 || distance > 2) continue;
+      if (hasNextLine && item.line !== jsdoc.nextLine) continue;
+      if (distance < bestDistance) {
+        best = item;
+        bestDistance = distance;
       }
-    });
-
-    if (closestJsdoc) {
-      jsdocMap.set(itemKey(fn), closestJsdoc);
     }
-  });
+    if (!best) continue;
+
+    const key = itemKey(best);
+    if (claimedDistance.has(key) && claimedDistance.get(key) <= bestDistance)
+      continue;
+    claimedDistance.set(key, bestDistance);
+    jsdocMap.set(key, jsdoc);
+  }
 
   return { jsdocMap, itemKey };
 }
@@ -414,8 +646,9 @@ async function parseFile(filePath, config = {}) {
 
   const sourceCode = await fs.readFile(filePath, 'utf8');
   const fileName = path.basename(filePath);
-  const jsdocs = parseJSDoc(sourceCode);
-  const functions = extractFunctions(sourceCode, config.routeServers);
+  const ast = parseSource(sourceCode, filePath);
+  const jsdocs = ast ? collectJSDoc(ast) : [];
+  const functions = ast ? collectItems(ast, config.routeServers) : [];
   const { jsdocMap, itemKey } = matchJSDocToItems(jsdocs, functions);
 
   const api = {
