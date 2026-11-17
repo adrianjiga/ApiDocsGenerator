@@ -163,6 +163,27 @@ function f() {}`);
     });
   });
 
+  it('keeps brackets and defaults the parser read as an optional name', () => {
+    const [jsdoc] = parseJSDoc(`/**
+ * @returns {string} [deprecated] the id
+ * @throws {Error} [when=closed] Closed connection
+ */`);
+    expect(
+      jsdoc.parsed.tags.map(({ description, optional, default: d }) => ({
+        description,
+        optional,
+        d,
+      })),
+    ).toEqual([
+      { description: '[deprecated] the id', optional: false, d: undefined },
+      {
+        description: '[when=closed] Closed connection',
+        optional: false,
+        d: undefined,
+      },
+    ]);
+  });
+
   it('leaves @param names alone', () => {
     const [jsdoc] = parseJSDoc('/**\n * @param {number} a - First\n */');
     expect(jsdoc.parsed.tags[0]).toMatchObject({

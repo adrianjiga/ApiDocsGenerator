@@ -46,10 +46,13 @@ const NAMELESS_TAGS = new Set(['returns', 'return', 'throws', 'yields']);
  */
 function normalizeNamelessTag(tag) {
   if (!NAMELESS_TAGS.has(tag.tag) || !tag.name) return tag;
+  const word = tag.source?.[0]?.tokens?.name || tag.name;
+  const { default: _default, ...rest } = tag;
   return {
-    ...tag,
+    ...rest,
     name: '',
-    description: `${tag.name} ${tag.description}`.trim(),
+    optional: false,
+    description: `${word} ${tag.description}`.trim(),
   };
 }
 
