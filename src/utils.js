@@ -194,15 +194,15 @@ function calcPercentage(part, total) {
 }
 
 export {
-  DEFAULT_EXCLUDE_PATTERN,
-  sanitizeHtmlId,
-  githubSlug,
-  getParamName,
-  escapeHtml,
-  stripControlChars,
   calcPercentage,
+  cleanTagDescription,
+  DEFAULT_EXCLUDE_PATTERN,
+  escapeHtml,
+  getParamName,
   getParamTags,
   getReturnTags,
-  cleanTagDescription,
+  githubSlug,
+  sanitizeHtmlId,
+  stripControlChars,
   uniqueFileLabels,
 };

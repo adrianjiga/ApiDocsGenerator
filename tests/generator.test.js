@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { generate } from '../src/generator.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { formatters } from '../src/formatters/registry.js';
+import { generate } from '../src/generator.js';
 
 const outputDir = path.resolve('tests/.tmp-generator-output');
 

@@ -1,8 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { parse } from 'comment-parser';
 import { parse as tsParse } from '@typescript-eslint/typescript-estree';
-import { getParamName, DEFAULT_EXCLUDE_PATTERN } from './utils.js';
+import { parse } from 'comment-parser';
+import { DEFAULT_EXCLUDE_PATTERN, getParamName } from './utils.js';
 
 const JSDOC_REGEX = /\/\*\*\s*([\s\S]*?)\*\//g;
 
@@ -813,11 +813,11 @@ async function parseDirectory(dir, config = {}) {
 }
 
 export {
-  parseJSDoc,
+  compileExcludeRegex,
   extractFunctions,
   matchJSDocToItems,
-  parseFile,
-  scanDirectory,
   parseDirectory,
-  compileExcludeRegex,
+  parseFile,
+  parseJSDoc,
+  scanDirectory,
 };

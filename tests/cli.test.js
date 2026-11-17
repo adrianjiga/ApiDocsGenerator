@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
+import path from 'node:path';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../src/generator.js', async (importOriginal) => {
   const original = await importOriginal();

@@ -1,7 +1,7 @@
 import {
+  cleanTagDescription,
   getParamTags,
   getReturnTags,
-  cleanTagDescription,
   githubSlug,
   uniqueFileLabels,
 } from '../utils.js';

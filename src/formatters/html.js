@@ -1,9 +1,9 @@
 import {
+  cleanTagDescription,
   escapeHtml,
-  sanitizeHtmlId,
   getParamTags,
   getReturnTags,
-  cleanTagDescription,
+  sanitizeHtmlId,
   uniqueFileLabels,
 } from '../utils.js';
 import { BASE_CSS } from './shared-styles.js';

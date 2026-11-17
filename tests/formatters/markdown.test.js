@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { generateMarkdown } from '../../src/formatters/markdown.js';
 import { mockApiData } from '../fixtures.js';
 

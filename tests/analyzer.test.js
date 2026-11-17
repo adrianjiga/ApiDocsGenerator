@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { analyzeCoverage, checkRouteDocumentation } from '../src/analyzer.js';
-import { makeFunction, makeRoute, fullyDocumentedJsdoc } from './fixtures.js';
+import { fullyDocumentedJsdoc, makeFunction, makeRoute } from './fixtures.js';
 
 describe('analyzeCoverage', () => {
   it('returns 100% coverage for fully documented functions', () => {

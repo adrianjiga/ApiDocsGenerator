@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { analyzeCoverage } from '../src/analyzer.js';
 import { generate } from '../src/generator.js';
 import { parseDirectory } from '../src/parser.js';
-import { analyzeCoverage } from '../src/analyzer.js';
 
 const examplesDir = path.resolve('examples');
 const outputDir = path.resolve('tests/.tmp-integration-output');

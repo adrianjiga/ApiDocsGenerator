@@ -1,12 +1,12 @@
-import path from 'node:path';
-import { createRequire } from 'node:module';
 import fs from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import path from 'node:path';
 import { program } from 'commander';
-import * as generator from './generator.js';
-import * as parser from './parser.js';
 import { analyzeCoverage } from './analyzer.js';
 import { formatters } from './formatters/registry.js';
+import * as generator from './generator.js';
 import { loadConfig } from './generator.js';
+import * as parser from './parser.js';
 import { stripControlChars } from './utils.js';
 
 const require = createRequire(import.meta.url);

@@ -1,14 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  sanitizeHtmlId,
-  githubSlug,
-  getParamName,
-  escapeHtml,
-  stripControlChars,
   calcPercentage,
+  cleanTagDescription,
+  escapeHtml,
+  getParamName,
   getParamTags,
   getReturnTags,
-  cleanTagDescription,
+  githubSlug,
+  sanitizeHtmlId,
+  stripControlChars,
   uniqueFileLabels,
 } from '../src/utils.js';
 

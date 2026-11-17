@@ -1,8 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import * as parser from './parser.js';
 import { formatters } from './formatters/registry.js';
+import * as parser from './parser.js';
 import { DEFAULT_EXCLUDE_PATTERN } from './utils.js';
 
 /**
@@ -251,9 +251,9 @@ async function generate(
 }
 
 export {
+  buildSummaryReport,
   defaultConfig,
+  generate,
   getDefaultConfig,
   loadConfig,
-  generate,
-  buildSummaryReport,
 };
