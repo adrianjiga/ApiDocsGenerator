@@ -1,596 +1,137 @@
 # api-docs-generator
 
-A powerful Node.js CLI tool that auto-generates API documentation from JavaScript/TypeScript source code and analyzes documentation coverage. Extracts function signatures, JSDoc comments, and Express/Fastify routes to produce beautiful documentation in multiple formats.
+[![CI](https://github.com/adrianjiga/ApiDocsGenerator/actions/workflows/ci.yml/badge.svg)](https://github.com/adrianjiga/ApiDocsGenerator/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@adrianjiga/api-docs-generator)](https://www.npmjs.com/package/@adrianjiga/api-docs-generator)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## Features
-
-✨ **Multiple Output Formats**
-
-- Markdown (`.md`) - For GitHub/documentation sites
-- HTML (`.html`) - Self-contained with built-in styling
-- JSON (`.json`) - Machine-readable for tool integration
-- OpenAPI/Swagger (`.yaml`) - Standard API specification format
-
-📊 **Documentation Coverage Analysis**
-
-- Audit documentation completeness across your codebase
-- Generate interactive HTML dashboards
-- Terminal reports with visual progress bars
-- JSON output for CI/CD integration
-- Threshold-based exit codes for automation
-
-🔍 **Smart Code Analysis**
-
-- Extracts function signatures and parameters
-- Parses JSDoc comments automatically
-- Detects functions, arrow functions, class and prototype methods, object-literal methods and CommonJS exports
-- Detects Express/Fastify API routes
-- Identifies route parameters (`:id`, `:userId`, etc.)
-- Generates usage examples
-
-📚 **Zero Configuration**
-
-- Works out of the box
-- Simple CLI interface
-- Sensible defaults for all options
-- Recursive directory scanning
-
-## Installation
+API docs and a documentation coverage check for JavaScript and TypeScript,
+built from the JSDoc you already write.
 
 ```bash
-npm install -g @adrianjiga/api-docs-generator
+npx @adrianjiga/api-docs-generator generate --dir ./src
 ```
 
-Or use locally:
+## The problem
+
+Documentation for a JavaScript API usually lives somewhere other than the code:
+
+- a hand-written `API.md` or OpenAPI file that falls behind as soon as a route
+  or parameter changes;
+- JSDoc comments that exist in some files and not others, with no way to tell
+  which functions are missing them;
+- nothing in CI that notices when new code ships undocumented.
+
+api-docs-generator reads your source, writes the docs from it, and tells you
+what is still undocumented.
+
+## What it does
+
+1. **Scans your project** for JavaScript and TypeScript files, skipping
+   `node_modules`, `dist`, `build` and other generated folders.
+2. **Reads the code**: functions, class and object methods, CommonJS exports,
+   Express and Fastify routes, and the JSDoc comment directly above each one.
+3. **Writes the docs** as Markdown, HTML, JSON and OpenAPI 3.0.3.
+4. **Audits coverage**: lists every item that is undocumented or partly
+   documented, as a terminal report, JSON or an HTML dashboard.
+
+## Coverage in CI
+
+`audit` exits with code `1` when coverage is below the threshold, so it can
+fail a build:
 
 ```bash
-npm install --save-dev @adrianjiga/api-docs-generator
-npx api-docs-generator generate --dir ./src --output ./docs
+api-docs-generator audit --dir ./src --threshold 80
 ```
 
-## Quick Start
+An item counts as documented when its JSDoc has a description and a `@param`
+for each parameter. Functions also need `@returns` (`@returns {void}` is fine).
+For routes, the parameters are the path parameters, and `@returns` is optional.
 
-### Generate Documentation
-
-```bash
-api-docs-generator generate --dir ./src --output ./docs --formats markdown,html,json
-```
-
-### Audit Documentation Coverage
-
-```bash
-api-docs-generator audit --dir ./src --format dashboard
-```
-
-### Scan for APIs (Preview)
-
-```bash
-api-docs-generator scan ./src
-```
-
-## Usage
-
-### Command: `generate` (alias: `gen`)
-
-Generate API documentation from source code.
-
-```bash
-api-docs-generator generate [options]
-```
-
-**Options:**
-
-- `-d, --dir <directory>` - Source directory to scan (default: `.`)
-- `-o, --output <directory>` - Output directory for generated docs (default: `./docs`)
-- `-f, --formats <formats>` - Output formats as comma-separated list (default: `markdown,html,json`)
-  - Supported: `markdown`, `html`, `json`, `openapi` (alias: `swagger`)
-- `-c, --config <path>` - Path to a config file (default: `apidocs.config.js`, `.mjs` or `.cjs` in the current directory)
-- `--server-url <url>` - Server URL for generated examples (overrides config)
-- `--api-title <title>` - API title for generated documentation (overrides config)
-- `--api-version <version>` - API version string (overrides config)
-- `--exclude <pattern>` - Directory exclude regex pattern (overrides config)
-
-**Examples:**
-
-```bash
-# Generate all formats in default directories
-api-docs-generator generate
-
-# Custom source and output directories
-api-docs-generator generate --dir ./src --output ./api-docs
-
-# Markdown only
-api-docs-generator generate --dir ./src --formats markdown
-
-# Multiple formats
-api-docs-generator generate --formats markdown,html,json
-
-# OpenAPI/Swagger spec
-api-docs-generator generate --dir ./src --formats openapi
-
-# Override API metadata from the command line
-api-docs-generator generate --server-url https://api.example.com --api-title "My API" --api-version 2.0.0
-```
-
-**Exit codes:**
-
-- `0` - All requested formats were generated
-- `1` - No source files found, no valid format requested, or a format failed to generate
-
-### Command: `audit` (alias: `a`)
-
-Audit documentation coverage and generate coverage reports.
-
-```bash
-api-docs-generator audit [options]
-```
-
-**Options:**
-
-- `-d, --dir <directory>` - Source directory to scan (default: `.`)
-- `-t, --threshold <number>` - Coverage threshold percentage (default: `80`)
-- `-f, --format <format>` - Output format: `terminal`, `json`, or `dashboard` (default: `terminal`)
-- `-o, --output <file>` - Output file for dashboard format (default: `coverage-dashboard.html`)
-- `-c, --config <path>` - Path to a config file (default: `apidocs.config.js`, `.mjs` or `.cjs` in the current directory)
-- `--exclude <pattern>` - Directory exclude regex pattern (overrides config)
-
-**Exit Codes:**
-
-- `0` - Coverage meets or exceeds threshold
-- `1` - Coverage below threshold, or no source files found to audit
-
-**Examples:**
-
-```bash
-# Terminal report with default 80% threshold
-api-docs-generator audit --dir ./src
-
-# Generate interactive HTML dashboard
-api-docs-generator audit --dir ./src --format dashboard
-
-# Generate dashboard to custom location
-api-docs-generator audit --dir ./src --format dashboard --output ./reports/coverage.html
-
-# Set custom threshold and output JSON
-api-docs-generator audit --dir ./src --threshold 90 --format json
-
-# Use in CI/CD - fail if coverage below 75%
-api-docs-generator audit --dir ./src --threshold 75 --format terminal
-```
-
-**Coverage Metrics:**
-
-- **Fully Documented**: Function has JSDoc, description, @param for all params, and @returns (or @return) tag. Routes need a description and @param for each path parameter; @returns is optional for routes
-- **Partially Documented**: Function has JSDoc but missing required elements
-- **Undocumented**: No JSDoc comment
-- **Coverage Percentage**: (Fully documented items) / (Total items) × 100
-
-### Command: `scan`
-
-Scan a directory and display found APIs without generating documentation.
-
-```bash
-api-docs-generator scan [directory]
-```
-
-**Options:**
-
-- `-c, --config <path>` - Path to a config file (default: `apidocs.config.js`, `.mjs` or `.cjs` in the current directory)
-- `--exclude <pattern>` - Directory exclude regex pattern (overrides config)
-
-**Examples:**
-
-```bash
-# Scan current directory
-api-docs-generator scan
-
-# Scan specific directory
-api-docs-generator scan ./src
-```
-
-## JSDoc Format
-
-For best results, document your functions using JSDoc format:
-
-```javascript
+```js
 /**
- * Brief description of what the function does
- * @param {type} paramName - Description of parameter
- * @param {type} paramName2 - Description of parameter 2
- * @returns {type} Description of return value
+ * Get a user by id
+ * @param {string} id - User id
+ * @returns {Promise<User>} The user
  */
-function myFunction(paramName, paramName2) {
-  // implementation
-}
-```
-
-Both `@returns` and `@return` are recognized.
-
-**Example:**
-
-```javascript
-/**
- * Calculate the sum of two numbers
- * @param {number} a - First number
- * @param {number} b - Second number
- * @returns {number} Sum of a and b
- */
-function sum(a, b) {
-  return a + b;
-}
-```
-
-## Express/Fastify Routes
-
-The tool automatically detects Express and Fastify route definitions:
-
-```javascript
-app.get('/users/:id', (req, res) => {
-  // route handler
-});
-
-app.post('/users', (req, res) => {
-  // route handler
-});
-
-// Chained Express routes
-app.route('/books/:id').get(getBook).put(updateBook);
-
-// Fastify route objects
-fastify.route({ method: ['GET', 'POST'], url: '/items', handler });
-```
-
-Supported HTTP methods:
-
-- `get()`
-- `post()`
-- `put()`
-- `delete()`
-- `patch()`
-
-## Output Files
-
-### Markdown Output (`API.md`)
-
-Human-readable documentation with:
-
-- Table of contents
-- Function signatures and descriptions
-- Parameter details
-- Usage examples
-- API route documentation
-
-### HTML Output (`index.html`)
-
-Beautiful, self-contained HTML with:
-
-- Responsive design
-- Color-coded sections
-- Interactive navigation
-- Code syntax highlighting
-- Professional styling
-- Dark theme with rich color palette
-- XSS-safe: all dynamic content is escaped
-
-### JSON Output (`api.json`)
-
-Machine-readable structured data with:
-
-- Metadata (generation timestamp, version)
-- All extracted functions and routes
-- JSDoc information
-- Route parameters
-
-### OpenAPI Output (`openapi.yaml`)
-
-OpenAPI 3.0.3 specification with:
-
-- Standard spec structure compatible with Swagger UI and other tools
-- Automatic conversion of Express `:param` to `{param}` syntax
-- Routes grouped by path with proper HTTP method keys
-- Path parameters with schema definitions
-- Tags derived from source file names
-
-### Generation Report (`GENERATION_REPORT.md`)
-
-Summary of the documentation generation including:
-
-- File count statistics
-- Function and route counts
-- Generated file list
-- Output directory location
-
-### Coverage Dashboard (`coverage-dashboard.html`)
-
-Interactive HTML dashboard showing:
-
-- Circular progress gauge (color-coded: green ≥80%, yellow 50-80%, red <50%)
-- Summary stat cards (function coverage, route coverage, gaps count)
-- Per-file coverage breakdown with progress bars
-- Detailed table of all documentation gaps
-- Per-file coverage table
-- Responsive design with dark theme
-- Self-contained with inline CSS (no external dependencies)
-
-## Example Project Structure
-
-```
-my-api/
-├── src/
-│   ├── routes/
-│   │   ├── users.js
-│   │   └── posts.js
-│   └── utils/
-│       └── helpers.js
-├── package.json
-└── apidocs.config.js (optional)
-```
-
-Generate documentation:
-
-```bash
-api-docs-generator generate --dir ./src --output ./docs
-```
-
-Result:
-
-```
-docs/
-├── API.md                    # Markdown documentation
-├── index.html                # HTML documentation
-├── api.json                  # JSON data
-├── openapi.yaml              # OpenAPI 3.0.3 spec
-└── GENERATION_REPORT.md      # Generation summary
-```
-
-## Complete Example
-
-### Sample Source Code (src/api.js)
-
-```javascript
-/**
- * Fetch user by ID from database
- * @param {string} userId - The unique user identifier
- * @returns {Promise<Object>} User object with id, name, and email
- */
-async function getUserById(userId) {
-  // implementation
-}
-
-import express from 'express';
-const app = express();
+export async function getUser(id) {}
 
 /**
- * Get all users
+ * Delete a user
+ * @param {string} id - User id
  */
-app.get('/users', (req, res) => {
-  res.json([]);
-});
-
-/**
- * Create a new user
- */
-app.post('/users', (req, res) => {
-  res.json({ id: 'new-id' });
-});
+app.delete('/users/:id', removeUser);
 ```
 
-### Run Generation
+## Commands
 
-```bash
-api-docs-generator generate --dir ./src --output ./docs --formats markdown,html
-```
+| Command                         | What it does                                                                          |
+| ------------------------------- | ------------------------------------------------------------------------------------- |
+| `api-docs-generator generate`   | Write docs to `./docs` (`--formats markdown,html,json,openapi`, `--output <dir>`)     |
+| `api-docs-generator audit`      | Report coverage (`--format terminal\|json\|dashboard`); exits `1` below `--threshold` |
+| `api-docs-generator scan [dir]` | List the functions and routes found, without writing anything                         |
 
-### Generated Documentation
+Run `api-docs-generator <command> --help` for every flag.
 
-The tool will create:
+### Settings that stick
 
-- `docs/API.md` - Comprehensive markdown guide
-- `docs/index.html` - Beautiful HTML documentation
-- `docs/api.json` - Structured data
-- `docs/GENERATION_REPORT.md` - Summary report
-
-## Supported File Types
-
-The tool scans and parses:
-
-- `.js`, `.mjs`, `.cjs` - JavaScript files
-- `.ts`, `.mts`, `.cts` - TypeScript files
-- `.jsx` - React JavaScript
-- `.tsx` - React TypeScript
-
-TypeScript declaration files (`.d.ts`, `.d.mts`, `.d.cts`) are skipped.
-
-## How It Works
-
-1. **Directory Scanning** - Recursively scans for JS/TS files
-2. **AST Parsing** - Uses `@typescript-eslint/typescript-estree` to parse JavaScript and TypeScript code
-3. **JSDoc Extraction** - Parses JSDoc comments using comment-parser
-4. **Route Detection** - Identifies Express/Fastify route definitions
-5. **Metadata Collection** - Gathers functions, routes, and documentation
-6. **Format Generation** - Creates output in specified formats
-7. **File Writing** - Writes all documentation to output directory
-
-## Configuration
-
-### Command Line Options
-
-All options can be specified via command line flags.
-
-### Configuration File (Optional)
-
-Create `apidocs.config.js` in the directory you run the CLI from to set persistent defaults. In a CommonJS project (no `"type": "module"` in `package.json`), name it `apidocs.config.mjs` to use `export default`, or `apidocs.config.cjs` to use `module.exports`:
+Put the options you always pass in an `apidocs.config.js` next to where you run
+the command:
 
 ```js
 export default {
-  excludePattern: 'node_modules|dist|build',
-  serverUrl: 'http://localhost:3000',
+  serverUrl: 'https://api.example.com',
   apiTitle: 'My API',
   apiVersion: '2.0.0',
-  // Optional: restrict route detection to these Express/Fastify instance identifiers
-  routeServers: ['app', 'router'],
 };
 ```
 
-Pass a custom config path with `--config path/to/apidocs.config.js`.
+In a CommonJS project, name it `apidocs.config.mjs` (or use `module.exports`
+in `apidocs.config.cjs`). Command-line flags override it. See the
+[CLI and API reference](docs/API-Interface-Design.md) for every key.
 
-The config file is a JavaScript module and is executed when loaded, like ESLint or Vite configs. Only run the CLI in projects whose config you trust.
+## Install
 
-The `excludePattern` regex is matched against directory paths relative to the scanned directory, so a parent folder named `build` or `dist` does not exclude your sources.
-
-## Documentation Coverage Analysis
-
-The built-in coverage analyzer helps you maintain high documentation quality across your codebase.
-
-### How Coverage is Calculated
-
-**Fully Documented Items** have:
-
-- ✅ JSDoc comment block
-- ✅ Description text
-- ✅ @param tags for all parameters (path parameters for routes)
-- ✅ @returns tag (or @return alias) — functions only
-
-**Partially Documented Items** have:
-
-- ⚠️ JSDoc comment block
-- ⚠️ Missing one or more required elements
-
-**Undocumented Items**:
-
-- ❌ No JSDoc comment
-
-### Coverage Report Formats
-
-**Terminal Format** (default):
-
-```
-[█████████████░░░░░░░] 65.2%
-Function Coverage: 65.2% (15/23)
-Route Coverage: 0% (0/0)
-Documentation Gaps: 8
-```
-
-Perfect for local development and CI/CD pipelines.
-
-**Dashboard Format**:
-
-- Interactive HTML dashboard
-- Color-coded gauge (green/yellow/red)
-- Summary stat cards
-- Per-file breakdown with progress bars
-- Detailed gaps table
-- Responsive design
-
-**JSON Format**:
-
-- Machine-readable output
-- Complete analysis data
-- Easy integration with other tools
-
-### CI/CD Integration
-
-Use the audit command in your build pipeline:
+Needs Node.js 22.12 or newer.
 
 ```bash
-# Fail if coverage drops below 80%
-api-docs-generator audit --dir ./src --threshold 80
-
-# Generate dashboard for build artifacts
-api-docs-generator audit --dir ./src --format dashboard --output ./artifacts/coverage.html
+npx @adrianjiga/api-docs-generator                       # run without installing
+npm install -g @adrianjiga/api-docs-generator            # or install it globally
+npm install --save-dev @adrianjiga/api-docs-generator    # or per project
 ```
 
-## Visual Design
+The command is `api-docs-generator` in every case.
 
-The HTML formatters feature a **bold, production-ready design** with:
+## Supported
 
-- **Rich dark theme** with sophisticated color palette
-- **Animated gradient orbs** for visual depth
-- **Golden ratio typography** for readability
-- **Micro-interactions** on hover and focus states
-- **Responsive design** for mobile, tablet, and desktop
-- **Accessibility support** including reduced-motion preferences
+- **Files**: `.js`, `.mjs`, `.cjs`, `.jsx`, `.ts`, `.mts`, `.cts` and `.tsx`.
+  TypeScript declaration files and files over 1 MB are skipped.
+- **Functions**: declarations, arrow functions and function expressions, class
+  and prototype methods, methods of module-level object literals, and CommonJS
+  exports.
+- **Routes**: Express `app.get('/path')` (also `post`, `put`, `delete` and
+  `patch`), chained `app.route('/path').get()`, and Fastify
+  `fastify.route({ method, url })`.
+- **Output**: Markdown, HTML, JSON and OpenAPI 3.0.3 docs; terminal, JSON and
+  HTML dashboard coverage reports.
 
-All styling is inline with zero external dependencies.
+## Learn more
 
-## Troubleshooting
-
-### No files found
-
-Make sure:
-
-- Directory path is correct
-- Files have a supported extension (see [Supported File Types](#supported-file-types))
-- Check that `node_modules`, `dist`, `build` directories are not your only source files
-
-### JSDoc not detected
-
-JSDoc comments must:
-
-- Use the `/** */` block comment format
-- Appear within 2 lines above the function declaration (at most one blank line between `*/` and the function)
-- Be directly followed by the item they document; a comment documents only the next item, so a class comment is not reused for its first method
-- Be valid JSDoc syntax
-
-### Routes not detected
-
-Express/Fastify routes must:
-
-- Use `app.get()`, `app.post()`, etc., `app.route('/path').get()`, or `fastify.route({ method, url })`
-- Have a string literal path that starts with `/`
-- Follow standard Express route syntax
-
-JSDoc comments placed within 2 lines above a route definition are automatically captured and displayed in generated documentation.
-
-## Performance
-
-- **Fast AST parsing** with `@typescript-eslint/typescript-estree`
-- **Recursive scanning** with efficient directory traversal
-- **Minimal dependencies** for small bundle size
-- Handles projects with hundreds of files efficiently
-
-## Limitations
-
-- Does not analyze runtime behavior
-- JSDoc linking is position-based (the comment directly before an item, within 2 lines)
-- Routes with dynamic paths may not be detected
-- Comments must be in standard JSDoc format
-
-## Development
-
-```bash
-# Run the full test suite (vitest)
-npm test
-
-# Generate docs for the examples directory
-npm run generate
-
-# Lint and format check (Biome)
-npm run check
-```
-
-Tests use [vitest](https://vitest.dev/) with shared fixtures in `tests/fixtures.js`.
-
-## License
-
-MIT
+- [Troubleshooting](docs/troubleshooting.md): files not found, JSDoc or routes
+  not detected, config errors, CI exit codes.
+- [CLI and API reference](docs/API-Interface-Design.md): every flag, exit
+  codes, the config file, data shapes and the library API.
+- [Generated output reference](docs/output-reference.md): what each output file
+  contains.
+- [Architecture](docs/Architecture.md), [technical design](docs/Technical-Design.md)
+  and [design decisions](docs/decisions/).
+- [Changelog](CHANGELOG.md) and [releases](https://github.com/adrianjiga/ApiDocsGenerator/releases).
 
 ## Contributing
 
-Contributions welcome! Please:
+Bugs and ideas go on the [issue tracker](https://github.com/adrianjiga/ApiDocsGenerator/issues).
+For the development setup and how changes get merged, see
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
-1. Fork the repository
-2. Create a feature branch
-3. Submit a pull request
+## License
 
-## Support
-
-For issues and questions:
-
-- Check the examples directory
-- Review generated output formats
-- Ensure JSDoc is properly formatted
-
----
-
-**Made with ❤️ for API documentation lovers**
+[MIT](LICENSE)

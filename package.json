@@ -57,7 +57,6 @@
     "src/",
     "bin/",
     "README.md",
-    "QUICK_START.md",
     "CHANGELOG.md"
   ],
   "dependencies": {
