@@ -225,7 +225,8 @@ has no parameters.
 Parameters are matched by name (`isParamDocumented`). A rest parameter
 `...args` matches `@param args`. A destructured parameter (`{a, b}` or
 `[a, b]`) has no name of its own, so it matches the top-level `@param` at the
-same position, such as `@param {Object} options`; tags for its properties
+same position, such as `@param {Object} options`, as long as that tag is not
+named after one of the function's other parameters. Tags for its properties
 (`options.a`) are allowed but not required.
 
 Percentages use `calcPercentage`: `part / total * 100` rounded to one decimal,

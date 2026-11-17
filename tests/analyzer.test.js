@@ -349,6 +349,21 @@ describe('parameter matching', () => {
     expect(coverageOf(fn)).toBe(0);
   });
 
+  it('does not borrow the @param of a later named parameter', () => {
+    const fn = makeFunction('f', ['{x}', 'b'], docWith(['b']));
+    expect(coverageOf(fn)).toBe(0);
+  });
+
+  it('does not take a named parameter tag that sits in its position', () => {
+    const fn = makeFunction('f', ['{x}', 'a'], docWith(['a', 'extra']));
+    expect(coverageOf(fn)).toBe(0);
+  });
+
+  it('accepts any otherwise unused tag name in its position', () => {
+    const fn = makeFunction('f', ['a', '{x}'], docWith(['a', 'opts']));
+    expect(coverageOf(fn)).toBe(1);
+  });
+
   it('matches a rest parameter to @param without the dots', () => {
     const fn = makeFunction('f', ['...args'], docWith(['args']));
     expect(coverageOf(fn)).toBe(1);

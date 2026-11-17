@@ -170,19 +170,29 @@ function analyzeCoverage(apiData) {
  * Whether a parameter has a matching @param tag. Rest parameters (`...args`)
  * match `@param args`. Destructured parameters (`{a, b}`, `[a, b]`) have no
  * name of their own, so they match the top-level @param at the same position,
- * e.g. `@param {Object} options` for the first parameter.
+ * e.g. `@param {Object} options` for the first parameter, unless that tag is
+ * the one for another, named parameter.
  * @param {string} paramName - Parameter name from the parser
  * @param {number} index - Position of the parameter
  * @param {string[]} documentedNames - Names of all @param tags
  * @param {Array} topLevelTags - @param tags whose name has no `.`
+ * @param {string[]} paramNames - Names of all the item's parameters, without `...`
  * @returns {boolean} True when the parameter is documented
  */
-function isParamDocumented(paramName, index, documentedNames, topLevelTags) {
+function isParamDocumented(
+  paramName,
+  index,
+  documentedNames,
+  topLevelTags,
+  paramNames,
+) {
   const name = paramName.startsWith('...') ? paramName.slice(3) : paramName;
   if (documentedNames.includes(paramName) || documentedNames.includes(name)) {
     return true;
   }
-  return /^[{[]/.test(name) && index < topLevelTags.length;
+  if (!/^[{[]/.test(name)) return false;
+  const tag = topLevelTags[index];
+  return !!tag && !paramNames.includes(tag.name);
 }
 
 /**
@@ -224,6 +234,9 @@ function checkDocumentation(item, { requireReturns = true } = {}) {
   const documentedParamNames = paramTags.map((tag) => tag.name);
   existing.params = documentedParamNames;
 
+  const plainParamNames = item.params.map((p) =>
+    p.startsWith('...') ? p.slice(3) : p,
+  );
   const topLevelParamTags = paramTags.filter((tag) => !tag.name?.includes('.'));
   item.params.forEach((paramName, index) => {
     if (
@@ -232,6 +245,7 @@ function checkDocumentation(item, { requireReturns = true } = {}) {
         index,
         documentedParamNames,
         topLevelParamTags,
+        plainParamNames,
       ) &&
       !missing.includes('params')
     ) {
