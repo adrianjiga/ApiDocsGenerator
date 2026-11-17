@@ -104,6 +104,18 @@ class Service {
     expect(result.functions[0].jsdoc).toBeNull();
   });
 
+  it('matches a comment above an export keyword on its own line', async () => {
+    const file = writeFile(
+      'split-export.js',
+      `/** Split export */
+export
+async function f() {}
+`,
+    );
+    const result = await parseFile(file);
+    expect(result.functions[0].jsdoc.description).toBe('Split export');
+  });
+
   it('prefers the closest of two stacked comments', async () => {
     const file = writeFile(
       'stacked.js',
@@ -297,6 +309,39 @@ app.get('/a', h); app.get('/b', h);
     const byPath = Object.fromEntries(result.routes.map((r) => [r.path, r]));
     expect(byPath['/a'].jsdoc.description).toBe('Only a');
     expect(byPath['/b'].jsdoc).toBeNull();
+  });
+
+  it('documents every route of a multi-line chain from a comment above it', async () => {
+    const file = writeFile(
+      'multi-line-chain.js',
+      `/** Book routes */
+app.route('/books/:id')
+  .get(getBook)
+  .put(updateBook);
+`,
+    );
+    const result = await parseFile(file);
+    expect(result.routes.map((r) => r.jsdoc?.description)).toEqual([
+      'Book routes',
+      'Book routes',
+    ]);
+  });
+
+  it('prefers a method comment over the chain comment for that method', async () => {
+    const file = writeFile(
+      'chain-with-method-doc.js',
+      `/** Book routes */
+app.route('/books')
+  /** List books */
+  .get(list)
+  .post(create);
+`,
+    );
+    const result = await parseFile(file);
+    const byMethod = Object.fromEntries(
+      result.routes.map((r) => [r.method, r.jsdoc?.description]),
+    );
+    expect(byMethod).toEqual({ GET: 'List books', POST: 'Book routes' });
   });
 
   it('extracts Fastify route objects with one or many methods', () => {

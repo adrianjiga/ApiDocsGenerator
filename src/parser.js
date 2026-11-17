@@ -141,7 +141,8 @@ function parseJSDoc(sourceCode) {
  * Push function metadata for a function node
  * @param {Array} functions - Accumulator array for extracted function metadata
  * @param {Object} fnNode - Function AST node (declaration, expression or arrow)
- * @param {Object} info - Name, line, export flag and optional class details
+ * @param {Object} info - Name, line, export flag, optional class details and
+ *   optional extra docLines a preceding JSDoc may point at (e.g. an `export` line)
  */
 function pushFunction(functions, fnNode, info) {
   const item = {
@@ -154,6 +155,7 @@ function pushFunction(functions, fnNode, info) {
     generator: !!fnNode.generator,
     exported: !!info.exported,
   };
+  if (info.docLines) item.docLines = info.docLines;
   if (info.className) {
     item.className = info.className;
     item.static = !!info.static;
@@ -283,8 +285,9 @@ function isAllowedServer(serverNode, routeServers) {
  * @param {*} routePath - Candidate route path
  * @param {number} line - Line the route is declared on
  * @param {number} [group] - Id shared by routes declared in the same call
+ * @param {number[]} [docLines] - Extra lines a preceding JSDoc may point at
  */
-function pushRoute(functions, methodName, routePath, line, group) {
+function pushRoute(functions, methodName, routePath, line, group, docLines) {
   if (typeof routePath !== 'string' || !routePath.startsWith('/')) return;
   functions.push({
     type: 'route',
@@ -293,6 +296,7 @@ function pushRoute(functions, methodName, routePath, line, group) {
     line,
     params: extractRouteParams(routePath),
     ...(group !== undefined && { group }),
+    ...(docLines && { docLines }),
   });
 }
 
@@ -381,6 +385,7 @@ function handleRouteExpression(node, functions, routeServers) {
       chainRoot.arguments[0]?.value,
       node.callee.property.loc?.start.line || 0,
       chainRoot.range?.[0],
+      chainRoot.loc ? [chainRoot.loc.start.line] : undefined,
     );
     return;
   }
@@ -464,10 +469,11 @@ function traverse(root, visit) {
  * local names. TypeScript namespace and `declare module` bodies count as
  * module level.
  * @param {Object} ast - Program AST
- * @returns {{declarations: Set<Object>, names: Set<string>, moduleLevel: Set<Object>}} Export information
+ * @returns {{declarations: Set<Object>, names: Set<string>, moduleLevel: Set<Object>, exportLines: Map<Object, number>}} Export information
  */
 function collectExports(ast) {
   const declarations = new Set();
+  const exportLines = new Map();
   const names = new Set();
   const moduleLevel = new Set();
 
@@ -491,8 +497,10 @@ function collectExports(ast) {
 
       if (isExport && node.declaration) {
         declarations.add(node.declaration);
+        exportLines.set(node.declaration, node.loc?.start.line);
         for (const d of node.declaration.declarations ?? []) {
           declarations.add(d);
+          exportLines.set(d, node.loc?.start.line);
         }
         addValueName(node.declaration);
       }
@@ -516,7 +524,7 @@ function collectExports(ast) {
   };
 
   scan(ast.body || []);
-  return { declarations, names, moduleLevel };
+  return { declarations, names, moduleLevel, exportLines };
 }
 
 /**
@@ -531,6 +539,8 @@ function collectItems(ast, routeServers) {
   const isExported = (node, name) =>
     exports.declarations.has(node) ||
     (!!name && exports.moduleLevel.has(node) && exports.names.has(name));
+  const exportDocLines = (node) =>
+    exports.exportLines.has(node) ? [exports.exportLines.get(node)] : undefined;
 
   traverse(ast, (node) => {
     switch (node.type) {
@@ -539,6 +549,7 @@ function collectItems(ast, routeServers) {
           name: node.id?.name || 'anonymous',
           line: node.loc?.start.line || 0,
           exported: isExported(node, node.id?.name),
+          docLines: exportDocLines(node),
         });
         break;
       case 'ClassDeclaration':
@@ -556,6 +567,7 @@ function collectItems(ast, routeServers) {
             name: name || 'anonymous',
             line: node.loc?.start.line || 0,
             exported,
+            docLines: exportDocLines(node),
           });
         } else if (node.init?.type === 'ClassExpression') {
           handleClassDeclaration(node.init, functions, exported, name);
@@ -609,13 +621,14 @@ function extractRouteParams(routePath) {
 }
 
 /**
- * Match JSDoc comments to code items. A comment documents the nearest item
- * starting within 2 lines below it, plus any routes declared on that same line
- * by the same call (e.g. `app.route('/x').get(h).post(h)`). When the comment
- * carries `nextLine` (the line of the first code token after it), the item
- * must also start on that line, so a comment never documents code past an
- * intervening statement. If several comments target the same item, the
- * closest one wins.
+ * Match JSDoc comments to code items. Each item can be documented from its own
+ * line or from extra `docLines` (the line of its `export` keyword, or the first
+ * line of a route chain). A comment documents the nearest item whose doc line
+ * is within 2 lines below it, plus any routes declared by the same call at that
+ * line. When the comment carries `nextLine` (the line of the first code token
+ * after it), only items documented from that line qualify, so a comment never
+ * documents code past an intervening statement. If several comments target the
+ * same item, the closest one wins, and the later one on a tie.
  * @param {Array} jsdocs - Array of parsed JSDoc objects
  * @param {Array} items - Array of function/route metadata objects
  * @returns {Object} Object with jsdocMap and itemKey function
@@ -631,35 +644,45 @@ function matchJSDocToItems(jsdocs, items) {
         ? `fn:${fn.className}.${fn.name}:${fn.line}`
         : `fn:${fn.name}:${fn.line}`;
 
+  const itemsByLine = new Map();
+  for (const item of items) {
+    for (const line of new Set([item.line, ...(item.docLines ?? [])])) {
+      if (!itemsByLine.has(line)) itemsByLine.set(line, []);
+      itemsByLine.get(line).push(item);
+    }
+  }
+
   for (const jsdoc of jsdocs) {
     if (!jsdoc.loc) continue;
     const endLine = jsdoc.loc.end.line;
-    const hasNextLine = jsdoc.nextLine !== undefined;
+    const lines =
+      jsdoc.nextLine !== undefined
+        ? [jsdoc.nextLine]
+        : [endLine, endLine + 1, endLine + 2];
 
-    let best = null;
-    let bestDistance = Infinity;
-    for (const item of items) {
-      const distance = item.line - endLine;
-      if (distance < 0 || distance > 2) continue;
-      if (hasNextLine && item.line !== jsdoc.nextLine) continue;
-      if (distance < bestDistance) {
-        best = item;
-        bestDistance = distance;
+    let candidates = [];
+    let distance = 0;
+    for (const line of lines) {
+      const lineDistance = line - endLine;
+      if (lineDistance < 0 || lineDistance > 2) continue;
+      if (itemsByLine.has(line)) {
+        candidates = itemsByLine.get(line);
+        distance = lineDistance;
+        break;
       }
     }
-    if (!best) continue;
+    if (candidates.length === 0) continue;
 
+    const [best] = candidates;
     const targets =
       best.group === undefined
         ? [best]
-        : items.filter(
-            (item) => item.group === best.group && item.line === best.line,
-          );
+        : candidates.filter((item) => item.group === best.group);
     for (const target of targets) {
       const key = itemKey(target);
-      if (claimedDistance.has(key) && claimedDistance.get(key) <= bestDistance)
+      if (claimedDistance.has(key) && claimedDistance.get(key) < distance)
         continue;
-      claimedDistance.set(key, bestDistance);
+      claimedDistance.set(key, distance);
       jsdocMap.set(key, jsdoc);
     }
   }
