@@ -60,7 +60,7 @@ Calculate the sum of two numbers
 
 **Returns:**
 
-- `number`: of a and b
+- `number`: Sum of a and b
 
 **Usage Example:**
 
@@ -93,9 +93,6 @@ curl -X GET http://localhost:3000/users/:id
   placeholders left in.
 - TOC anchors follow GitHub's heading rules, including the `-1`, `-2` suffixes
   GitHub adds to repeated headings.
-- The `Returns` line drops the first word of the `@returns` description (here
-  `Sum of a and b` became `of a and b`). See
-  [Known issues](Technical-Design.md#known-issues).
 
 ## index.html
 
@@ -127,7 +124,7 @@ section per file.
       </div>
       <div class="returns">
         <h5>📤 Returns</h5>
-        <div class="param-item"><code>number</code> — of a and b</div>
+        <div class="param-item"><code>number</code> — Sum of a and b</div>
       </div>
       <h5 style="margin-top: 15px;">💡 Usage Example</h5>
       <div class="code-block">sum(a, b);</div>

@@ -6,6 +6,7 @@ import {
   extractFunctions,
   parseDirectory,
   parseFile,
+  parseJSDoc,
   scanDirectory,
 } from '../src/parser.js';
 
@@ -126,6 +127,34 @@ function documented() {}
     );
     const result = await parseFile(file);
     expect(result.functions[0].jsdoc.description).toBe('Real doc');
+  });
+});
+
+describe('tags without a name', () => {
+  it('keeps the whole description of @returns, @throws and @yields', () => {
+    const [jsdoc] = parseJSDoc(`/**
+ * Sum
+ * @returns {number} The total sum
+ * @throws {RangeError} When the input is empty
+ * @yields {number} Each partial sum
+ */
+function f() {}`);
+    const tags = Object.fromEntries(
+      jsdoc.parsed.tags.map((t) => [t.tag, t.description]),
+    );
+    expect(tags).toEqual({
+      returns: 'The total sum',
+      throws: 'When the input is empty',
+      yields: 'Each partial sum',
+    });
+  });
+
+  it('leaves @param names alone', () => {
+    const [jsdoc] = parseJSDoc('/**\n * @param {number} a - First\n */');
+    expect(jsdoc.parsed.tags[0]).toMatchObject({
+      name: 'a',
+      description: '- First',
+    });
   });
 });
 

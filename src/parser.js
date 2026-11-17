@@ -35,6 +35,24 @@ function parseSource(sourceCode, filePath) {
   }
 }
 
+const NAMELESS_TAGS = new Set(['returns', 'return', 'throws', 'yields']);
+
+/**
+ * Put back the first word of tags that take no name. comment-parser reads
+ * every tag as `{type} name description`, so `@returns {number} The sum`
+ * would otherwise lose "The" to the name field.
+ * @param {Object} tag - Tag parsed by comment-parser
+ * @returns {Object} The tag with its full description and an empty name
+ */
+function normalizeNamelessTag(tag) {
+  if (!NAMELESS_TAGS.has(tag.tag) || !tag.name) return tag;
+  return {
+    ...tag,
+    name: '',
+    description: `${tag.name} ${tag.description}`.trim(),
+  };
+}
+
 /**
  * Parse the text of a single JSDoc block
  * @param {string} raw - Comment text between the opening `/*` and closing `*\/`
@@ -46,9 +64,10 @@ function toJSDoc(raw, startLine, endLine) {
   try {
     const parsed = parse(`/*${raw}*/`);
     if (parsed && parsed.length > 0) {
+      const [block] = parsed;
       return {
         raw,
-        parsed: parsed[0],
+        parsed: { ...block, tags: block.tags.map(normalizeNamelessTag) },
         loc: {
           start: { line: startLine, column: 0 },
           end: { line: endLine, column: 0 },

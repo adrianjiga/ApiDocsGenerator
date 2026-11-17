@@ -83,7 +83,10 @@ JSDoc blocks come from the parser's comment list, so comment-shaped text inside
 strings or template literals is never mistaken for documentation. A comment
 qualifies when it is a block comment whose text starts with `*` (that is, it
 opens with `/**`). Each block is parsed with `comment-parser`. Line comments
-(`//`) are ignored.
+(`//`) are ignored. `comment-parser` reads every tag as `{type} name
+description`, so for tags that take no name (`@returns`, `@return`, `@throws`,
+`@yields`) `normalizeNamelessTag` moves the word it took as a name back to the
+start of the description.
 
 For each block, `nextTokenLine` binary-searches the token list for the first
 token after the comment and records its line as `nextLine`. This is what JSDoc
@@ -289,7 +292,8 @@ and loads nothing external.
 
 `api.json` mirrors the parser output: a `meta` block and one entry per file
 with its functions and routes. The `jsdoc.tags` arrays are `comment-parser`'s
-tag objects as-is, including its `source` and `problems` fields.
+tag objects, including their `source` and `problems` fields, with nameless
+tags normalized as described under Parsing.
 
 ### Paths in output
 
@@ -360,10 +364,5 @@ is not a TTY or `NO_COLOR` is set.
   `📊 Auditing documentation coverage...` banner to stdout before the JSON, so
   the stdout stream is not valid JSON. Use `--output <file>` to get a clean
   file.
-- `comment-parser` reads the first word after the type in a `@returns` tag as a
-  name, so the Markdown and HTML output drop the first word of every
-  `@returns` description: `@returns {Object} Parsed object` is shown as
-  `object`. The full text is still in `api.json`, split across the tag's `name`
-  and `description`.
 - The `Functions Documented` line in `GENERATION_REPORT.md` is the number of
   functions found, not the number that are documented.
