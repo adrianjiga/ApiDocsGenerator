@@ -222,6 +222,47 @@ app.route('/books/:id')
     expect(post.jsdoc).toBeNull();
   });
 
+  it('shares a JSDoc across routes chained on the same line', async () => {
+    const file = writeFile(
+      'one-line-chain.js',
+      `/** Users collection */
+app.route('/users').get(list).post(create);
+`,
+    );
+    const result = await parseFile(file);
+    expect(result.routes).toHaveLength(2);
+    for (const route of result.routes) {
+      expect(route.jsdoc.description).toBe('Users collection');
+    }
+  });
+
+  it('shares a JSDoc across the methods of one Fastify route object', async () => {
+    const file = writeFile(
+      'fastify-methods.js',
+      `/** Items */
+fastify.route({ method: ['GET', 'POST'], url: '/items', handler });
+`,
+    );
+    const result = await parseFile(file);
+    expect(result.routes.map((r) => r.jsdoc?.description)).toEqual([
+      'Items',
+      'Items',
+    ]);
+  });
+
+  it('does not share a JSDoc with routes from a different call on the same line', async () => {
+    const file = writeFile(
+      'two-calls.js',
+      `/** Only a */
+app.get('/a', h); app.get('/b', h);
+`,
+    );
+    const result = await parseFile(file);
+    const byPath = Object.fromEntries(result.routes.map((r) => [r.path, r]));
+    expect(byPath['/a'].jsdoc.description).toBe('Only a');
+    expect(byPath['/b'].jsdoc).toBeNull();
+  });
+
   it('extracts Fastify route objects with one or many methods', () => {
     const result = extractFunctions(`
 fastify.route({ method: 'GET', url: '/a', handler });

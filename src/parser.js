@@ -282,8 +282,9 @@ function isAllowedServer(serverNode, routeServers) {
  * @param {string} methodName - Lowercase HTTP method
  * @param {*} routePath - Candidate route path
  * @param {number} line - Line the route is declared on
+ * @param {number} [group] - Id shared by routes declared in the same call
  */
-function pushRoute(functions, methodName, routePath, line) {
+function pushRoute(functions, methodName, routePath, line, group) {
   if (typeof routePath !== 'string' || !routePath.startsWith('/')) return;
   functions.push({
     type: 'route',
@@ -291,6 +292,7 @@ function pushRoute(functions, methodName, routePath, line) {
     path: routePath,
     line,
     params: extractRouteParams(routePath),
+    ...(group !== undefined && { group }),
   });
 }
 
@@ -342,7 +344,13 @@ function handleRouteObject(node, functions, routeServers) {
     if (typeof method !== 'string') continue;
     const methodName = method.toLowerCase();
     if (HTTP_METHODS.includes(methodName)) {
-      pushRoute(functions, methodName, routePath, node.loc?.start.line || 0);
+      pushRoute(
+        functions,
+        methodName,
+        routePath,
+        node.loc?.start.line || 0,
+        node.range?.[0],
+      );
     }
   }
 }
@@ -372,6 +380,7 @@ function handleRouteExpression(node, functions, routeServers) {
       methodName,
       chainRoot.arguments[0]?.value,
       node.callee.property.loc?.start.line || 0,
+      chainRoot.range?.[0],
     );
     return;
   }
@@ -569,11 +578,13 @@ function extractRouteParams(routePath) {
 }
 
 /**
- * Match JSDoc comments to code items. A comment documents at most one item:
- * the nearest item starting within 2 lines below it. When the comment carries
- * `nextLine` (the line of the first code token after it), the item must also
- * start on that line, so a comment never documents code past an intervening
- * statement. If several comments target the same item, the closest one wins.
+ * Match JSDoc comments to code items. A comment documents the nearest item
+ * starting within 2 lines below it, plus any routes declared on that same line
+ * by the same call (e.g. `app.route('/x').get(h).post(h)`). When the comment
+ * carries `nextLine` (the line of the first code token after it), the item
+ * must also start on that line, so a comment never documents code past an
+ * intervening statement. If several comments target the same item, the
+ * closest one wins.
  * @param {Array} jsdocs - Array of parsed JSDoc objects
  * @param {Array} items - Array of function/route metadata objects
  * @returns {Object} Object with jsdocMap and itemKey function
@@ -607,11 +618,19 @@ function matchJSDocToItems(jsdocs, items) {
     }
     if (!best) continue;
 
-    const key = itemKey(best);
-    if (claimedDistance.has(key) && claimedDistance.get(key) <= bestDistance)
-      continue;
-    claimedDistance.set(key, bestDistance);
-    jsdocMap.set(key, jsdoc);
+    const targets =
+      best.group === undefined
+        ? [best]
+        : items.filter(
+            (item) => item.group === best.group && item.line === best.line,
+          );
+    for (const target of targets) {
+      const key = itemKey(target);
+      if (claimedDistance.has(key) && claimedDistance.get(key) <= bestDistance)
+        continue;
+      claimedDistance.set(key, bestDistance);
+      jsdocMap.set(key, jsdoc);
+    }
   }
 
   return { jsdocMap, itemKey };
