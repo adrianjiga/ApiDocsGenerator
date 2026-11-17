@@ -253,13 +253,13 @@ and continues with the defaults.
 
 The file's values are shallow-merged over the defaults.
 
-| Key              | Type       | Default                                                                                   | Meaning                                                                                                | CLI override    |
-| ---------------- | ---------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | --------------- |
-| `excludePattern` | `string`   | `node_modules\|dist\|build\|\.cache\|coverage\|\.turbo\|\.nx\|\.next\|\.nuxt\|out\|\.git` | Regex of directory names to skip, matched against whole segments of the path relative to the scan root | `--exclude`     |
-| `serverUrl`      | `string`   | `http://localhost:3000`                                                                   | Base URL in curl examples (Markdown, HTML) and OpenAPI `servers`                                       | `--server-url`  |
-| `apiTitle`       | `string`   | `API Documentation`                                                                       | Title of the Markdown, HTML and OpenAPI output                                                         | `--api-title`   |
-| `apiVersion`     | `string`   | `1.0.0`                                                                                   | `info.version` in OpenAPI and `meta.apiVersion` in JSON                                                | `--api-version` |
-| `routeServers`   | `string[]` | `[]`                                                                                      | When non-empty, only calls on these identifiers (e.g. `app`, `router`) count as routes                 | none            |
+| Key              | Type       | Default                                                                                   | Meaning                                                                                                         | CLI override    |
+| ---------------- | ---------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | --------------- |
+| `excludePattern` | `string`   | `node_modules\|dist\|build\|\.cache\|coverage\|\.turbo\|\.nx\|\.next\|\.nuxt\|out\|\.git` | Regex of directory and file names to skip, matched against whole segments of the path relative to the scan root | `--exclude`     |
+| `serverUrl`      | `string`   | `http://localhost:3000`                                                                   | Base URL in curl examples (Markdown, HTML) and OpenAPI `servers`                                                | `--server-url`  |
+| `apiTitle`       | `string`   | `API Documentation`                                                                       | Title of the Markdown, HTML and OpenAPI output                                                                  | `--api-title`   |
+| `apiVersion`     | `string`   | `1.0.0`                                                                                   | `info.version` in OpenAPI and `meta.apiVersion` in JSON                                                         | `--api-version` |
+| `routeServers`   | `string[]` | `[]`                                                                                      | When non-empty, only calls on these identifiers (e.g. `app`, `router`) count as routes                          | none            |
 
 `audit` and `scan` accept `--exclude` but not the three metadata flags, which
 only affect `generate` output.

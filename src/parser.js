@@ -728,7 +728,7 @@ async function parseFile(filePath, config = {}) {
   const stat = await fs.stat(filePath);
   if (stat.size > MAX_FILE_SIZE_BYTES) {
     console.warn(
-      `Warning: Skipping ${filePath} (${(stat.size / 1024).toFixed(0)} KB) — exceeds 1 MB limit. Add it to excludePattern to suppress this warning.`,
+      `Warning: Skipping ${filePath} (${(stat.size / 1024).toFixed(0)} KB) — exceeds 1 MB limit. Add its file name to excludePattern to skip it without this warning.`,
     );
     return null;
   }
@@ -828,7 +828,8 @@ async function scanDirectory(dir, excludePattern = DEFAULT_EXCLUDE_PATTERN) {
  * Internal recursive implementation of directory scanning
  * @param {string} dir - Directory path
  * @param {RegExp} excludeRegex - Compiled regex for exclusion
- * @param {string} rootDir - Scan root; exclusion is tested against paths relative to it
+ * @param {string} rootDir - Scan root; exclusion is tested against directory
+ *   and file paths relative to it
  * @returns {Array} Array of file paths
  */
 async function _scanDirectoryImpl(dir, excludeRegex, rootDir) {
@@ -850,7 +851,8 @@ async function _scanDirectoryImpl(dir, excludeRegex, rootDir) {
       } else if (
         entry.isFile() &&
         JS_TS_FILE_REGEX.test(entry.name) &&
-        !DECLARATION_FILE_REGEX.test(entry.name)
+        !DECLARATION_FILE_REGEX.test(entry.name) &&
+        !excludeRegex.test(path.relative(rootDir, fullPath))
       ) {
         files.push(fullPath);
       }

@@ -21,14 +21,14 @@ Causes, in the order worth checking:
   `.d.cts`) are skipped on purpose.
 - **Excluded directory.** The default `excludePattern` skips `node_modules`,
   `dist`, `build`, `.cache`, `coverage`, `.turbo`, `.nx`, `.next`, `.nuxt`,
-  `out` and `.git`. It is matched against whole directory names relative to the
-  scanned directory, so a parent folder called `build` does not matter, but a
+  `out` and `.git`. It is matched against whole directory and file names
+  relative to the scanned directory, so a parent folder called `build` does not matter, but a
   source folder called `out` inside the project does. Override it with
   `--exclude` or `excludePattern` in the config.
 - **File too large.** Files over 1 MB are skipped with
   `Warning: Skipping <file> (<size> KB) — exceeds 1 MB limit.` These are almost
-  always bundles or generated code. `excludePattern` only matches directories,
-  so to silence the warning move the file into a directory you exclude.
+  always bundles or generated code. To skip such a file without the warning,
+  add its name to `excludePattern`, e.g. `--exclude 'node_modules|dist|vendor\.bundle\.js'`.
 
 ## An item shows as undocumented although it has a comment
 

@@ -37,9 +37,10 @@ segments, with either separator:
 ```
 
 `dist` therefore excludes a `dist` directory but not `dist-tools`. The regex is
-tested against each directory's path **relative to the scan root**, so a parent
-folder of the scan root named `build` or `out` has no effect. It is only applied
-to directories, never to file names.
+tested against each directory's and each source file's path **relative to the
+scan root**, so a parent folder of the scan root named `build` or `out` has no
+effect. A file is excluded when one of its path segments matches, so
+`bundle\.js` skips every file named `bundle.js`.
 
 The default pattern is:
 

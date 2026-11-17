@@ -51,6 +51,20 @@ describe('scanDirectory exclusion is relative to the scan root', () => {
   });
 });
 
+describe('scanDirectory file exclusion', () => {
+  it('skips files whose name matches the exclude pattern', async () => {
+    writeFile('src/app.js', 'function app() {}');
+    writeFile('src/vendor.bundle.js', 'function big() {}');
+    writeFile('src/vendor.bundle-extra.js', 'function keep() {}');
+
+    const files = await scanDirectory(tmpDir, 'vendor\\.bundle\\.js');
+    expect(files.map((f) => path.basename(f)).sort()).toEqual([
+      'app.js',
+      'vendor.bundle-extra.js',
+    ]);
+  });
+});
+
 describe('scanDirectory file types', () => {
   it('includes module-specific extensions and skips declaration files', async () => {
     for (const name of [
