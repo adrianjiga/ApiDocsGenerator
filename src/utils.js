@@ -93,6 +93,23 @@ function escapeHtml(text) {
 }
 
 /**
+ * Remove terminal control characters from text read out of source files
+ * before printing it
+ * @param {string} text - Text to sanitize
+ * @returns {string} Text without control characters
+ */
+function stripControlChars(text) {
+  return Array.from(String(text))
+    .filter((ch) => {
+      const code = ch.codePointAt(0);
+      const isC0 = code < 0x20 && ch !== '\t' && ch !== '\n';
+      const isC1 = code >= 0x7f && code <= 0x9f;
+      return !isC0 && !isC1;
+    })
+    .join('');
+}
+
+/**
  * Filter JSDoc tags to only @param tags
  * @param {Array} tags - Array of JSDoc tag objects
  * @returns {Array} Only the @param tags
@@ -182,6 +199,7 @@ export {
   githubSlug,
   getParamName,
   escapeHtml,
+  stripControlChars,
   calcPercentage,
   getParamTags,
   getReturnTags,

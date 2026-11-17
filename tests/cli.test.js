@@ -29,7 +29,7 @@ vi.mock('../src/formatters/dashboard.js', () => ({
   generateDashboard: vi.fn().mockReturnValue('<html></html>'),
 }));
 
-const { program, resolveConfig } = await import('../src/cli.js');
+const { program, resolveConfig, run } = await import('../src/cli.js');
 const generator = await import('../src/generator.js');
 const parser = await import('../src/parser.js');
 const { analyzeCoverage } = await import('../src/analyzer.js');
@@ -363,5 +363,24 @@ describe('audit command', () => {
     expect(errorSpy).toHaveBeenCalled();
     expect(exitSpy).toHaveBeenCalledWith(1);
     expect(formatTerminalReport).not.toHaveBeenCalled();
+  });
+});
+
+describe('run', () => {
+  it('reports async command errors as a message and sets exit code 1', async () => {
+    parser.parseDirectory.mockRejectedValue(new Error('EACCES: denied'));
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    const originalArgv = process.argv;
+    const originalExitCode = process.exitCode;
+    process.argv = ['node', 'cli.js', 'scan', '/tmp/src'];
+    try {
+      await run();
+      expect(errorSpy).toHaveBeenCalledWith('Error: EACCES: denied');
+      expect(process.exitCode).toBe(1);
+    } finally {
+      process.argv = originalArgv;
+      process.exitCode = originalExitCode;
+    }
   });
 });

@@ -7,6 +7,7 @@ import * as parser from './parser.js';
 import { analyzeCoverage } from './analyzer.js';
 import { formatters } from './formatters/registry.js';
 import { loadConfig } from './generator.js';
+import { stripControlChars } from './utils.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json');
@@ -92,17 +93,17 @@ program
 
     apiData.forEach((file) => {
       if (file.functions.length > 0 || file.routes.length > 0) {
-        console.log(`\n📄 ${file.fileName}`);
+        console.log(`\n📄 ${stripControlChars(file.fileName)}`);
 
         if (file.functions.length > 0) {
           console.log(
-            `  Functions: ${file.functions.map((f) => f.name).join(', ')}`,
+            `  Functions: ${stripControlChars(file.functions.map((f) => f.name).join(', '))}`,
           );
         }
 
         if (file.routes.length > 0) {
           console.log(
-            `  Routes: ${file.routes.map((r) => `${r.method} ${r.path}`).join(', ')}`,
+            `  Routes: ${stripControlChars(file.routes.map((r) => `${r.method} ${r.path}`).join(', '))}`,
           );
         }
       }
@@ -205,8 +206,13 @@ program.action(() => {
  * regardless of how it is invoked (installed globally, via npm exec, or by
  * running bin/api-docs-generator directly).
  */
-function run() {
-  program.parse(process.argv);
+async function run() {
+  try {
+    await program.parseAsync(process.argv);
+  } catch (err) {
+    console.error(`Error: ${err.message}`);
+    process.exitCode = 1;
+  }
 }
 
 // Auto-parse when cli.js is executed directly (e.g. `node src/cli.js ...`).
