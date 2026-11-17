@@ -5,8 +5,8 @@ Node.js CLI (npm package `@adrianjiga/api-docs-generator`, CLI command `api-docs
 ## Commands
 
 - Test: `npm test` (vitest). Single file: `npx vitest run tests/parser.test.js`. Single test: `npx vitest run tests/parser.test.js -t "name"`.
-- Lint: `npm run lint` / `npm run lint:fix` (ESLint flat config).
-- Format: `npm run format:check` / `npm run format` (Prettier: single quotes, semi, trailing commas).
+- Lint: `npm run lint` / `npm run lint:fix` (Biome, `biome.json`; `examples/` is excluded from linting).
+- Format: `npm run format:check` / `npm run format` (Biome: single quotes, semi, trailing commas). `npm run check` runs lint + format together.
 - CI order (`.github/workflows/ci.yml`, Node 20): lint → format:check → test. Run all three before finishing.
 - `npm run generate` variants run the CLI against `./examples` and write into `examples/docs/` (gitignored).
 - `npm run audit` exits `1` when coverage is below threshold — this is the CLI's CI hook, not a test failure.

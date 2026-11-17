@@ -22,12 +22,13 @@
     "audit": "node src/cli.js audit --dir ./examples",
     "audit:json": "node src/cli.js audit --dir ./examples --format json",
     "audit:dashboard": "node src/cli.js audit --dir ./examples --format dashboard --output ./examples/docs/coverage-dashboard.html",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "lint": "biome lint",
+    "lint:fix": "biome lint --write",
+    "format": "biome format --write",
+    "format:check": "biome format",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "check": "biome check"
   },
   "keywords": [
     "api",
@@ -67,11 +68,8 @@
     "typescript": "~6.0.3"
   },
   "devDependencies": {
-    "@eslint/js": "9.39.2",
-    "eslint": "10.15.0",
+    "@biomejs/biome": "2.6.8",
     "express": "^5.2.1",
-    "globals": "17.0.0",
-    "prettier": "3.8.1",
     "vitest": "5.1.0"
   }
 }

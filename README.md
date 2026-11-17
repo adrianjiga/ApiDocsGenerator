@@ -546,8 +546,8 @@ npm test
 # Generate docs for the examples directory
 npm run generate
 
-# Run linter
-npm run lint
+# Lint and format check (Biome)
+npm run check
 ```
 
 Tests use [vitest](https://vitest.dev/) with shared fixtures in `tests/fixtures.js`.
