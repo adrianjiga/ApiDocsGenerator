@@ -81,6 +81,24 @@ describe('loadConfig', () => {
   });
 });
 
+describe('loadConfig with a config that throws a non-Error value', () => {
+  it('warns and returns defaults', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'apidocs-throw-'));
+    const configFile = path.join(tmpDir, 'apidocs.config.mjs');
+    fs.writeFileSync(configFile, "throw 'bad config';\n");
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const config = await loadConfig(configFile);
+      expect(config).toEqual(getDefaultConfig());
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('bad config'),
+      );
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('loadConfig default file discovery', () => {
   let tmpDir;
 

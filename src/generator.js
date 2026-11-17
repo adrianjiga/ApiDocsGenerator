@@ -106,7 +106,7 @@ async function loadConfig(configPath) {
     const userConfig = mod.default || mod;
     return { ...defaults, ...userConfig };
   } catch (err) {
-    const message = err.message.replace(/\.$/, '');
+    const message = String(err?.message ?? err).replace(/\.$/, '');
     console.warn(
       `Warning: Failed to load config from ${filePath}: ${message}. Using defaults.${configLoadHint(err, filePath)}`,
     );
