@@ -48,7 +48,7 @@
     "url": "https://github.com/adrianjiga/ApiDocsGenerator/issues"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.12.0"
   },
   "publishConfig": {
     "access": "public"

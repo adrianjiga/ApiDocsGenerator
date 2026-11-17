@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] - Unreleased
 
-Initial public release as `@adrianjiga/api-docs-generator`. Requires Node.js 20 or newer.
+Initial public release as `@adrianjiga/api-docs-generator`. Requires Node.js 22.12 or newer.
 
 ### Added
 
