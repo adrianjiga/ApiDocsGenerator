@@ -1,6 +1,6 @@
-import fs from 'fs/promises';
-import path from 'path';
-import { pathToFileURL } from 'url';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import * as parser from './parser.js';
 import { formatters } from './formatters/registry.js';
 import { DEFAULT_EXCLUDE_PATTERN } from './utils.js';

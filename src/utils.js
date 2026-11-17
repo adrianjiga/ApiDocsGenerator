@@ -1,4 +1,4 @@
-import path from 'path';
+import path from 'node:path';
 
 /**
  * Default regex pattern for directories to exclude when scanning
@@ -48,12 +48,12 @@ function githubSlug(str) {
 function getParamName(param) {
   if (typeof param === 'string') return param;
   if (param.name) return param.name;
-  if (param.type === 'RestElement') return '...' + getParamName(param.argument);
+  if (param.type === 'RestElement') return `...${getParamName(param.argument)}`;
   if (param.type === 'ObjectPattern') {
     if (param.properties && param.properties.length > 0) {
       const names = param.properties.map((prop) => {
         if (prop.type === 'RestElement')
-          return '...' + getParamName(prop.argument);
+          return `...${getParamName(prop.argument)}`;
         return prop.key?.name || 'arg';
       });
       return `{${names.join(', ')}}`;

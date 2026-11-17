@@ -1,6 +1,6 @@
-import path from 'path';
-import { createRequire } from 'module';
-import fs from 'fs/promises';
+import path from 'node:path';
+import { createRequire } from 'node:module';
+import fs from 'node:fs/promises';
 import { program } from 'commander';
 import * as generator from './generator.js';
 import * as parser from './parser.js';
@@ -138,7 +138,7 @@ program
   .action(async (options) => {
     const sourceDir = path.resolve(options.dir);
     const threshold = parseInt(options.threshold, 10);
-    if (isNaN(threshold) || threshold < 0 || threshold > 100) {
+    if (Number.isNaN(threshold) || threshold < 0 || threshold > 100) {
       console.error('Error: --threshold must be a number between 0 and 100');
       process.exit(1);
     }

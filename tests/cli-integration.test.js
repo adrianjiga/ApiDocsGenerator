@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import { generate } from '../src/generator.js';
 import { parseDirectory } from '../src/parser.js';
 import { analyzeCoverage } from '../src/analyzer.js';

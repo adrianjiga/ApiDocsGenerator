@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { spawnSync } from 'child_process';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { createRequire } from 'module';
+import { spawnSync } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 
 const pkg = createRequire(import.meta.url)('../package.json');
 

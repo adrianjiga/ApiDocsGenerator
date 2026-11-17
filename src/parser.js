@@ -1,5 +1,5 @@
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import { parse } from 'comment-parser';
 import { parse as tsParse } from '@typescript-eslint/typescript-estree';
 import { getParamName, DEFAULT_EXCLUDE_PATTERN } from './utils.js';
@@ -44,7 +44,7 @@ function parseSource(sourceCode, filePath) {
  */
 function toJSDoc(raw, startLine, endLine) {
   try {
-    const parsed = parse('/*' + raw + '*/');
+    const parsed = parse(`/*${raw}*/`);
     if (parsed && parsed.length > 0) {
       return {
         raw,
@@ -112,10 +112,8 @@ function collectJSDoc(ast) {
  */
 function scanJSDocText(sourceCode) {
   const comments = [];
-  JSDOC_REGEX.lastIndex = 0;
-  let match;
 
-  while ((match = JSDOC_REGEX.exec(sourceCode)) !== null) {
+  for (const match of sourceCode.matchAll(JSDOC_REGEX)) {
     const startLine = sourceCode.substring(0, match.index).split('\n').length;
     const endLine = startLine + match[0].split('\n').length - 1;
     const jsdoc = toJSDoc(match[1], startLine, endLine);
@@ -463,11 +461,13 @@ function collectExports(ast) {
       node.declaration
     ) {
       declarations.add(node.declaration);
-      node.declaration.declarations?.forEach((d) => declarations.add(d));
+      for (const d of node.declaration.declarations ?? []) {
+        declarations.add(d);
+      }
       addValueName(node.declaration);
     }
     if (node.type === 'ExportNamedDeclaration' && !node.source) {
-      node.specifiers?.forEach((s) => addValueName(s.local));
+      for (const s of node.specifiers ?? []) addValueName(s.local);
     }
     const expr = node.type === 'ExpressionStatement' && node.expression;
     if (expr?.type === 'AssignmentExpression') {
@@ -475,7 +475,7 @@ function collectExports(ast) {
       if (target && commonJsExportDepth(target) >= 0) {
         addValueName(expr.right);
         if (expr.right.type === 'ObjectExpression') {
-          expr.right.properties.forEach((p) => addValueName(p.value));
+          for (const p of expr.right.properties) addValueName(p.value);
         }
       }
     }
@@ -565,15 +565,7 @@ function extractFunctions(sourceCode, routeServers) {
  * @returns {Array} Array of parameter names
  */
 function extractRouteParams(routePath) {
-  const paramRegex = /:(\w+)/g;
-  const params = [];
-  let match;
-
-  while ((match = paramRegex.exec(routePath)) !== null) {
-    params.push(match[1]);
-  }
-
-  return params;
+  return Array.from(routePath.matchAll(/:(\w+)/g), (match) => match[1]);
 }
 
 /**

@@ -190,7 +190,7 @@ function checkDocumentation(item) {
   }
 
   // Check description
-  if (item.jsdoc.description && item.jsdoc.description.trim()) {
+  if (item.jsdoc.description?.trim()) {
     existing.description = item.jsdoc.description;
   } else {
     missing.push('description');
