@@ -451,46 +451,63 @@ function traverse(root, visit) {
 }
 
 /**
- * Collect exported declaration nodes and exported local names
+ * Collect module-level declarations, exported declaration nodes and exported
+ * local names. TypeScript namespace and `declare module` bodies count as
+ * module level.
  * @param {Object} ast - Program AST
- * @returns {{declarations: Set<Object>, names: Set<string>}} Export information
+ * @returns {{declarations: Set<Object>, names: Set<string>, moduleLevel: Set<Object>}} Export information
  */
 function collectExports(ast) {
   const declarations = new Set();
   const names = new Set();
+  const moduleLevel = new Set();
 
   const addValueName = (value) => {
     if (value?.type === 'Identifier') names.add(value.name);
   };
 
-  for (const node of ast.body || []) {
-    if (
-      (node.type === 'ExportNamedDeclaration' ||
-        node.type === 'ExportDefaultDeclaration') &&
-      node.declaration
-    ) {
-      declarations.add(node.declaration);
-      for (const d of node.declaration.declarations ?? []) {
-        declarations.add(d);
+  const addModuleLevel = (decl) => {
+    if (!decl) return;
+    moduleLevel.add(decl);
+    for (const d of decl.declarations ?? []) moduleLevel.add(d);
+  };
+
+  const scan = (statements) => {
+    for (const node of statements) {
+      const isExport =
+        node.type === 'ExportNamedDeclaration' ||
+        node.type === 'ExportDefaultDeclaration';
+      const decl = isExport ? node.declaration : node;
+      addModuleLevel(decl);
+
+      if (isExport && node.declaration) {
+        declarations.add(node.declaration);
+        for (const d of node.declaration.declarations ?? []) {
+          declarations.add(d);
+        }
+        addValueName(node.declaration);
       }
-      addValueName(node.declaration);
-    }
-    if (node.type === 'ExportNamedDeclaration' && !node.source) {
-      for (const s of node.specifiers ?? []) addValueName(s.local);
-    }
-    const expr = node.type === 'ExpressionStatement' && node.expression;
-    if (expr?.type === 'AssignmentExpression') {
-      const target = memberPath(expr.left);
-      if (target && commonJsExportDepth(target) >= 0) {
-        addValueName(expr.right);
-        if (expr.right.type === 'ObjectExpression') {
-          for (const p of expr.right.properties) addValueName(p.value);
+      if (node.type === 'ExportNamedDeclaration' && !node.source) {
+        for (const s of node.specifiers ?? []) addValueName(s.local);
+      }
+      const expr = node.type === 'ExpressionStatement' && node.expression;
+      if (expr?.type === 'AssignmentExpression') {
+        const target = memberPath(expr.left);
+        if (target && commonJsExportDepth(target) >= 0) {
+          addValueName(expr.right);
+          if (expr.right.type === 'ObjectExpression') {
+            for (const p of expr.right.properties) addValueName(p.value);
+          }
         }
       }
+      if (decl?.type === 'TSModuleDeclaration' && decl.body?.body) {
+        scan(decl.body.body);
+      }
     }
-  }
+  };
 
-  return { declarations, names };
+  scan(ast.body || []);
+  return { declarations, names, moduleLevel };
 }
 
 /**
@@ -503,7 +520,8 @@ function collectItems(ast, routeServers) {
   const functions = [];
   const exports = collectExports(ast);
   const isExported = (node, name) =>
-    exports.declarations.has(node) || (!!name && exports.names.has(name));
+    exports.declarations.has(node) ||
+    (!!name && exports.moduleLevel.has(node) && exports.names.has(name));
 
   traverse(ast, (node) => {
     switch (node.type) {
@@ -532,7 +550,11 @@ function collectItems(ast, routeServers) {
           });
         } else if (node.init?.type === 'ClassExpression') {
           handleClassDeclaration(node.init, functions, exported, name);
-        } else if (node.init?.type === 'ObjectExpression' && name) {
+        } else if (
+          node.init?.type === 'ObjectExpression' &&
+          name &&
+          exports.moduleLevel.has(node)
+        ) {
           handleObjectMethods(node.init, functions, { prefix: name, exported });
         }
         break;

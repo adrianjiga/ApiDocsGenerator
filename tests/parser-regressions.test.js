@@ -191,6 +191,42 @@ module.exports = { b };
   });
 });
 
+describe('module-level scope', () => {
+  it('does not mark a nested function exported because an export shares its name', () => {
+    const result = extractFunctions(`
+function outer() {
+  function handler(a) {}
+}
+function handler() {}
+module.exports = { handler };
+`);
+    const handlers = result.filter((f) => f.name === 'handler');
+    expect(handlers.map((f) => f.exported)).toEqual([false, true]);
+  });
+
+  it('ignores object literals declared inside function bodies', () => {
+    const result = extractFunctions(`
+function outer() {
+  const opts = { onError: () => {}, onDone() {} };
+}
+`);
+    expect(result.map((f) => f.name)).toEqual(['outer']);
+  });
+
+  it('treats exports inside TypeScript namespaces as exported', () => {
+    const result = extractFunctions(`
+export namespace Api {
+  export function ping(): void {}
+  function hidden(): void {}
+}
+`);
+    const exported = Object.fromEntries(
+      result.map((f) => [f.name, f.exported]),
+    );
+    expect(exported).toEqual({ ping: true, hidden: false });
+  });
+});
+
 describe('additional route forms', () => {
   it('extracts chained app.route() definitions', () => {
     const result = extractFunctions(`
