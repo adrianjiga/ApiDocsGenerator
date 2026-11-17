@@ -266,6 +266,32 @@ describe('audit command', () => {
     expect(jsonCall).toBeDefined();
   });
 
+  it('keeps stdout empty and reports status on stderr when writing a file', async () => {
+    parser.parseDirectory.mockResolvedValue([
+      { fileName: 'a.js', functions: [{ name: 'fn' }], routes: [] },
+    ]);
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cli-status-'));
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      await program.parseAsync([
+        'node',
+        'cli.js',
+        'audit',
+        '-f',
+        'json',
+        '-o',
+        path.join(tmpDir, 'report.json'),
+      ]);
+      expect(logSpy).not.toHaveBeenCalled();
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('json written to'),
+      );
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   it('writes nothing but the JSON document to stdout when format is json', async () => {
     parser.parseDirectory.mockResolvedValue([
       { fileName: 'a.js', functions: [{ name: 'fn' }], routes: [] },

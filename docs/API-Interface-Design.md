@@ -209,8 +209,9 @@ Report documentation coverage.
 | `-c, --config <path>`      |            | Config file to load instead of discovery                                                                 |
 | `--exclude <pattern>`      |            | Overrides `excludePattern`                                                                               |
 
-With `--format json` and no `--output`, stdout carries only the JSON
-document, so it can be piped (for example into `jq`).
+Progress and "written to" messages go to stderr; stdout carries only the
+report itself. With `--format json` and no `--output`, that is the JSON
+document alone, so it can be piped (for example into `jq`).
 
 ### scan [directory]
 

@@ -146,9 +146,7 @@ program
     const format = options.format.toLowerCase();
     const config = await resolveConfig(options);
 
-    if (format !== 'json') {
-      console.log(`\n📊 Auditing documentation coverage...\n`);
-    }
+    console.error(`\n📊 Auditing documentation coverage...\n`);
 
     const apiData = await parser.parseDirectory(sourceDir, config);
 
@@ -166,7 +164,7 @@ program
         const outputDir = path.dirname(outputPath);
         await fs.mkdir(outputDir, { recursive: true });
         await fs.writeFile(outputPath, json);
-        console.log(`✅ json written to: ${outputPath}\n`);
+        console.error(`✅ json written to: ${outputPath}\n`);
       } else {
         console.log(json);
       }
@@ -179,7 +177,7 @@ program
         await fs.mkdir(outputDir, { recursive: true });
         const content = formatter.generate(result, threshold);
         await fs.writeFile(outputPath, content);
-        console.log(`✅ ${format} written to: ${outputPath}\n`);
+        console.error(`✅ ${format} written to: ${outputPath}\n`);
       } else {
         formatter.generate(result, threshold);
       }
