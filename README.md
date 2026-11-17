@@ -23,6 +23,7 @@ A powerful Node.js CLI tool that auto-generates API documentation from JavaScrip
 
 - Extracts function signatures and parameters
 - Parses JSDoc comments automatically
+- Detects functions, arrow functions, class and prototype methods, object-literal methods and CommonJS exports
 - Detects Express/Fastify API routes
 - Identifies route parameters (`:id`, `:userId`, etc.)
 - Generates usage examples
@@ -37,14 +38,14 @@ A powerful Node.js CLI tool that auto-generates API documentation from JavaScrip
 ## Installation
 
 ```bash
-npm install -g api-docs-generator
+npm install -g @adrianjiga/api-docs-generator
 ```
 
 Or use locally:
 
 ```bash
-npm install api-docs-generator
-npm run start -- generate --dir ./src --output ./docs
+npm install --save-dev @adrianjiga/api-docs-generator
+npx api-docs-generator generate --dir ./src --output ./docs
 ```
 
 ## Quick Start
@@ -83,7 +84,7 @@ api-docs-generator generate [options]
 - `-o, --output <directory>` - Output directory for generated docs (default: `./docs`)
 - `-f, --formats <formats>` - Output formats as comma-separated list (default: `markdown,html,json`)
   - Supported: `markdown`, `html`, `json`, `openapi` (alias: `swagger`)
-- `-c, --config <path>` - Path to a config file (default: `apidocs.config.js` in the current directory)
+- `-c, --config <path>` - Path to a config file (default: `apidocs.config.js`, `.mjs` or `.cjs` in the current directory)
 - `--server-url <url>` - Server URL for generated examples (overrides config)
 - `--api-title <title>` - API title for generated documentation (overrides config)
 - `--api-version <version>` - API version string (overrides config)
@@ -111,6 +112,11 @@ api-docs-generator generate --dir ./src --formats openapi
 api-docs-generator generate --server-url https://api.example.com --api-title "My API" --api-version 2.0.0
 ```
 
+**Exit codes:**
+
+- `0` - All requested formats were generated
+- `1` - No source files found, no valid format requested, or a format failed to generate
+
 ### Command: `audit` (alias: `a`)
 
 Audit documentation coverage and generate coverage reports.
@@ -125,7 +131,7 @@ api-docs-generator audit [options]
 - `-t, --threshold <number>` - Coverage threshold percentage (default: `80`)
 - `-f, --format <format>` - Output format: `terminal`, `json`, or `dashboard` (default: `terminal`)
 - `-o, --output <file>` - Output file for dashboard format (default: `coverage-dashboard.html`)
-- `-c, --config <path>` - Path to a config file (default: `apidocs.config.js` in the current directory)
+- `-c, --config <path>` - Path to a config file (default: `apidocs.config.js`, `.mjs` or `.cjs` in the current directory)
 - `--exclude <pattern>` - Directory exclude regex pattern (overrides config)
 
 **Exit Codes:**
@@ -154,7 +160,7 @@ api-docs-generator audit --dir ./src --threshold 75 --format terminal
 
 **Coverage Metrics:**
 
-- **Fully Documented**: Function has JSDoc, description, @param for all params, and @returns (or @return) tag
+- **Fully Documented**: Function has JSDoc, description, @param for all params, and @returns (or @return) tag. Routes need a description and @param for each path parameter; @returns is optional for routes
 - **Partially Documented**: Function has JSDoc but missing required elements
 - **Undocumented**: No JSDoc comment
 - **Coverage Percentage**: (Fully documented items) / (Total items) × 100
@@ -169,7 +175,7 @@ api-docs-generator scan [directory]
 
 **Options:**
 
-- `-c, --config <path>` - Path to a config file (default: `apidocs.config.js` in the current directory)
+- `-c, --config <path>` - Path to a config file (default: `apidocs.config.js`, `.mjs` or `.cjs` in the current directory)
 - `--exclude <pattern>` - Directory exclude regex pattern (overrides config)
 
 **Examples:**
@@ -226,6 +232,12 @@ app.get('/users/:id', (req, res) => {
 app.post('/users', (req, res) => {
   // route handler
 });
+
+// Chained Express routes
+app.route('/books/:id').get(getBook).put(updateBook);
+
+// Fastify route objects
+fastify.route({ method: ['GET', 'POST'], url: '/items', handler });
 ```
 
 Supported HTTP methods:
@@ -382,10 +394,12 @@ The tool will create:
 
 The tool scans and parses:
 
-- `.js` - JavaScript files
-- `.ts` - TypeScript files
+- `.js`, `.mjs`, `.cjs` - JavaScript files
+- `.ts`, `.mts`, `.cts` - TypeScript files
 - `.jsx` - React JavaScript
 - `.tsx` - React TypeScript
+
+TypeScript declaration files (`.d.ts`, `.d.mts`, `.d.cts`) are skipped.
 
 ## How It Works
 
@@ -405,7 +419,7 @@ All options can be specified via command line flags.
 
 ### Configuration File (Optional)
 
-Create `apidocs.config.js` in your project root to set persistent defaults:
+Create `apidocs.config.js` in the directory you run the CLI from to set persistent defaults. In a CommonJS project (no `"type": "module"` in `package.json`), name it `apidocs.config.mjs` to use `export default`, or `apidocs.config.cjs` to use `module.exports`:
 
 ```js
 export default {
@@ -420,6 +434,10 @@ export default {
 
 Pass a custom config path with `--config path/to/apidocs.config.js`.
 
+The config file is a JavaScript module and is executed when loaded, like ESLint or Vite configs. Only run the CLI in projects whose config you trust.
+
+The `excludePattern` regex is matched against directory paths relative to the scanned directory, so a parent folder named `build` or `dist` does not exclude your sources.
+
 ## Documentation Coverage Analysis
 
 The built-in coverage analyzer helps you maintain high documentation quality across your codebase.
@@ -430,8 +448,8 @@ The built-in coverage analyzer helps you maintain high documentation quality acr
 
 - ✅ JSDoc comment block
 - ✅ Description text
-- ✅ @param tags for all parameters
-- ✅ @returns tag (or @return alias)
+- ✅ @param tags for all parameters (path parameters for routes)
+- ✅ @returns tag (or @return alias) — functions only
 
 **Partially Documented Items** have:
 
@@ -502,7 +520,7 @@ All styling is inline with zero external dependencies.
 Make sure:
 
 - Directory path is correct
-- Files have `.js`, `.ts`, `.jsx`, or `.tsx` extensions
+- Files have a supported extension (see [Supported File Types](#supported-file-types))
 - Check that `node_modules`, `dist`, `build` directories are not your only source files
 
 ### JSDoc not detected
@@ -511,14 +529,15 @@ JSDoc comments must:
 
 - Use the `/** */` block comment format
 - Appear within 2 lines above the function declaration (at most one blank line between `*/` and the function)
+- Be directly followed by the item they document; a comment documents only the next item, so a class comment is not reused for its first method
 - Be valid JSDoc syntax
 
 ### Routes not detected
 
 Express/Fastify routes must:
 
-- Use `app.get()`, `app.post()`, etc.
-- Have a string literal as the first argument
+- Use `app.get()`, `app.post()`, etc., `app.route('/path').get()`, or `fastify.route({ method, url })`
+- Have a string literal path that starts with `/`
 - Follow standard Express route syntax
 
 JSDoc comments placed within 2 lines above a route definition are automatically captured and displayed in generated documentation.
@@ -533,7 +552,7 @@ JSDoc comments placed within 2 lines above a route definition are automatically 
 ## Limitations
 
 - Does not analyze runtime behavior
-- JSDoc linking is proximity-based (closest comment within 2 lines before function)
+- JSDoc linking is position-based (the comment directly before an item, within 2 lines)
 - Routes with dynamic paths may not be detected
 - Comments must be in standard JSDoc format
 
@@ -546,8 +565,8 @@ npm test
 # Generate docs for the examples directory
 npm run generate
 
-# Run linter
-npm run lint
+# Lint and format check (Biome)
+npm run check
 ```
 
 Tests use [vitest](https://vitest.dev/) with shared fixtures in `tests/fixtures.js`.

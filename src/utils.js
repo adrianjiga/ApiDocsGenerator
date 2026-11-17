@@ -1,4 +1,4 @@
-import path from 'path';
+import path from 'node:path';
 
 /**
  * Default regex pattern for directories to exclude when scanning
@@ -48,12 +48,12 @@ function githubSlug(str) {
 function getParamName(param) {
   if (typeof param === 'string') return param;
   if (param.name) return param.name;
-  if (param.type === 'RestElement') return '...' + getParamName(param.argument);
+  if (param.type === 'RestElement') return `...${getParamName(param.argument)}`;
   if (param.type === 'ObjectPattern') {
     if (param.properties && param.properties.length > 0) {
       const names = param.properties.map((prop) => {
         if (prop.type === 'RestElement')
-          return '...' + getParamName(prop.argument);
+          return `...${getParamName(prop.argument)}`;
         return prop.key?.name || 'arg';
       });
       return `{${names.join(', ')}}`;
@@ -90,6 +90,23 @@ function escapeHtml(text) {
     "'": '&#039;',
   };
   return text.replace(/[&<>"']/g, (m) => map[m]);
+}
+
+/**
+ * Remove terminal control characters from text read out of source files
+ * before printing it
+ * @param {string} text - Text to sanitize
+ * @returns {string} Text without control characters
+ */
+function stripControlChars(text) {
+  return Array.from(String(text))
+    .filter((ch) => {
+      const code = ch.codePointAt(0);
+      const isC0 = code < 0x20 && ch !== '\t' && ch !== '\n';
+      const isC1 = code >= 0x7f && code <= 0x9f;
+      return !isC0 && !isC1;
+    })
+    .join('');
 }
 
 /**
@@ -177,14 +194,15 @@ function calcPercentage(part, total) {
 }
 
 export {
-  DEFAULT_EXCLUDE_PATTERN,
-  sanitizeHtmlId,
-  githubSlug,
-  getParamName,
-  escapeHtml,
   calcPercentage,
+  cleanTagDescription,
+  DEFAULT_EXCLUDE_PATTERN,
+  escapeHtml,
+  getParamName,
   getParamTags,
   getReturnTags,
-  cleanTagDescription,
+  githubSlug,
+  sanitizeHtmlId,
+  stripControlChars,
   uniqueFileLabels,
 };

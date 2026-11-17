@@ -1,8 +1,15 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getDefaultConfig, loadConfig } from '../src/generator.js';
+
+const binPath = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../bin/api-docs-generator',
+);
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -71,5 +78,94 @@ describe('loadConfig', () => {
       fs.unlinkSync(configFile);
       fs.rmdirSync(tmpDir);
     }
+  });
+});
+
+describe('loadConfig with a config that throws a non-Error value', () => {
+  it('warns and returns defaults', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'apidocs-throw-'));
+    const configFile = path.join(tmpDir, 'apidocs.config.mjs');
+    fs.writeFileSync(configFile, "throw 'bad config';\n");
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const config = await loadConfig(configFile);
+      expect(config).toEqual(getDefaultConfig());
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('bad config'),
+      );
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('loadConfig default file discovery', () => {
+  let tmpDir;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'apidocs-discovery-'));
+    vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('returns defaults without warning when no config file exists', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const config = await loadConfig();
+    expect(config).toEqual(getDefaultConfig());
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('loads apidocs.config.mjs from the working directory', async () => {
+    fs.writeFileSync(
+      path.join(tmpDir, 'apidocs.config.mjs'),
+      'export default { apiTitle: "From mjs" };\n',
+    );
+    const config = await loadConfig();
+    expect(config.apiTitle).toBe('From mjs');
+  });
+
+  it('loads apidocs.config.cjs from the working directory', async () => {
+    fs.writeFileSync(
+      path.join(tmpDir, 'apidocs.config.cjs'),
+      'module.exports = { apiTitle: "From cjs" };\n',
+    );
+    const config = await loadConfig();
+    expect(config.apiTitle).toBe('From cjs');
+  });
+
+  it('suggests .mjs when an ESM .js config fails in a CommonJS project', () => {
+    fs.writeFileSync(
+      path.join(tmpDir, 'package.json'),
+      '{ "type": "commonjs" }\n',
+    );
+    fs.writeFileSync(
+      path.join(tmpDir, 'apidocs.config.js'),
+      'export default { apiTitle: "ESM" };\n',
+    );
+    const result = spawnSync(process.execPath, [binPath, 'scan', tmpDir], {
+      cwd: tmpDir,
+      encoding: 'utf8',
+    });
+    expect(result.stderr).toContain('rename it to apidocs.config.mjs');
+  });
+
+  it('suggests export default when a CommonJS .js config fails in an ES module project', () => {
+    fs.writeFileSync(
+      path.join(tmpDir, 'package.json'),
+      '{ "type": "module" }\n',
+    );
+    fs.writeFileSync(
+      path.join(tmpDir, 'apidocs.config.js'),
+      'module.exports = { apiTitle: "CJS" };\n',
+    );
+    const result = spawnSync(process.execPath, [binPath, 'scan', tmpDir], {
+      cwd: tmpDir,
+      encoding: 'utf8',
+    });
+    expect(result.stderr).toContain('use export default');
+    expect(result.stderr).not.toContain('..');
   });
 });

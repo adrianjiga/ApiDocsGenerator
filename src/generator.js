@@ -1,8 +1,8 @@
-import fs from 'fs-extra';
-import path from 'path';
-import { pathToFileURL } from 'url';
-import * as parser from './parser.js';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { formatters } from './formatters/registry.js';
+import * as parser from './parser.js';
 import { DEFAULT_EXCLUDE_PATTERN } from './utils.js';
 
 /**
@@ -28,28 +28,75 @@ function getDefaultConfig() {
   return { ...defaultConfig };
 }
 
+const CONFIG_FILENAMES = [
+  'apidocs.config.js',
+  'apidocs.config.mjs',
+  'apidocs.config.cjs',
+];
+
 /**
- * Load configuration from file and merge with defaults
- * @param {string} configPath - Path to the configuration file
- * @returns {Object} Merged configuration object
+ * Check whether a path exists
+ * @param {string} filePath - Path to check
+ * @returns {Promise<boolean>} True when the path exists
+ */
+async function pathExists(filePath) {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Find the first default config file present in a directory
+ * @param {string} dir - Directory to search
+ * @returns {Promise<string|undefined>} Path of the config file, if any
+ */
+async function findDefaultConfig(dir) {
+  for (const name of CONFIG_FILENAMES) {
+    const candidate = path.join(dir, name);
+    if (await pathExists(candidate)) return candidate;
+  }
+  return undefined;
+}
+
+/**
+ * Suggest a fix for a config file written in the wrong module format
+ * @param {Error} err - Error thrown while importing the config
+ * @param {string} filePath - Path of the config file
+ * @returns {string} Hint text, or an empty string when none applies
+ */
+function configLoadHint(err, filePath) {
+  if (path.extname(filePath) !== '.js') return '';
+  if (err instanceof SyntaxError) {
+    return ' If your project is CommonJS, rename it to apidocs.config.mjs or use module.exports.';
+  }
+  if (
+    err instanceof ReferenceError &&
+    /\b(module|exports|require) is not defined\b/.test(err.message)
+  ) {
+    return ' If your project is an ES module ("type": "module"), use export default or rename it to apidocs.config.cjs.';
+  }
+  return '';
+}
+
+/**
+ * Load configuration from file and merge with defaults. Without an explicit
+ * path, looks for apidocs.config.js, .mjs or .cjs in the working directory.
+ * @param {string} [configPath] - Path to the configuration file
+ * @returns {Promise<Object>} Merged configuration object
  */
 async function loadConfig(configPath) {
   const defaults = getDefaultConfig();
-  const filePath = configPath || path.join(process.cwd(), 'apidocs.config.js');
+  const filePath = configPath || (await findDefaultConfig(process.cwd()));
 
-  try {
-    const exists = await fs.pathExists(filePath);
-    if (!exists) {
-      // Only warn when a config path was explicitly requested; a missing
-      // default config at the project root is a normal, quiet fallback.
-      if (configPath) {
-        console.warn(
-          `Warning: Config file not found: ${filePath}. Using defaults.`,
-        );
-      }
-      return defaults;
-    }
-  } catch {
+  if (!filePath) return defaults;
+
+  if (!(await pathExists(filePath))) {
+    console.warn(
+      `Warning: Config file not found: ${filePath}. Using defaults.`,
+    );
     return defaults;
   }
 
@@ -59,8 +106,9 @@ async function loadConfig(configPath) {
     const userConfig = mod.default || mod;
     return { ...defaults, ...userConfig };
   } catch (err) {
+    const message = String(err?.message ?? err).replace(/\.$/, '');
     console.warn(
-      `Warning: Failed to load config from ${filePath}: ${err.message}`,
+      `Warning: Failed to load config from ${filePath}: ${message}. Using defaults.${configLoadHint(err, filePath)}`,
     );
     return defaults;
   }
@@ -91,8 +139,18 @@ Generated: ${new Date().toISOString()}
 ${results.generated.map((g) => `- ${g.format.toUpperCase()}: \`${g.file}\``).join('\n')}
 
 ## Location
-All files generated in: \`${results.outputDir}\`
+All files generated in: \`${path.relative(process.cwd(), results.outputDir) || '.'}\`
 `;
+}
+
+/**
+ * Names of formats that `generate` can write
+ * @returns {string[]} Document format names, including aliases
+ */
+function docFormatNames() {
+  return Object.keys(formatters).filter(
+    (name) => formatters[name].type === 'doc',
+  );
 }
 
 /**
@@ -100,7 +158,7 @@ All files generated in: \`${results.outputDir}\`
  * @param {string} sourceDir - Source directory to parse
  * @param {string} outputDir - Output directory for generated docs
  * @param {Array} formats - Array of formats: ['markdown', 'html', 'json']
- * @returns {Object} Generation result with summary
+ * @returns {Promise<Object>} Generation result; success is false when nothing was generated or any format failed
  */
 async function generate(
   sourceDir,
@@ -126,7 +184,7 @@ async function generate(
     console.log(`✅ Parsed ${apiData.length} file(s)`);
 
     // Ensure output directory exists
-    await fs.ensureDir(outputDir);
+    await fs.mkdir(outputDir, { recursive: true });
 
     const results = {
       success: true,
@@ -148,6 +206,17 @@ async function generate(
         continue;
       }
 
+      if (formatter.type !== 'doc') {
+        console.warn(
+          `⚠️  "${format}" is a coverage report format; use the audit command`,
+        );
+        results.skipped.push({
+          format: lowerFormat,
+          reason: 'Report format; use audit',
+        });
+        continue;
+      }
+
       try {
         const content = formatter.generate(apiData, config);
         const filename = formatter.filename;
@@ -163,9 +232,11 @@ async function generate(
       } catch (err) {
         console.warn(`⚠️  Failed to generate ${format}: ${err.message}`);
         results.failed.push({ format: lowerFormat, error: err.message });
-        continue;
       }
     }
+
+    results.success =
+      results.generated.length > 0 && results.failed.length === 0;
 
     // Generate summary report
     const summary = buildSummaryReport(apiData, formats, results);
@@ -176,7 +247,20 @@ async function generate(
     );
     console.log(`\n📊 Generation Report: GENERATION_REPORT.md`);
 
-    console.log(`\n✨ Documentation generated successfully!`);
+    if (results.success) {
+      console.log(`\n✨ Documentation generated successfully!`);
+    } else if (results.failed.length > 0) {
+      const failedFormats = results.failed.map((f) => f.format).join(', ');
+      console.error(
+        results.generated.length > 0
+          ? `\n❌ Documentation generated with errors: ${failedFormats} failed`
+          : `\n❌ No documentation was generated: ${failedFormats} failed`,
+      );
+    } else {
+      console.error(
+        `\n❌ No documentation was generated. Valid formats: ${docFormatNames().join(', ')}`,
+      );
+    }
     console.log(`📁 Output directory: ${path.resolve(outputDir)}`);
 
     return results;
@@ -187,9 +271,9 @@ async function generate(
 }
 
 export {
+  buildSummaryReport,
   defaultConfig,
+  generate,
   getDefaultConfig,
   loadConfig,
-  generate,
-  buildSummaryReport,
 };

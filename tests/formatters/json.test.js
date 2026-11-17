@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { generateJSON } from '../../src/formatters/json.js';
 import { mockApiData } from '../fixtures.js';
 
@@ -15,6 +15,18 @@ describe('generateJSON', () => {
     expect(parsed.meta.toolVersion).toBeDefined();
     expect(parsed.meta.apiVersion).toBe('1.0.0');
     expect(parsed.meta.generated).toBeDefined();
+  });
+
+  it('writes the scan-relative path instead of the absolute path', () => {
+    const data = [
+      {
+        ...mockApiData[0],
+        file: '/home/me/project/src/app.js',
+        relativePath: 'src/app.js',
+      },
+    ];
+    const parsed = JSON.parse(generateJSON(data));
+    expect(parsed.files[0].file).toBe('src/app.js');
   });
 
   it('includes files array with correct structure', () => {

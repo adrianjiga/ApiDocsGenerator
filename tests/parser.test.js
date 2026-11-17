@@ -1,15 +1,15 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  parseJSDoc,
+  compileExcludeRegex,
   extractFunctions,
   matchJSDocToItems,
-  parseFile,
-  scanDirectory,
   parseDirectory,
-  compileExcludeRegex,
+  parseFile,
+  parseJSDoc,
+  scanDirectory,
 } from '../src/parser.js';
 
 beforeEach(() => {
@@ -135,6 +135,7 @@ describe('extractFunctions', () => {
   });
 
   it('extracts arrow functions assigned to const', () => {
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: the source under test contains a template literal
     const source = 'const greet = (name) => `Hi ${name}`;';
     const result = extractFunctions(source);
     expect(result).toHaveLength(1);
@@ -463,9 +464,9 @@ describe('scanDirectory', () => {
   it('only excludes whole path segments, not similarly-named directories', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'exclude-test-'));
     const subDirs = ['src', 'src/dist', 'src/dist-tools', 'src/build-output'];
-    subDirs.forEach((d) =>
-      fs.mkdirSync(path.join(tmpDir, d), { recursive: true }),
-    );
+    for (const d of subDirs) {
+      fs.mkdirSync(path.join(tmpDir, d), { recursive: true });
+    }
     fs.writeFileSync(path.join(tmpDir, 'src', 'keep.js'), 'function a() {}\n');
     fs.writeFileSync(
       path.join(tmpDir, 'src', 'dist', 'skip.js'),
@@ -515,12 +516,12 @@ describe('parseDirectory', () => {
   it('preserves file order in output regardless of parse concurrency', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'parse-order-'));
     const names = Array.from({ length: 25 }, (_, i) => `f${i}.js`);
-    names.forEach((name) =>
+    for (const name of names) {
       fs.writeFileSync(
         path.join(tmpDir, name),
         `/** Doc for ${name} */\nfunction ${name.replace('.js', '')}() {}\n`,
-      ),
-    );
+      );
+    }
     try {
       const scanOrder = await scanDirectory(tmpDir);
       const results = await parseDirectory(tmpDir);

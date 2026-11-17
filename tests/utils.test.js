@@ -1,13 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  sanitizeHtmlId,
-  githubSlug,
-  getParamName,
-  escapeHtml,
   calcPercentage,
+  cleanTagDescription,
+  escapeHtml,
+  getParamName,
   getParamTags,
   getReturnTags,
-  cleanTagDescription,
+  githubSlug,
+  sanitizeHtmlId,
+  stripControlChars,
   uniqueFileLabels,
 } from '../src/utils.js';
 
@@ -283,5 +284,21 @@ describe('uniqueFileLabels', () => {
   it('returns empty map for empty input', () => {
     expect(uniqueFileLabels([]) instanceof Map).toBe(true);
     expect(uniqueFileLabels([]).size).toBe(0);
+  });
+});
+
+describe('stripControlChars', () => {
+  it('removes ANSI escape and other control characters', () => {
+    expect(stripControlChars('/\u001b[31mRED\u001b[0m\u0007')).toBe(
+      '/[31mRED[0m',
+    );
+  });
+
+  it('removes C1 control characters', () => {
+    expect(stripControlChars('a\u009bb')).toBe('ab');
+  });
+
+  it('keeps tabs, newlines and non-ASCII text', () => {
+    expect(stripControlChars('a\tb\nc — é 📄')).toBe('a\tb\nc — é 📄');
   });
 });

@@ -1,21 +1,27 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import fs from 'fs-extra';
-import path from 'path';
-import { generate } from '../src/generator.js';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { formatters } from '../src/formatters/registry.js';
+import { generate } from '../src/generator.js';
 
 const outputDir = path.resolve('tests/.tmp-generator-output');
+
+const pathExists = (p) =>
+  fs.access(p).then(
+    () => true,
+    () => false,
+  );
 const examplesDir = path.resolve('examples');
 
 beforeEach(async () => {
-  await fs.remove(outputDir);
+  await fs.rm(outputDir, { recursive: true, force: true });
   vi.spyOn(console, 'log').mockImplementation(() => {});
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
 afterEach(async () => {
-  await fs.remove(outputDir);
+  await fs.rm(outputDir, { recursive: true, force: true });
   vi.restoreAllMocks();
 });
 
@@ -28,12 +34,12 @@ describe('generate', () => {
     ]);
     expect(result.success).toBe(true);
     expect(result.generated).toHaveLength(3);
-    expect(await fs.pathExists(path.join(outputDir, 'API.md'))).toBe(true);
-    expect(await fs.pathExists(path.join(outputDir, 'index.html'))).toBe(true);
-    expect(await fs.pathExists(path.join(outputDir, 'api.json'))).toBe(true);
-    expect(
-      await fs.pathExists(path.join(outputDir, 'GENERATION_REPORT.md')),
-    ).toBe(true);
+    expect(await pathExists(path.join(outputDir, 'API.md'))).toBe(true);
+    expect(await pathExists(path.join(outputDir, 'index.html'))).toBe(true);
+    expect(await pathExists(path.join(outputDir, 'api.json'))).toBe(true);
+    expect(await pathExists(path.join(outputDir, 'GENERATION_REPORT.md'))).toBe(
+      true,
+    );
   });
 
   it('generates only markdown when requested', async () => {
@@ -41,8 +47,8 @@ describe('generate', () => {
     expect(result.success).toBe(true);
     expect(result.generated).toHaveLength(1);
     expect(result.generated[0].format).toBe('markdown');
-    expect(await fs.pathExists(path.join(outputDir, 'API.md'))).toBe(true);
-    expect(await fs.pathExists(path.join(outputDir, 'index.html'))).toBe(false);
+    expect(await pathExists(path.join(outputDir, 'API.md'))).toBe(true);
+    expect(await pathExists(path.join(outputDir, 'index.html'))).toBe(false);
   });
 
   it('accepts "md" as alias for markdown', async () => {
@@ -65,7 +71,7 @@ describe('generate', () => {
 
   it('returns failure for empty directory', async () => {
     const emptyDir = path.join(outputDir, 'empty-src');
-    await fs.ensureDir(emptyDir);
+    await fs.mkdir(emptyDir, { recursive: true });
     const result = await generate(emptyDir, outputDir, ['json']);
     expect(result.success).toBe(false);
   });
@@ -73,7 +79,7 @@ describe('generate', () => {
   it('creates output directory if it does not exist', async () => {
     const nested = path.join(outputDir, 'deep', 'nested');
     await generate(examplesDir, nested, ['json']);
-    expect(await fs.pathExists(nested)).toBe(true);
+    expect(await pathExists(nested)).toBe(true);
   });
 
   it('writes valid JSON to api.json', async () => {
@@ -98,10 +104,41 @@ describe('generate', () => {
     expect(result.success).toBe(false);
   });
 
-  it('succeeds with empty formats array', async () => {
+  it('fails when no formats are requested', async () => {
     const result = await generate(examplesDir, outputDir, []);
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
     expect(result.generated).toHaveLength(0);
+  });
+
+  it('fails when every requested format is unknown', async () => {
+    const result = await generate(examplesDir, outputDir, ['bogus']);
+    expect(result.success).toBe(false);
+    expect(result.skipped).toEqual([
+      { format: 'bogus', reason: 'Unknown format' },
+    ]);
+  });
+
+  it('skips report formats instead of calling them with API data', async () => {
+    const result = await generate(examplesDir, outputDir, [
+      'dashboard',
+      'terminal',
+      'json',
+    ]);
+    expect(result.success).toBe(true);
+    expect(result.generated.map((g) => g.format)).toEqual(['json']);
+    expect(result.skipped.map((s) => s.format)).toEqual([
+      'dashboard',
+      'terminal',
+    ]);
+  });
+
+  it('does not embed the absolute output path in the report', async () => {
+    await generate(examplesDir, outputDir, ['markdown']);
+    const report = await fs.readFile(
+      path.join(outputDir, 'GENERATION_REPORT.md'),
+      'utf8',
+    );
+    expect(report).not.toContain(path.resolve(outputDir));
   });
 
   it('normalizes format names with different casing and whitespace', async () => {
@@ -117,9 +154,7 @@ describe('generate', () => {
     expect(result.success).toBe(true);
     expect(result.generated).toHaveLength(1);
     expect(result.generated[0].format).toBe('openapi');
-    expect(await fs.pathExists(path.join(outputDir, 'openapi.yaml'))).toBe(
-      true,
-    );
+    expect(await pathExists(path.join(outputDir, 'openapi.yaml'))).toBe(true);
   });
 
   it('accepts "swagger" as alias for openapi', async () => {
@@ -128,7 +163,7 @@ describe('generate', () => {
     expect(result.generated[0].file).toBe('openapi.yaml');
   });
 
-  it('continues generating other formats when one formatter throws', async () => {
+  it('continues generating other formats but reports failure when one formatter throws', async () => {
     const original = formatters.json.generate;
     formatters.json.generate = () => {
       throw new Error('boom');
@@ -138,13 +173,28 @@ describe('generate', () => {
         'json',
         'markdown',
       ]);
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
       expect(result.generated).toHaveLength(1);
       expect(result.generated[0].format).toBe('markdown');
       expect(result.failed).toHaveLength(1);
       expect(result.failed[0].format).toBe('json');
     } finally {
       formatters.json.generate = original;
+    }
+  });
+
+  it('reports the failed format instead of listing valid formats when every format throws', async () => {
+    const original = formatters.markdown.generate;
+    formatters.markdown.generate = () => {
+      throw new Error('boom');
+    };
+    try {
+      await generate(examplesDir, outputDir, ['markdown']);
+      const messages = console.error.mock.calls.flat().join('\n');
+      expect(messages).toContain('markdown failed');
+      expect(messages).not.toContain('Valid formats');
+    } finally {
+      formatters.markdown.generate = original;
     }
   });
 

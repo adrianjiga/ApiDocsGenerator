@@ -1,12 +1,13 @@
-import path from 'path';
-import { createRequire } from 'module';
-import fs from 'fs-extra';
+import fs from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import path from 'node:path';
 import { program } from 'commander';
-import * as generator from './generator.js';
-import * as parser from './parser.js';
 import { analyzeCoverage } from './analyzer.js';
 import { formatters } from './formatters/registry.js';
+import * as generator from './generator.js';
 import { loadConfig } from './generator.js';
+import * as parser from './parser.js';
+import { stripControlChars } from './utils.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json');
@@ -92,17 +93,17 @@ program
 
     apiData.forEach((file) => {
       if (file.functions.length > 0 || file.routes.length > 0) {
-        console.log(`\n📄 ${file.fileName}`);
+        console.log(`\n📄 ${stripControlChars(file.fileName)}`);
 
         if (file.functions.length > 0) {
           console.log(
-            `  Functions: ${file.functions.map((f) => f.name).join(', ')}`,
+            `  Functions: ${stripControlChars(file.functions.map((f) => f.name).join(', '))}`,
           );
         }
 
         if (file.routes.length > 0) {
           console.log(
-            `  Routes: ${file.routes.map((r) => `${r.method} ${r.path}`).join(', ')}`,
+            `  Routes: ${stripControlChars(file.routes.map((r) => `${r.method} ${r.path}`).join(', '))}`,
           );
         }
       }
@@ -137,7 +138,7 @@ program
   .action(async (options) => {
     const sourceDir = path.resolve(options.dir);
     const threshold = parseInt(options.threshold, 10);
-    if (isNaN(threshold) || threshold < 0 || threshold > 100) {
+    if (Number.isNaN(threshold) || threshold < 0 || threshold > 100) {
       console.error('Error: --threshold must be a number between 0 and 100');
       process.exit(1);
     }
@@ -160,7 +161,7 @@ program
       if (options.output) {
         const outputPath = path.resolve(options.output);
         const outputDir = path.dirname(outputPath);
-        await fs.ensureDir(outputDir);
+        await fs.mkdir(outputDir, { recursive: true });
         await fs.writeFile(outputPath, json);
         console.log(`✅ json written to: ${outputPath}\n`);
       } else {
@@ -172,7 +173,7 @@ program
         const outputFile = options.output || formatter.filename;
         const outputPath = path.resolve(outputFile);
         const outputDir = path.dirname(outputPath);
-        await fs.ensureDir(outputDir);
+        await fs.mkdir(outputDir, { recursive: true });
         const content = formatter.generate(result);
         await fs.writeFile(outputPath, content);
         console.log(`✅ ${format} written to: ${outputPath}\n`);
@@ -205,8 +206,13 @@ program.action(() => {
  * regardless of how it is invoked (installed globally, via npm exec, or by
  * running bin/api-docs-generator directly).
  */
-function run() {
-  program.parse(process.argv);
+async function run() {
+  try {
+    await program.parseAsync(process.argv);
+  } catch (err) {
+    console.error(`Error: ${err.message}`);
+    process.exitCode = 1;
+  }
 }
 
 // Auto-parse when cli.js is executed directly (e.g. `node src/cli.js ...`).

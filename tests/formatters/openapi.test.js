@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vitest';
 import yaml from 'js-yaml';
+import { describe, expect, it } from 'vitest';
 import { generateOpenAPI } from '../../src/formatters/openapi.js';
-import { mockApiData, makeRoute } from '../fixtures.js';
+import { makeRoute, mockApiData } from '../fixtures.js';
 
 /** Helper: parse the YAML output into a JS object. */
 function parse(apiData) {

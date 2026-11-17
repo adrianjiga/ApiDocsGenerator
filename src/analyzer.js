@@ -62,7 +62,7 @@ function analyzeCoverage(apiData) {
               type: 'function',
               name: func.name,
               fileName: fileData.fileName,
-              filePath: fileData.file,
+              filePath: fileData.relativePath ?? fileData.file,
               line: func.line,
               severity: docStatus.isPartiallyDocumented ? 'warning' : 'error',
               missing: docStatus.missing,
@@ -99,7 +99,7 @@ function analyzeCoverage(apiData) {
               type: 'route',
               name: `${route.method} ${route.path}`,
               fileName: fileData.fileName,
-              filePath: fileData.file,
+              filePath: fileData.relativePath ?? fileData.file,
               line: route.line,
               severity: docStatus.isPartiallyDocumented ? 'warning' : 'error',
               missing: docStatus.missing,
@@ -125,7 +125,7 @@ function analyzeCoverage(apiData) {
 
         files.push({
           fileName: fileData.fileName,
-          filePath: fileData.file,
+          filePath: fileData.relativePath ?? fileData.file,
           totalItems: fileTotalItems,
           documentedItems: fileDocumentedItems,
           coveragePercentage: fileCoveragePercentage,
@@ -169,9 +169,11 @@ function analyzeCoverage(apiData) {
 /**
  * Check documentation status of an item (function or route)
  * @param {Object} item - Item with params and jsdoc properties
+ * @param {Object} [options] - Check options
+ * @param {boolean} [options.requireReturns=true] - Whether a @returns tag is required
  * @returns {Object} Status object with isFullyDocumented, isPartiallyDocumented, missing, existing
  */
-function checkDocumentation(item) {
+function checkDocumentation(item, { requireReturns = true } = {}) {
   const existing = {
     description: null,
     params: [],
@@ -184,13 +186,15 @@ function checkDocumentation(item) {
     return {
       isFullyDocumented: false,
       isPartiallyDocumented: false,
-      missing: ['description', 'params', 'returns'],
+      missing: requireReturns
+        ? ['description', 'params', 'returns']
+        : ['description', 'params'],
       existing,
     };
   }
 
   // Check description
-  if (item.jsdoc.description && item.jsdoc.description.trim()) {
+  if (item.jsdoc.description?.trim()) {
     existing.description = item.jsdoc.description;
   } else {
     missing.push('description');
@@ -225,7 +229,7 @@ function checkDocumentation(item) {
     if (isVoidReturn) {
       existing.voidReturn = true;
     }
-  } else {
+  } else if (requireReturns) {
     missing.push('returns');
   }
 
@@ -245,12 +249,13 @@ function checkFunctionDocumentation(func) {
 }
 
 /**
- * Check documentation status of a route
+ * Check documentation status of a route: a description and a @param for each
+ * path parameter are required, @returns is not
  * @param {Object} route - Route object with method, path, params, jsdoc
  * @returns {Object} Status object with isFullyDocumented, isPartiallyDocumented, missing, existing
  */
 function checkRouteDocumentation(route) {
-  return checkDocumentation(route);
+  return checkDocumentation(route, { requireReturns: false });
 }
 
 export { analyzeCoverage, checkRouteDocumentation };

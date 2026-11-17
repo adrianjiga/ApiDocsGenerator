@@ -1,3 +1,5 @@
+import { stripControlChars } from '../utils.js';
+
 /**
  * Format and print a documentation coverage report to the terminal
  * @param {Object} report - Coverage analysis report from analyzeCoverage()
@@ -86,7 +88,7 @@ function formatTerminalReport(report, threshold) {
             ? c.blue
             : c.red;
       console.log(
-        `\n  ${fileColor}${file.fileName}${c.reset} ${c.dim}(${file.coveragePercentage}%)${c.reset}`,
+        `\n  ${fileColor}${stripControlChars(file.fileName)}${c.reset} ${c.dim}(${file.coveragePercentage}%)${c.reset}`,
       );
 
       if (file.gaps.length > 0) {
@@ -97,7 +99,7 @@ function formatTerminalReport(report, threshold) {
               : `${c.yellow}${useUnicode ? '⚠' : '!'}${c.reset}`;
           const missingStr = gap.missing.join(', ');
           console.log(
-            `    ${severityIcon} ${gap.name} ${c.dim}(line ${gap.line})${c.reset} - missing: ${missingStr}`,
+            `    ${severityIcon} ${stripControlChars(gap.name)} ${c.dim}(line ${gap.line})${c.reset} - missing: ${missingStr}`,
           );
         });
       } else {

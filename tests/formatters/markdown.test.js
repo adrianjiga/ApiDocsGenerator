@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { generateMarkdown } from '../../src/formatters/markdown.js';
 import { mockApiData } from '../fixtures.js';
 
@@ -219,5 +219,48 @@ describe('generateMarkdown', () => {
     expect(md).toContain('## b/util.js');
     const utilHeadings = (md.match(/^## .*util\.js$/gm) || []).length;
     expect(utilHeadings).toBe(2);
+  });
+
+  it('accounts for earlier non-file headings when numbering anchors', () => {
+    const fn = (name) => ({
+      name,
+      params: [],
+      description: 'x',
+      line: 1,
+      jsdoc: null,
+    });
+    const data = [
+      {
+        file: '/src/first.js',
+        fileName: 'first.js',
+        functions: [fn('functions')],
+        routes: [],
+      },
+      {
+        file: '/src/functions',
+        fileName: 'functions',
+        functions: [fn('g')],
+        routes: [],
+      },
+    ];
+    const md = generateMarkdown(data);
+    expect(md).toContain('[functions](#functions-2)');
+  });
+
+  it('suffixes repeated anchors the way GitHub does', () => {
+    const fn = {
+      name: 'f',
+      params: [],
+      description: 'x',
+      line: 1,
+      jsdoc: null,
+    };
+    const data = [
+      { file: '/src/ab.js', fileName: 'ab.js', functions: [fn], routes: [] },
+      { file: '/src/a.b.js', fileName: 'a.b.js', functions: [fn], routes: [] },
+    ];
+    const md = generateMarkdown(data);
+    expect(md).toContain('[ab.js](#abjs)');
+    expect(md).toContain('[a.b.js](#abjs-1)');
   });
 });

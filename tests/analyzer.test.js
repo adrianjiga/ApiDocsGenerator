@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { analyzeCoverage, checkRouteDocumentation } from '../src/analyzer.js';
-import { makeFunction, makeRoute, fullyDocumentedJsdoc } from './fixtures.js';
+import { fullyDocumentedJsdoc, makeFunction, makeRoute } from './fixtures.js';
 
 describe('analyzeCoverage', () => {
   it('returns 100% coverage for fully documented functions', () => {
@@ -280,8 +280,8 @@ describe('analyzeCoverage', () => {
         fileName: 'a.js',
         functions: [],
         routes: [
-          makeRoute('GET', '/users', [], {
-            description: 'Get users',
+          makeRoute('GET', '/users/:id', ['id'], {
+            description: 'Get user',
             tags: [],
           }),
         ],
@@ -323,7 +323,7 @@ describe('checkRouteDocumentation', () => {
     const result = checkRouteDocumentation(route);
     expect(result.isFullyDocumented).toBe(false);
     expect(result.isPartiallyDocumented).toBe(false);
-    expect(result.missing).toEqual(['description', 'params', 'returns']);
+    expect(result.missing).toEqual(['description', 'params']);
   });
 
   it('detects missing @param for path param as partially documented', () => {
@@ -337,15 +337,36 @@ describe('checkRouteDocumentation', () => {
     expect(result.missing).toContain('params');
   });
 
-  it('detects description only as partially documented', () => {
+  it('fully documents a route with a description and no path params', () => {
     const route = makeRoute('POST', '/items', [], {
       description: 'Create item',
       tags: [],
     });
     const result = checkRouteDocumentation(route);
-    expect(result.isFullyDocumented).toBe(false);
+    expect(result.isFullyDocumented).toBe(true);
+    expect(result.missing).not.toContain('returns');
+  });
+
+  it('fully documents a route with documented path params and no @returns', () => {
+    const route = makeRoute('GET', '/users/:id', ['id'], {
+      description: 'Get user',
+      tags: [
+        { tag: 'param', name: 'id', type: 'string', description: 'User ID' },
+      ],
+    });
+    const result = checkRouteDocumentation(route);
+    expect(result.isFullyDocumented).toBe(true);
+    expect(result.existing.returns).toBe(false);
+  });
+
+  it('marks a route with only a @returns tag as missing its description', () => {
+    const route = makeRoute('GET', '/health', [], {
+      description: '',
+      tags: [{ tag: 'returns', type: 'Object', description: 'status' }],
+    });
+    const result = checkRouteDocumentation(route);
     expect(result.isPartiallyDocumented).toBe(true);
-    expect(result.missing).toContain('returns');
+    expect(result.missing).toEqual(['description']);
   });
 
   it('returns fully documented when description + all params + returns present', () => {

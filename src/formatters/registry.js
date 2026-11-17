@@ -1,9 +1,9 @@
-import { generateMarkdown } from './markdown.js';
+import { generateDashboard } from './dashboard.js';
 import { generateHTML } from './html.js';
 import { generateJSON } from './json.js';
+import { generateMarkdown } from './markdown.js';
 import { generateOpenAPI } from './openapi.js';
 import { formatTerminalReport } from './terminal.js';
-import { generateDashboard } from './dashboard.js';
 
 /**
  * Registry mapping format names to their generator function and default output filename.

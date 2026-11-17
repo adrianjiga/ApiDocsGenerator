@@ -40,13 +40,7 @@ function deriveOperationId(method, openApiPath) {
  * @returns {string[]} e.g. ['id']
  */
 function extractParams(openApiPath) {
-  const params = [];
-  const re = /\{(\w+)}/g;
-  let match;
-  while ((match = re.exec(openApiPath)) !== null) {
-    params.push(match[1]);
-  }
-  return params;
+  return Array.from(openApiPath.matchAll(/\{(\w+)}/g), (match) => match[1]);
 }
 
 /**

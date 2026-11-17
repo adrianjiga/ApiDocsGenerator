@@ -1,13 +1,13 @@
 # AGENTS.md
 
-Node.js CLI (npm package `api-docs-generator`) that scans JS/TS source and generates API docs + coverage audits. Pure ESM, plain JS with JSDoc types — no build step, no TypeScript source.
+Node.js CLI (npm package `@adrianjiga/api-docs-generator`, CLI command `api-docs-generator`) that scans JS/TS source and generates API docs + coverage audits. Pure ESM, plain JS with JSDoc types — no build step, no TypeScript source.
 
 ## Commands
 
 - Test: `npm test` (vitest). Single file: `npx vitest run tests/parser.test.js`. Single test: `npx vitest run tests/parser.test.js -t "name"`.
-- Lint: `npm run lint` / `npm run lint:fix` (ESLint flat config).
-- Format: `npm run format:check` / `npm run format` (Prettier: single quotes, semi, trailing commas).
-- CI order (`.github/workflows/ci.yml`, Node 20): lint → format:check → test. Run all three before finishing.
+- Lint: `npm run lint` / `npm run lint:fix` (Biome, `biome.json`; `examples/` is excluded from linting).
+- Format: `npm run format:check` / `npm run format` (Biome: single quotes, semi, trailing commas). `npm run check` runs lint + format together.
+- CI order (`.github/workflows/ci.yml`, Node 22, 24 and 26): `npm run check` (Biome lint + format + import order) → test. Run both before finishing.
 - `npm run generate` variants run the CLI against `./examples` and write into `examples/docs/` (gitignored).
 - `npm run audit` exits `1` when coverage is below threshold — this is the CLI's CI hook, not a test failure.
 
@@ -19,14 +19,14 @@ Node.js CLI (npm package `api-docs-generator`) that scans JS/TS source and gener
   - `type: 'doc'` — `generate(apiData, config)` returns a string written to its `filename` (e.g. markdown → `API.md`).
   - `type: 'report'` — `generate(report, threshold?)`; `filename: null` means print to stdout (terminal).
   - Aliases exist: `md`→markdown, `swagger`→openapi. `generate` skips unknown formats rather than failing.
-- Config: `apidocs.config.js` (ESM default export) loaded via dynamic `import()` in `generator.js:loadConfig`, merged over defaults. Keys: `excludePattern`, `serverUrl`, `apiTitle`, `apiVersion`. Repo root has `apidocs.config.js` — don't break it.
+- Config: first of `apidocs.config.js`/`.mjs`/`.cjs` in cwd (or `--config`), loaded via dynamic `import()` in `generator.js:loadConfig`, merged over defaults. Keys: `excludePattern`, `serverUrl`, `apiTitle`, `apiVersion`, `routeServers`. Vitest's loader accepts ESM in CommonJS packages where Node doesn't, so test real-Node config behaviour by spawning the CLI. Repo root has `apidocs.config.js` — don't break it.
 
 ## Gotchas
 
-- JSDoc matching is proximity-based: a comment must end within 2 lines above the function/route (`matchJSDocToItems`). `/** */` only; `//` comments are ignored.
-- Route detection is narrow: `app.<get|post|put|delete|patch>('/path', ...)` with a string-literal first arg (only CallExpressions with a `.property` callee).
+- JSDoc matching (`matchJSDocToItems`): a comment must end within 2 lines above the item, and the first code token after it must be on the item's line. Each comment documents at most one item. `/** */` only; `//` comments are ignored.
+- Route detection: `x.<get|post|put|delete|patch>('/path', ...)`, chained `x.route('/path').get(...)`, and Fastify `x.route({ method, url })`. Paths must be string literals starting with `/`; `routeServers` config restricts `x`.
 - Files over 1 MB are skipped with a warning (`MAX_FILE_SIZE_BYTES`). Minified bundles: add to `excludePattern`.
-- `@returns {void|undefined|never}` counts as fully documented; a missing `@returns` is a gap.
+- `@returns {void|undefined|never}` counts as fully documented; a missing `@returns` is a gap for functions only — routes don't need one.
 - Audit coverage = fully documented items / total items. Dashboard output default filename is `coverage-dashboard.html`.
 - Output filenames are fixed: `API.md`, `index.html`, `api.json`, `openapi.yaml`, `GENERATION_REPORT.md`.
 
