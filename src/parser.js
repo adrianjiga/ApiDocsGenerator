@@ -429,8 +429,17 @@ function handleClassDeclaration(node, functions, exported, className) {
   }
 }
 
+const SKIPPED_AST_KEYS = new Set([
+  'parent',
+  'loc',
+  'range',
+  'tokens',
+  'comments',
+]);
+
 /**
- * Visit every node of an AST (excluding parent links) depth-first
+ * Visit every syntax node of an AST depth-first, skipping parent links and
+ * the program's token and comment lists
  * @param {Object} root - AST root
  * @param {Function} visit - Called with each node
  */
@@ -441,7 +450,7 @@ function traverse(root, visit) {
     visited.add(node);
     if (typeof node.type === 'string') visit(node);
     for (const key in node) {
-      if (key === 'parent' || key === 'loc' || key === 'range') continue;
+      if (SKIPPED_AST_KEYS.has(key)) continue;
       const child = node[key];
       if (Array.isArray(child)) child.forEach(walk);
       else if (child && typeof child === 'object') walk(child);
