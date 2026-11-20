@@ -3,7 +3,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { formatters } from './formatters/registry.js';
 import * as parser from './parser.js';
-import { DEFAULT_EXCLUDE_PATTERN } from './utils.js';
+import { DEFAULT_EXCLUDE_PATTERN, normalizeRouteServers } from './utils.js';
 
 /**
  * Default configuration for the documentation generator
@@ -106,7 +106,9 @@ async function loadConfig(configPath) {
     const fileUrl = pathToFileURL(path.resolve(filePath));
     const mod = await import(fileUrl.href);
     const userConfig = mod.default || mod;
-    return { ...defaults, ...userConfig };
+    const config = { ...defaults, ...userConfig };
+    config.routeServers = normalizeRouteServers(config.routeServers);
+    return config;
   } catch (err) {
     const message = String(err?.message ?? err).replace(/\.$/, '');
     console.warn(

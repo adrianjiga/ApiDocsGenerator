@@ -1,3 +1,4 @@
+import { normalizeRouteServers } from '../utils.js';
 import { propertyKey, staticString, traverse } from './ast.js';
 
 const FUNCTION_NODE_TYPES = new Set([
@@ -189,14 +190,14 @@ function nonServerNames(ast) {
 /**
  * Build the check that decides whether a call's object is a route server
  * @param {Object} ast - Program AST
- * @param {string[]} [routeServers] - Configured server identifiers
+ * @param {string[]|string} [routeServers] - Configured server identifiers
  * @returns {function(Object): boolean} Called with the object a route method
  *   is called on (e.g. `app` in `app.get`)
  */
 function routeServerFilter(ast, routeServers) {
-  if (routeServers?.length) {
-    return (node) =>
-      node?.type === 'Identifier' && routeServers.includes(node.name);
+  const allowed = normalizeRouteServers(routeServers);
+  if (allowed.length > 0) {
+    return (node) => node?.type === 'Identifier' && allowed.includes(node.name);
   }
   const { nonServers, clients } = nonServerNames(ast);
   return (node) => {

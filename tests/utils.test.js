@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   calcPercentage,
   cleanTagDescription,
@@ -13,6 +13,7 @@ import {
   getReturnTags,
   githubSlug,
   inlineLinks,
+  normalizeRouteServers,
   sanitizeHtmlId,
   stripControlChars,
   uniqueFileLabels,
@@ -565,5 +566,31 @@ describe('inlineLinks', () => {
 
   it('returns plain text as a single segment', () => {
     expect(inlineLinks('plain')).toEqual([{ text: 'plain' }]);
+  });
+});
+
+describe('normalizeRouteServers', () => {
+  it('splits a comma-separated string like --route-servers', () => {
+    expect(normalizeRouteServers(' app, router,,')).toEqual(['app', 'router']);
+  });
+
+  it('trims array entries and drops non-strings', () => {
+    expect(normalizeRouteServers([' app ', 3, '', 'api'])).toEqual([
+      'app',
+      'api',
+    ]);
+  });
+
+  it('treats a missing value as no restriction', () => {
+    expect(normalizeRouteServers(undefined)).toEqual([]);
+  });
+
+  it('warns about and ignores other types', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(normalizeRouteServers({ app: true })).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('routeServers must be an array'),
+    );
+    warn.mockRestore();
   });
 });

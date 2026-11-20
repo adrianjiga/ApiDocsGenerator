@@ -780,6 +780,15 @@ request(app).get('/health');
     expect(routePaths(source)).toEqual(['GET /health']);
   });
 
+  it('matches whole names when routeServers is given as a string', () => {
+    const source = `
+a.get('/x', h);
+r.get('/y', h);
+app.get('/z', h);
+`;
+    expect(routePaths(source, 'app,router')).toEqual(['GET /z']);
+  });
+
   it('lets explicit routeServers override inference', () => {
     const source = `
 const app = express();

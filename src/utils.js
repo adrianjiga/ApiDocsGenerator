@@ -328,6 +328,33 @@ function curlCommand(method, url) {
 }
 
 /**
+ * Normalize a routeServers setting to a list of identifiers. A string is
+ * split on commas, as `--route-servers` is; anything that is neither a string
+ * nor an array is ignored with a warning.
+ * @param {*} value - routeServers as written in the config
+ * @returns {string[]} Trimmed, non-empty identifiers
+ */
+function normalizeRouteServers(value) {
+  if (value === undefined || value === null) return [];
+  const list =
+    typeof value === 'string'
+      ? value.split(',')
+      : Array.isArray(value)
+        ? value
+        : null;
+  if (!list) {
+    console.warn(
+      `Warning: routeServers must be an array of identifiers or a comma-separated string; ignoring ${JSON.stringify(value)}.`,
+    );
+    return [];
+  }
+  return list
+    .filter((name) => typeof name === 'string')
+    .map((name) => name.trim())
+    .filter(Boolean);
+}
+
+/**
  * Escape HTML special characters
  * @param {string} text - Text to escape
  * @returns {string} Escaped text
@@ -491,6 +518,7 @@ export {
   inlineLinks,
   isThisParam,
   nodeText,
+  normalizeRouteServers,
   sanitizeHtmlId,
   stripControlChars,
   uniqueFileLabels,
