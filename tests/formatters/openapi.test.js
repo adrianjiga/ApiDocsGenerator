@@ -398,3 +398,53 @@ describe('generateOpenAPI – HTTP methods', () => {
     });
   }
 });
+
+// ---------------------------------------------------------------------------
+// Optional and constrained path parameters
+// ---------------------------------------------------------------------------
+describe('generateOpenAPI – optional path segments', () => {
+  const routeAt = (routePath) => [
+    {
+      file: '/src/app.js',
+      fileName: 'app.js',
+      functions: [],
+      routes: [makeRoute('GET', routePath, ['id'])],
+    },
+  ];
+
+  it('splits an Express 4 optional parameter into two paths', () => {
+    const spec = parse(routeAt('/opt/:id?'));
+    expect(Object.keys(spec.paths)).toEqual(['/opt', '/opt/{id}']);
+    expect(spec.paths['/opt'].get.operationId).toBe('get-opt');
+    expect(spec.paths['/opt'].get.parameters).toBeUndefined();
+    expect(spec.paths['/opt/{id}'].get.operationId).toBe('get-opt-id');
+    expect(spec.paths['/opt/{id}'].get.parameters[0].required).toBe(true);
+  });
+
+  it('splits an Express 5 optional brace group into two paths', () => {
+    const spec = parse(routeAt('/files{/:id}'));
+    expect(Object.keys(spec.paths)).toEqual(['/files', '/files/{id}']);
+  });
+
+  it('expands every combination of several optional parameters', () => {
+    const spec = parse(routeAt('/a/:x?/:y?'));
+    expect(Object.keys(spec.paths)).toEqual([
+      '/a',
+      '/a/{y}',
+      '/a/{x}',
+      '/a/{x}/{y}',
+    ]);
+  });
+
+  it('uses / when everything in the path is optional', () => {
+    const spec = parse(routeAt('/:lang?'));
+    expect(Object.keys(spec.paths)).toEqual(['/', '/{lang}']);
+    expect(spec.paths['/'].get.operationId).toBe('get');
+  });
+
+  it('drops regex constraints from parameters', () => {
+    const spec = parse(routeAt('/users/:id(\\d+)'));
+    expect(Object.keys(spec.paths)).toEqual(['/users/{id}']);
+    expect(spec.paths['/users/{id}'].get.operationId).toBe('get-users-id');
+  });
+});
