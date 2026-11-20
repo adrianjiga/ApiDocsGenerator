@@ -260,17 +260,17 @@ and continues with the defaults.
 
 The file's values are shallow-merged over the defaults.
 
-| Key                       | Type       | Default                                                                                   | Meaning                                                                                                         | CLI override    |
-| ------------------------- | ---------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | --------------- |
-| `excludePattern`          | `string`   | `node_modules\|dist\|build\|\.cache\|coverage\|\.turbo\|\.nx\|\.next\|\.nuxt\|out\|\.git` | Regex of directory and file names to skip, matched against whole segments of the path relative to the scan root | `--exclude`     |
-| `serverUrl`               | `string`   | `http://localhost:3000`                                                                   | Base URL in curl examples (Markdown, HTML) and OpenAPI `servers`                                                | `--server-url`  |
-| `apiTitle`                | `string`   | `API Documentation`                                                                       | Title of the Markdown, HTML and OpenAPI output                                                                  | `--api-title`   |
-| `apiVersion`              | `string`   | `1.0.0`                                                                                   | `info.version` in OpenAPI and `meta.apiVersion` in JSON                                                         | `--api-version` |
-| `routeServers`            | `string[]` | `[]`                                                                                      | When non-empty, only calls on these identifiers (e.g. `app`, `router`) count as routes                          | none            |
-| `acceptTypeScriptReturns` | `boolean`  | `false`                                                                                   | In `audit`, count a declared TypeScript return type as a documented `@returns`                                  | none            |
+| Key                       | Type       | Default                                                                                   | Meaning                                                                                                                                                                     | CLI override      |
+| ------------------------- | ---------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| `excludePattern`          | `string`   | `node_modules\|dist\|build\|\.cache\|coverage\|\.turbo\|\.nx\|\.next\|\.nuxt\|out\|\.git` | Regex of directory and file names to skip, matched against whole segments of the path relative to the scan root                                                             | `--exclude`       |
+| `serverUrl`               | `string`   | `http://localhost:3000`                                                                   | Base URL in curl examples (Markdown, HTML) and OpenAPI `servers`                                                                                                            | `--server-url`    |
+| `apiTitle`                | `string`   | `API Documentation`                                                                       | Title of the Markdown, HTML and OpenAPI output                                                                                                                              | `--api-title`     |
+| `apiVersion`              | `string`   | `1.0.0`                                                                                   | `info.version` in OpenAPI and `meta.apiVersion` in JSON                                                                                                                     | `--api-version`   |
+| `routeServers`            | `string[]` | `[]`                                                                                      | When non-empty, only calls on these identifiers (e.g. `app`, `router`) count as routes. When empty, each file's own `express()`/`Router()`/`fastify()` assignments are used | `--route-servers` |
+| `acceptTypeScriptReturns` | `boolean`  | `false`                                                                                   | In `audit`, count a declared TypeScript return type as a documented `@returns`                                                                                              | none              |
 
-`audit` and `scan` accept `--exclude` but not the three metadata flags, which
-only affect `generate` output.
+`audit` and `scan` accept `--exclude` and `--route-servers` but not the three
+metadata flags, which only affect `generate` output.
 
 ## Extensibility Guide
 
@@ -297,7 +297,8 @@ only affect `generate` output.
 2. Emit routes only through `pushRoute(functions, method, path, line, group?, docLines?)`:
    pass a `group` when one call declares several routes, and `docLines` when a
    comment above the call should document them.
-3. Respect `isAllowedServer(serverNode, routeServers)`. New HTTP verbs go in
+3. Respect `isAllowedServer(serverNode, routeServers)`; `routeServers` here is
+   already the configured list or the file's inferred servers. New HTTP verbs go in
    `HTTP_METHODS`; check `METHOD_SUCCESS_CODE` in `src/formatters/openapi.js`.
 4. Add cases to the `additional route forms` block of
    `tests/parser-regressions.test.js`, including one `parseFile` test for JSDoc

@@ -63,17 +63,23 @@ If the comment is matched but the item still shows as a gap, look at
 Routes are recognised in three forms:
 
 ```js
-app.get('/users/:id', handler); // also post, put, delete, patch
+app.get('/users/:id', handler); // also post, put, delete, patch, head, options, all
 app.route('/books/:id').get(getBook).put(updateBook);
 fastify.route({ method: ['GET', 'POST'], url: '/items', handler });
 ```
 
-The path must be a string literal starting with `/`. Template literals,
-variables and full URLs are not treated as routes, which is also what keeps
-HTTP-client calls such as `axios.get('https://...')` out. `head`, `options` and
-`all` are not recognised.
+The path must be a string literal, or a template literal without `${}`,
+starting with `/`. Variables, interpolated templates and full URLs are not
+treated as routes, which is also what keeps HTTP-client calls such as
+`axios.get('https://...')` out.
 
-If `routeServers` is set in the config, only calls on those identifiers count:
+If a file creates a server (`const app = express()`, `express.Router()`,
+`Router()`, `fastify()`), only calls on the identifiers it assigns servers to
+count there. A file that creates `router` but also calls an imported `app`
+loses `app.get(...)`; list both with `routeServers` or `--route-servers
+app,router`.
+
+If `routeServers` is set, only calls on those identifiers count, in every file:
 `routeServers: ['app']` ignores `router.get(...)`.
 
 ## A function is not detected

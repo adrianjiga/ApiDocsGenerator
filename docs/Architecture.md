@@ -178,7 +178,7 @@ unparseable files.
 
 `cli.js:resolveConfig(options)` then overrides: `--server-url` → `serverUrl`,
 `--api-title` → `apiTitle`, `--api-version` → `apiVersion`, `--exclude` →
-`excludePattern`. `routeServers` has no flag.
+`excludePattern`, `--route-servers a,b` → `routeServers`.
 
 ## File Map
 

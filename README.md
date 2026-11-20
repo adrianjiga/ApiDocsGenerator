@@ -108,9 +108,11 @@ The command is `api-docs-generator` in every case.
 - **Functions**: module-level declarations, arrow functions and function
   expressions, class methods and function-valued class fields, prototype
   methods, methods of module-level object literals, and CommonJS exports.
-- **Routes**: Express `app.get('/path')` (also `post`, `put`, `delete` and
-  `patch`), chained `app.route('/path').get()`, and Fastify
-  `fastify.route({ method, url })`.
+- **Routes**: Express `app.get('/path')` (also `post`, `put`, `delete`,
+  `patch`, `head`, `options` and `all`), chained `app.route('/path').get()`,
+  and Fastify `fastify.route({ method, url })`. In a file that creates a server
+  with `express()`, `express.Router()`, `Router()` or `fastify()`, only calls on
+  those servers count.
 - **Output**: Markdown, HTML, JSON and OpenAPI 3.0.3 docs; terminal, JSON and
   HTML dashboard coverage reports.
 

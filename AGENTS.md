@@ -24,7 +24,7 @@ Node.js CLI (npm package `@adrianjiga/api-docs-generator`, CLI command `api-docs
 ## Gotchas
 
 - JSDoc matching (`matchJSDocToItems`): a comment must end within 2 lines above the item, and the first code token after it must be on the item's line. Each comment documents at most one item. `/** */` only; `//` comments are ignored.
-- Route detection: `x.<get|post|put|delete|patch>('/path', ...)`, chained `x.route('/path').get(...)`, and Fastify `x.route({ method, url })`. Paths must be string literals starting with `/`; `routeServers` config restricts `x`.
+- Route detection: `x.<get|post|put|delete|patch|head|options|all>('/path', ...)`, chained `x.route('/path').get(...)`, and Fastify `x.route({ method, url })`. Paths must be string literals (or `${}`-free template literals) starting with `/`. `x` must be in `routeServers` (config or `--route-servers`); when that's empty, in the file's own `express()`/`Router()`/`fastify()` assignments (`inferRouteServers`); when the file has none, anything goes.
 - Files over 1 MB are skipped with a warning (`MAX_FILE_SIZE_BYTES`). Minified bundles: add to `excludePattern`.
 - `@returns {void|undefined|never}` counts as fully documented; a missing `@returns` is a gap for functions only — routes don't need one.
 - Audit coverage = fully documented items / total items. Dashboard output default filename is `coverage-dashboard.html`.

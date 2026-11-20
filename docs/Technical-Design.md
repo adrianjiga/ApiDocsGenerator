@@ -166,14 +166,24 @@ Calls are inspected only when the callee is a member expression
 | `fastify.route({ method: 'GET', url: '/a' })`            | `GET /a`                    | The call                   |
 | `fastify.route({ method: ['GET', 'POST'], path: '/b' })` | `GET /b`, `POST /b`         | The call                   |
 
-- Methods are `get`, `post`, `put`, `delete` and `patch` (case-insensitive in
-  Fastify objects).
-- The path must be a string literal starting with `/`. Template literals,
-  variables and absolute URLs (`http.get('https://...')`) are ignored.
+- Methods are `get`, `post`, `put`, `delete`, `patch`, `head`, `options` and
+  `all` (case-insensitive in Fastify objects). OpenAPI output leaves out `all`
+  routes, which have no OpenAPI operation.
+- The path must be a string literal, or a template literal without `${}`
+  expressions, starting with `/`. Variables, interpolated templates and
+  absolute URLs (`http.get('https://...')`) are ignored.
 - Path parameters are taken from `:name` segments (`/:(\w+)/g`).
-- When `routeServers` is set in the config, the object the method is called on
-  (for a chain, the object `.route()` is called on) must be an identifier in
-  that list. An empty list means no filter.
+- The object the method is called on (for a chain, the object `.route()` is
+  called on) must be a server identifier:
+  - When `routeServers` is set, the identifiers in that list.
+  - Otherwise, the identifiers the file assigns a server to
+    (`inferRouteServers`): `const x = <factory>(...)`, `new <factory>(...)`,
+    `await <factory>(...)` or `x = <factory>(...)`, where the factory is
+    `express`, `Router`, `fastify`, `Fastify`, `<express>.Router`, or any name
+    the `express` or `fastify` module (or its `Router` export) is imported or
+    required as.
+  - When the file assigns no server, any object counts. This keeps routes in
+    files that receive the server as a parameter, such as Fastify plugins.
 
 Routes from one call (a chain, or a Fastify object with several methods) share
 a `group` id, the source offset of the call. This is internal and never written

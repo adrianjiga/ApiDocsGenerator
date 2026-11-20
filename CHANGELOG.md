@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TypeScript parameter types, optionality, default values and return types are read from the source. Markdown and HTML show them where JSDoc gives no type, and JSON output carries them as `paramDetails` and `returnType`
 - `acceptTypeScriptReturns` config key: `audit` counts a declared TypeScript return type as a documented `@returns`
 - OpenAPI output uses `@param` descriptions and types for path parameters, `@returns` for the success response description, and `@deprecated` for `deprecated: true`
+- Route servers are inferred per file from `express()`, `express.Router()`, `Router()` and `fastify()` assignments, so calls such as `cache.get('/key')` on a `Map` are no longer reported as routes. Files that create no server keep the broad detection
+- `--route-servers app,router` flag for `generate`, `audit` and `scan`
+- `head`, `options` and `all` routes; OpenAPI output leaves out `all`, which has no OpenAPI operation. HEAD examples use `curl -I`
+- Route paths written as template literals without expressions, e.g. ``app.get(`/users`)``
 - OpenAPI query parameters from `@param query.<name>` tags and a JSON request body from `@param body` and `@param body.<field>` tags
 
 ### Fixed
