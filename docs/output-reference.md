@@ -302,7 +302,9 @@ paths:
 - An `all` route (`app.all('/proxy')`) becomes one operation per method:
   `get`, `post`, `put`, `patch`, `delete`, `head` and `options`. An explicit
   route for the same path and method takes precedence, wherever it appears.
-- There is one tag per source file name. If the same path and method are
+- There is one tag per source file, named like the file's Markdown heading:
+  the file name, with its directory added when two files share a name
+  (`users/index.js`, `orders/index.js`). If the same path and method are
   declared twice, only the first one is kept.
 
 ## GENERATION_REPORT.md

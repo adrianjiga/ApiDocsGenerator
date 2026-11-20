@@ -779,4 +779,19 @@ app.get('/items/:id?', handler);
     expect(ids).toEqual(['get-users-id', 'get-users-id-1', 'get-users-id-1-1']);
     expect(new Set(ids).size).toBe(ids.length);
   });
+
+  it('gives files that share a name their own tags', () => {
+    const file = (dir) => ({
+      file: `/src/${dir}/index.js`,
+      fileName: 'index.js',
+      functions: [],
+      routes: [makeRoute('GET', `/${dir}`, [])],
+    });
+    const spec = parse([file('users'), file('orders')]);
+    expect(spec.tags.map((t) => t.name)).toEqual([
+      'users/index.js',
+      'orders/index.js',
+    ]);
+    expect(spec.paths['/orders'].get.tags).toEqual(['orders/index.js']);
+  });
 });

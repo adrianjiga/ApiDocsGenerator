@@ -1,5 +1,10 @@
 import yaml from 'js-yaml';
-import { cleanTagDescription, getParamTags, getReturnTags } from '../utils.js';
+import {
+  cleanTagDescription,
+  getParamTags,
+  getReturnTags,
+  uniqueFileLabels,
+} from '../utils.js';
 
 /**
  * Default success response code per HTTP method.
@@ -272,6 +277,7 @@ function generateOpenAPI(apiData, config = {}) {
   const paths = new Map();
   const tagSet = new Map();
   const usedOperationIds = new Set();
+  const labels = uniqueFileLabels(apiData);
 
   const fromAll = new Set();
 
@@ -280,7 +286,7 @@ function generateOpenAPI(apiData, config = {}) {
       const isAll = route.method.toUpperCase() === 'ALL';
       const methods = isAll ? ALL_METHODS : [route.method.toLowerCase()];
       if (!methods.every((m) => OPENAPI_METHODS.has(m))) continue;
-      const sourceFile = file.fileName;
+      const sourceFile = labels.get(file.file) ?? file.fileName;
 
       if (!tagSet.has(sourceFile)) {
         tagSet.set(sourceFile, {
