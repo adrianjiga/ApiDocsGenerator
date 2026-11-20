@@ -150,10 +150,10 @@ for tests and may change between minor versions.
 
 ### analyzer
 
-| Export                                      | Stability | Description                                                       |
-| ------------------------------------------- | --------- | ----------------------------------------------------------------- |
-| `analyzeCoverage(apiData) → CoverageReport` | stable    | Non-array input returns an empty, zeroed report                   |
-| `checkRouteDocumentation(route) → Status`   | internal  | `{ isFullyDocumented, isPartiallyDocumented, missing, existing }` |
+| Export                                                | Stability | Description                                                                                                                   |
+| ----------------------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `analyzeCoverage(apiData, options?) → CoverageReport` | stable    | Non-array input returns an empty, zeroed report. `options`: `{ acceptTypeScriptReturns, exportedOnly }`, both default `false` |
+| `checkRouteDocumentation(route) → Status`             | internal  | `{ isFullyDocumented, isPartiallyDocumented, missing, existing }`                                                             |
 
 ## Formatter Registry
 
@@ -268,9 +268,11 @@ The file's values are shallow-merged over the defaults.
 | `apiVersion`              | `string`   | `1.0.0`                                                                                   | `info.version` in OpenAPI and `meta.apiVersion` in JSON                                                                                                                     | `--api-version`   |
 | `routeServers`            | `string[]` | `[]`                                                                                      | When non-empty, only calls on these identifiers (e.g. `app`, `router`) count as routes. When empty, each file's own `express()`/`Router()`/`fastify()` assignments are used | `--route-servers` |
 | `acceptTypeScriptReturns` | `boolean`  | `false`                                                                                   | In `audit`, count a declared TypeScript return type as a documented `@returns`                                                                                              | none              |
+| `exportedOnly`            | `boolean`  | `false`                                                                                   | In `audit`, count only exported functions; routes always count                                                                                                              | `--exported-only` |
 
 `audit` and `scan` accept `--exclude` and `--route-servers` but not the three
 metadata flags, which only affect `generate` output.
+`--exported-only` applies to `audit` only.
 
 ## Extensibility Guide
 

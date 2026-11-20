@@ -225,8 +225,10 @@ real block.
 
 ## Coverage rules
 
-`analyzeCoverage(apiData)` in `src/analyzer.js` checks every function and route
-with `checkDocumentation(item, { requireReturns })`.
+`analyzeCoverage(apiData, options)` in `src/analyzer.js` checks every function
+and route with `checkDocumentation(item, { requireReturns })`. With
+`exportedOnly`, functions whose `exported` flag is false are skipped; routes
+always count.
 
 | Check       | Passes when                                                    | Functions | Routes                     |
 | ----------- | -------------------------------------------------------------- | --------- | -------------------------- |

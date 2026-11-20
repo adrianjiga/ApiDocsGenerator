@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `acceptTypeScriptReturns` config key: `audit` counts a declared TypeScript return type as a documented `@returns`
 - OpenAPI output uses `@param` descriptions and types for path parameters, `@returns` for the success response description, and `@deprecated` for `deprecated: true`
 - Route servers are inferred per file from `express()`, `express.Router()`, `Router()` and `fastify()` assignments, so calls such as `cache.get('/key')` on a `Map` are no longer reported as routes. Files that create no server keep the broad detection
+- `--exported-only` flag and `exportedOnly` config key for `audit`: only exported functions (and all routes) count towards coverage
 - `--route-servers app,router` flag for `generate`, `audit` and `scan`
 - `head`, `options` and `all` routes; OpenAPI output leaves out `all`, which has no OpenAPI operation. HEAD examples use `curl -I`
 - Route paths written as template literals without expressions, e.g. ``app.get(`/users`)``
