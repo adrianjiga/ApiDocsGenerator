@@ -282,6 +282,12 @@ paths:
   `:id(\d+)` is dropped. OpenAPI has no optional path segments, so an
   optional parameter (`/users/:id?`, or `/users{/:id}` in Express 5) produces
   one path without it and one with it.
+- Paths that differ only in parameter names, such as `/users/:id` and
+  `/users/:userId`, are the same path to OpenAPI. They are merged under the
+  first spelling, and each route's `@param` docs still apply to its own
+  parameter. From several optional parameters, the path with one of them uses
+  the first, as Express does: `/a/:x?/:y?` gives `/a`, `/a/{x}` and
+  `/a/{x}/{y}`.
 - `summary` is the route's JSDoc description, or `GET /users/{id}` without one.
 - A path parameter's `description` and `schema` type come from its `@param`
   tag (`id` or `params.id`); the type defaults to `string`.

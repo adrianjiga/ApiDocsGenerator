@@ -40,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `routeServers: 'app,router'` written as a string in the config is split on commas; it used to switch route detection to substring matching
 - TypeScript overloads are one item, not one per signature, and a JSDoc above the first overload documents the implementation
 - `export default (req, res) => {}` and other default-exported function expressions are detected, as `default`
+- OpenAPI paths that differ only in parameter names (`/users/{id}`, `/users/{userId}`) are merged into one, since validators reject them as duplicates
 - OpenAPI tags no longer merge routes from files that share a name, such as `users/index.js` and `orders/index.js`
 - The audit accepts `@param params.id` for a route's `:id`, as the OpenAPI output already did
 - A TypeScript `this` parameter is no longer listed as a parameter that needs a `@param`

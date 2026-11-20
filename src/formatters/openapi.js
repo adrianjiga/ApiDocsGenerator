@@ -43,7 +43,10 @@ const ALL_METHODS = [
  * Expand a route path's optional parts into the concrete paths they allow.
  * Express 4 marks an optional segment as `/:id?`; Express 5 wraps optional
  * parts in braces, as in `/files{/:name}`. OpenAPI has no optional path
- * segments, so each combination becomes its own path.
+ * segments, so each combination becomes its own path. Combinations with the
+ * same shape, such as `/a/:x` and `/a/:y` from `/a/:x?/:y?`, are one path in
+ * OpenAPI; the one Express would match keeps the earliest parameters, since
+ * Express fills optional parameters from the left.
  * @param {string} expressPath - e.g. /users/:id?
  * @returns {string[]} e.g. ['/users', '/users/:id']
  */
@@ -59,7 +62,22 @@ function pathVariants(expressPath) {
     const after = p.slice(group.index + group[0].length);
     return [...expand(before + after), ...expand(before + group[1] + after)];
   };
-  return [...new Set(expand(braced))];
+  const order = Array.from(expressPath.matchAll(/:(\w+)/g), (m) => m[1]);
+  const positions = (p) =>
+    Array.from(p.matchAll(/:(\w+)/g), (m) => order.indexOf(m[1]));
+  const earlier = (a, b) => {
+    const pa = positions(a);
+    const pb = positions(b);
+    const i = pa.findIndex((v, k) => v !== pb[k]);
+    return i >= 0 && pa[i] < pb[i];
+  };
+  const byShape = new Map();
+  for (const variant of expand(braced)) {
+    const shape = variant.replace(/:\w+(\([^)]*\))?/g, ':');
+    const kept = byShape.get(shape);
+    if (!kept || earlier(variant, kept)) byShape.set(shape, variant);
+  }
+  return [...byShape.values()];
 }
 
 /**
@@ -208,14 +226,27 @@ function requestBody(paramTags) {
  * @param {string} openApiPath - OpenAPI path, e.g. /users/{id}
  * @param {string} operationId - Unique operation id
  * @param {string} tag - Tag the operation is grouped under
+ * @param {Map<string, string>} [paramAliases] - The route's own name for each
+ *   path parameter of `openApiPath`, when the route was merged into a path
+ *   that names its parameters differently
  * @returns {Object} Operation object
  */
-function buildOperation(route, openApiPath, operationId, tag) {
+function buildOperation(
+  route,
+  openApiPath,
+  operationId,
+  tag,
+  paramAliases = new Map(),
+) {
   const method = route.method.toLowerCase();
   const tags = route.jsdoc?.tags ?? [];
   const paramTags = getParamTags(tags).filter((t) => t.name);
-  const tagFor = (name) =>
-    paramTags.find((t) => t.name === name || t.name === `params.${name}`);
+  const tagFor = (pathName) => {
+    const name = paramAliases.get(pathName) ?? pathName;
+    return paramTags.find(
+      (t) => t.name === name || t.name === `params.${name}`,
+    );
+  };
 
   const text = (route.jsdoc?.description || '').trim();
   const [firstLine] = text.split('\n');
@@ -278,6 +309,7 @@ function generateOpenAPI(apiData, config = {}) {
   const tagSet = new Map();
   const usedOperationIds = new Set();
   const labels = uniqueFileLabels(apiData);
+  const templates = new Map();
 
   const fromAll = new Set();
 
@@ -296,7 +328,14 @@ function generateOpenAPI(apiData, config = {}) {
       }
 
       for (const variant of pathVariants(route.path)) {
-        const openApiPath = convertPath(variant);
+        const routePath = convertPath(variant);
+        const template = routePath.replace(/\{\w+\}/g, '{}');
+        const openApiPath = templates.get(template) ?? routePath;
+        templates.set(template, openApiPath);
+        const routeNames = extractParams(routePath);
+        const paramAliases = new Map(
+          extractParams(openApiPath).map((name, i) => [name, routeNames[i]]),
+        );
         if (!paths.has(openApiPath)) {
           paths.set(openApiPath, {});
         }
@@ -322,6 +361,7 @@ function generateOpenAPI(apiData, config = {}) {
             openApiPath,
             operationId,
             sourceFile,
+            paramAliases,
           );
           if (isAll) fromAll.add(key);
           else fromAll.delete(key);

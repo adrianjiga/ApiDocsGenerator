@@ -432,12 +432,7 @@ describe('generateOpenAPI – optional path segments', () => {
 
   it('expands every combination of several optional parameters', () => {
     const spec = parse(routeAt('/a/:x?/:y?'));
-    expect(Object.keys(spec.paths)).toEqual([
-      '/a',
-      '/a/{y}',
-      '/a/{x}',
-      '/a/{x}/{y}',
-    ]);
+    expect(Object.keys(spec.paths)).toEqual(['/a', '/a/{x}', '/a/{x}/{y}']);
   });
 
   it('uses / when everything in the path is optional', () => {
@@ -793,5 +788,42 @@ app.get('/items/:id?', handler);
       'orders/index.js',
     ]);
     expect(spec.paths['/orders'].get.tags).toEqual(['orders/index.js']);
+  });
+
+  it('merges paths that differ only in parameter names', () => {
+    const spec = parse([
+      {
+        file: '/src/a.js',
+        fileName: 'a.js',
+        functions: [],
+        routes: [
+          makeRoute('GET', '/users/:id', ['id'], {
+            description: 'Get',
+            tags: [tag('id', 'integer', 'User id')],
+          }),
+        ],
+      },
+      {
+        file: '/src/b.js',
+        fileName: 'b.js',
+        functions: [],
+        routes: [
+          makeRoute('DELETE', '/users/:userId', ['userId'], {
+            description: 'Delete',
+            tags: [tag('userId', 'string', 'Id of the user to delete')],
+          }),
+        ],
+      },
+    ]);
+    expect(Object.keys(spec.paths)).toEqual(['/users/{id}']);
+    expect(spec.paths['/users/{id}'].delete.parameters).toEqual([
+      {
+        name: 'id',
+        in: 'path',
+        required: true,
+        description: 'Id of the user to delete',
+        schema: { type: 'string' },
+      },
+    ]);
   });
 });
