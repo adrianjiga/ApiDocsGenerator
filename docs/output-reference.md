@@ -154,6 +154,11 @@ Section ids are the file label with non-word characters turned into `-`
 (`sample-app.js` becomes `sample-app-js`); repeated ids get `-2`, `-3`. All text
 taken from source code is HTML-escaped.
 
+The page follows the reader's `prefers-color-scheme`: dark by default, light
+when the system or browser asks for it. Colours are CSS variables on `:root`
+(`--text`, `--surface-1`, `--accent`, `--link`…), so a stylesheet injected
+after generation can retheme the page. The coverage dashboard stays dark.
+
 ## api.json
 
 A `meta` block and one entry per scanned file, including files with no

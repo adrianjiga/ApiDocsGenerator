@@ -482,4 +482,18 @@ describe('generateHTML', () => {
     ]);
     expect(out).toContain('<div class="file-path">📁 routes/users.js</div>');
   });
+
+  it('defines a dark theme by default and a light one for light-mode readers', () => {
+    const html = generateHTML(mockApiData);
+    expect(html).toMatch(/:root \{\s*color-scheme: dark;/);
+    expect(html).toMatch(
+      /@media \(prefers-color-scheme: light\) \{\s*:root \{\s*color-scheme: light;/,
+    );
+  });
+
+  it('takes the page colours from the theme variables', () => {
+    const html = generateHTML(mockApiData);
+    expect(html).toContain('color: var(--text, #f8fafc);');
+    expect(html).toContain('background: var(--page-bg,');
+  });
 });

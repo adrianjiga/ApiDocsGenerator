@@ -274,4 +274,10 @@ describe('generateDashboard', () => {
   it('shows the threshold under the gauge', () => {
     expect(generateDashboard(makeReport(), 90)).toContain('threshold 90%');
   });
+
+  it('keeps its dark page colours, which the HTML theme variables do not reach', () => {
+    const html = generateDashboard(makeReport());
+    expect(html).not.toContain('prefers-color-scheme');
+    expect(html).toContain('color: var(--text, #f8fafc);');
+  });
 });
