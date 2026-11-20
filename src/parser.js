@@ -318,6 +318,21 @@ function handleAssignment(node, functions, source) {
 }
 
 /**
+ * Value of a string literal, or of a template literal without expressions
+ * @param {Object} [node] - AST node
+ * @returns {string|undefined} The string, or undefined for any other node
+ */
+function staticString(node) {
+  if (node?.type === 'Literal' && typeof node.value === 'string') {
+    return node.value;
+  }
+  if (node?.type === 'TemplateLiteral' && node.expressions.length === 0) {
+    return node.quasis[0]?.value.cooked ?? undefined;
+  }
+  return undefined;
+}
+
+/**
  * Whether a route's server object passes the optional routeServers filter
  * @param {Object} serverNode - Callee object node (e.g. `app` in `app.get`)
  * @param {string[]} [routeServers] - Allowed server identifiers
@@ -389,12 +404,12 @@ function handleRouteObject(node, functions, routeServers) {
     if (key) props.set(key, prop.value);
   }
 
-  const routePath = (props.get('url') || props.get('path'))?.value;
+  const routePath = staticString(props.get('url') || props.get('path'));
   const methodNode = props.get('method');
   const methods =
     methodNode?.type === 'ArrayExpression'
-      ? methodNode.elements.map((el) => el?.value)
-      : [methodNode?.value];
+      ? methodNode.elements.map(staticString)
+      : [staticString(methodNode)];
 
   for (const method of methods) {
     if (typeof method !== 'string') continue;
@@ -434,7 +449,7 @@ function handleRouteExpression(node, functions, routeServers) {
     pushRoute(
       functions,
       methodName,
-      chainRoot.arguments[0]?.value,
+      staticString(chainRoot.arguments[0]),
       node.callee.property.loc?.start.line || 0,
       chainRoot.range?.[0],
       chainRoot.loc ? [chainRoot.loc.start.line] : undefined,
@@ -450,7 +465,7 @@ function handleRouteExpression(node, functions, routeServers) {
   pushRoute(
     functions,
     methodName,
-    node.arguments[0]?.value,
+    staticString(node.arguments[0]),
     node.loc?.start.line || 0,
   );
 }

@@ -503,3 +503,24 @@ describe('TypeScript signatures', () => {
     }
   });
 });
+
+describe('additional route forms', () => {
+  const routePaths = (source) =>
+    extractFunctions(source)
+      .filter((f) => f.type === 'route')
+      .map((r) => `${r.method} ${r.path}`);
+
+  it('accepts template literals without expressions as paths', () => {
+    const source = `
+app.get(\`/users\`, h);
+app.route(\`/items\`).post(h);
+fastify.route({ method: \`PUT\`, url: \`/f\`, handler: h });
+app.get(\`/users/\${id}\`, h);
+`;
+    expect(routePaths(source)).toEqual(['GET /users', 'POST /items', 'PUT /f']);
+  });
+
+  it('still ignores Promise.all and other non-path calls', () => {
+    expect(routePaths('Promise.all([a, b]);')).toEqual([]);
+  });
+});
