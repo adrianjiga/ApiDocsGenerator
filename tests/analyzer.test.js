@@ -678,3 +678,29 @@ describe('undocumented items without parameters', () => {
     ]);
   });
 });
+
+describe('destructured parameters after undocumented ones', () => {
+  const tag = (name) => ({ tag: 'param', name, type: 'x', description: 'd' });
+  const fn = (params, names) =>
+    makeFunction('f', params, {
+      description: 'Does f',
+      tags: [
+        ...names.map(tag),
+        { tag: 'returns', type: 'x', description: 'r' },
+      ],
+    });
+  const gaps = (item) =>
+    analyzeCoverage([
+      { file: 'a.js', fileName: 'a.js', functions: [item], routes: [] },
+    ]).gaps;
+
+  it('pairs the options tag with the destructured parameter it follows', () => {
+    const item = fn(['id', 'name', '{a}'], ['name', 'opts', 'opts.a']);
+    expect(gaps(item)[0].missing).toEqual(['params']);
+  });
+
+  it('counts it documented once every named parameter has a tag', () => {
+    const item = fn(['id', 'name', '{a}'], ['id', 'name', 'opts', 'opts.a']);
+    expect(gaps(item)).toEqual([]);
+  });
+});

@@ -394,6 +394,32 @@ describe('describeParams', () => {
   });
 });
 
+describe('describeParams – destructured parameters', () => {
+  it('does not repeat a destructured parameter after an untagged one', () => {
+    const tag = (name, type) => ({ tag: 'param', name, type, description: '' });
+    const item = {
+      jsdoc: {
+        tags: [
+          tag('name', 'string'),
+          tag('opts', 'Object'),
+          tag('opts.a', 'number'),
+        ],
+      },
+      paramDetails: [
+        { name: 'id', optional: false, type: 'number' },
+        { name: 'name', optional: false, type: 'string' },
+        { name: '{a}', optional: false, type: 'Opts' },
+      ],
+    };
+    expect(describeParams(item).map((p) => p.name)).toEqual([
+      'name',
+      'opts',
+      'opts.a',
+      'id',
+    ]);
+  });
+});
+
 describe('describeReturns', () => {
   it('uses the TypeScript return type when there is no @returns', () => {
     expect(describeReturns({ jsdoc: null, returnType: 'number' })).toEqual([

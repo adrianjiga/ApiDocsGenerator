@@ -248,10 +248,13 @@ has no parameters.
 
 Parameters are matched by name (`isParamDocumented`). A rest parameter
 `...args` matches `@param args`. A destructured parameter (`{a, b}` or
-`[a, b]`) has no name of its own, so it matches the top-level `@param` at the
-same position, such as `@param {Object} options`, as long as that tag is not
-named after one of the function's other parameters. Tags for its properties
-(`options.a`) are allowed but not required.
+`[a, b]`) has no name of its own, so it matches the top-level `@param` in its
+position, such as `@param {Object} options`, as long as that tag is not named
+after one of the function's other parameters (`destructuredParamTags`).
+Positions count tags, not parameters: in `f(id, name, {a})` documented only by
+`@param name` and `@param options`, `{a}` matches `options` even though `id`
+has no tag. Tags for its properties (`options.a`) are allowed but not
+required.
 
 Percentages use `calcPercentage`: `part / total * 100` rounded to one decimal,
 and `0` when the total is `0`.

@@ -1,4 +1,9 @@
-import { calcPercentage, getParamTags, getReturnTags } from './utils.js';
+import {
+  calcPercentage,
+  destructuredParamTags,
+  getParamTags,
+  getReturnTags,
+} from './utils.js';
 
 /**
  * Analyze documentation coverage for parsed API data
@@ -187,31 +192,21 @@ function analyzeCoverage(
 
 /**
  * Whether a parameter has a matching @param tag. Rest parameters (`...args`)
- * match `@param args`. Destructured parameters (`{a, b}`, `[a, b]`) have no
- * name of their own, so they match the top-level @param at the same position,
- * e.g. `@param {Object} options` for the first parameter, unless that tag is
- * the one for another, named parameter.
+ * match `@param args`. Destructured parameters (`{a, b}`, `[a, b]`) match the
+ * tag destructuredParamTags pairs them with.
  * @param {string} paramName - Parameter name from the parser
  * @param {number} index - Position of the parameter
  * @param {string[]} documentedNames - Names of all @param tags
- * @param {Array} topLevelTags - @param tags whose name has no `.`
- * @param {string[]} paramNames - Names of all the item's parameters, without `...`
+ * @param {Map<number, Object>} destructured - Result of destructuredParamTags
  * @returns {boolean} True when the parameter is documented
  */
-function isParamDocumented(
-  paramName,
-  index,
-  documentedNames,
-  topLevelTags,
-  paramNames,
-) {
+function isParamDocumented(paramName, index, documentedNames, destructured) {
   const name = paramName.startsWith('...') ? paramName.slice(3) : paramName;
-  if (documentedNames.includes(paramName) || documentedNames.includes(name)) {
-    return true;
-  }
-  if (!/^[{[]/.test(name)) return false;
-  const tag = topLevelTags[index];
-  return !!tag && !paramNames.includes(tag.name);
+  return (
+    documentedNames.includes(paramName) ||
+    documentedNames.includes(name) ||
+    destructured.has(index)
+  );
 }
 
 /**
@@ -272,18 +267,14 @@ function checkDocumentation(
   const documentedParamNames = paramTags.map((tag) => tag.name);
   existing.params = documentedParamNames;
 
-  const plainParamNames = item.params.map((p) =>
-    p.startsWith('...') ? p.slice(3) : p,
-  );
-  const topLevelParamTags = paramTags.filter((tag) => !tag.name?.includes('.'));
+  const destructured = destructuredParamTags(item.params, paramTags);
   item.params.forEach((paramName, index) => {
     if (
       !isParamDocumented(
         paramName,
         index,
         documentedParamNames,
-        topLevelParamTags,
-        plainParamNames,
+        destructured,
       ) &&
       !missing.includes('params')
     ) {

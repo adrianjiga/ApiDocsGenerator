@@ -119,6 +119,40 @@ function isThisParam(param) {
 }
 
 /**
+ * Pair destructured parameters (`{a, b}`, `[a, b]`), which have no name of
+ * their own, with the top-level @param tags that document them. Tags follow
+ * the parameter order, so the parameters are walked with a cursor into the
+ * top-level tags: a named parameter with a tag moves it on, a named parameter
+ * without one does not, and a destructured parameter takes the tag at the
+ * cursor (e.g. `@param {Object} options`) unless that tag names a real
+ * parameter.
+ * @param {string[]} paramNames - Parameter names from the parser
+ * @param {Array} paramTags - The item's @param tags
+ * @returns {Map<number, Object>} Tag for each paired destructured parameter, by its index
+ */
+function destructuredParamTags(paramNames, paramTags) {
+  const plain = paramNames.map((n) => (n.startsWith('...') ? n.slice(3) : n));
+  const topLevel = paramTags.filter(
+    (tag) => tag.name && !tag.name.includes('.'),
+  );
+  const tagged = new Set(topLevel.map((tag) => tag.name));
+  const pairs = new Map();
+  let cursor = 0;
+  plain.forEach((name, index) => {
+    if (!/^[{[]/.test(name)) {
+      if (tagged.has(name)) cursor++;
+      return;
+    }
+    const tag = topLevel[cursor];
+    if (tag && !plain.includes(tag.name)) {
+      pairs.set(index, tag);
+      cursor++;
+    }
+  });
+  return pairs;
+}
+
+/**
  * Parameters to document for an item: its JSDoc @param tags, with the type,
  * optionality and default filled in from the TypeScript signature where the
  * tag leaves them out, followed by signature parameters no tag covers
@@ -130,13 +164,20 @@ function describeParams(item) {
   const details = item.paramDetails ?? [];
   const plain = (name) => (name.startsWith('...') ? name.slice(3) : name);
   const byName = new Map(details.map((d) => [plain(d.name), d]));
-  const topLevelTags = tags.filter((tag) => !tag.name?.includes('.'));
+  const destructured = new Map(
+    Array.from(
+      destructuredParamTags(
+        details.map((d) => d.name),
+        tags,
+      ),
+      ([index, tag]) => [tag, details[index]],
+    ),
+  );
   const used = new Set();
 
   const described = tags.map((tag) => {
     const detail = !tag.name?.includes('.')
-      ? (byName.get(tag.name) ??
-        details.find((d, i) => /^[{[]/.test(d.name) && topLevelTags[i] === tag))
+      ? (byName.get(tag.name) ?? destructured.get(tag))
       : undefined;
     if (detail) used.add(detail);
     const defaultValue = tag.default ?? detail?.defaultValue;
@@ -411,6 +452,7 @@ export {
   describeExtras,
   describeParams,
   describeReturns,
+  destructuredParamTags,
   escapeHtml,
   getParamDetails,
   getParamName,
