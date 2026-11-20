@@ -287,15 +287,17 @@ function inlineLinks(text) {
 }
 
 /**
- * curl command that sends a request with a route's method
+ * curl command that sends a request with a route's method. The URL is
+ * single-quoted so shells do not expand `?`, `*` or `&` in route paths.
  * @param {string} method - Uppercase HTTP method, or ALL
  * @param {string} url - Request URL
- * @returns {string} e.g. `curl -X POST http://localhost:3000/users`
+ * @returns {string} e.g. `curl -X POST 'http://localhost:3000/users'`
  */
 function curlCommand(method, url) {
-  if (method === 'ALL') return `curl ${url}`;
-  if (method === 'HEAD') return `curl -I ${url}`;
-  return `curl -X ${method} ${url}`;
+  const quoted = `'${url.replaceAll("'", "'\\''")}'`;
+  if (method === 'ALL') return `curl ${quoted}`;
+  if (method === 'HEAD') return `curl -I ${quoted}`;
+  return `curl -X ${method} ${quoted}`;
 }
 
 /**

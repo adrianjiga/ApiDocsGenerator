@@ -114,7 +114,9 @@ describe('generateHTML', () => {
 
   it('includes curl example for routes', () => {
     const html = generateHTML(mockApiData);
-    expect(html).toContain('curl -X GET http://localhost:3000/users/:id');
+    expect(html).toContain(
+      'curl -X GET &#039;http://localhost:3000/users/:id&#039;',
+    );
   });
 
   it('includes footer with generator name', () => {
@@ -302,7 +304,9 @@ describe('generateHTML', () => {
     const html = generateHTML(mockApiData, {
       serverUrl: 'https://api.example.com',
     });
-    expect(html).toContain('curl -X GET https://api.example.com/users/:id');
+    expect(html).toContain(
+      'curl -X GET &#039;https://api.example.com/users/:id&#039;',
+    );
     expect(html).not.toContain('http://localhost:3000');
   });
 
@@ -411,7 +415,7 @@ describe('generateHTML', () => {
       },
     ]);
     expect(html).toContain(
-      '<div class="code-block">curl http://localhost:3000/any</div>',
+      '<div class="code-block">curl &#039;http://localhost:3000/any&#039;</div>',
     );
   });
 

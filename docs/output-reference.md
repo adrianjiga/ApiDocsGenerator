@@ -81,7 +81,7 @@ Get a single user by their ID
 **Example Request:**
 
 ```bash
-curl -X GET http://localhost:3000/users/:id
+curl -X GET 'http://localhost:3000/users/:id'
 ```
 ````
 
@@ -107,7 +107,8 @@ curl -X GET http://localhost:3000/users/:id
   are fenced as `javascript`; route examples have no language.
 - The `curl` example uses `serverUrl` from the config (default
   `http://localhost:3000`) and the route path as written, with `:param`
-  placeholders left in. `HEAD` routes use `curl -I`.
+  placeholders left in, in single quotes so shells such as zsh do not treat
+  `?` or `*` in the path as a glob. `HEAD` routes use `curl -I`.
 - TOC anchors follow GitHub's heading rules, including the `-1`, `-2` suffixes
   GitHub adds to repeated headings.
 

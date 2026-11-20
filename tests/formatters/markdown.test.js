@@ -107,7 +107,7 @@ describe('generateMarkdown', () => {
 
   it('includes curl example for routes', () => {
     const md = generateMarkdown(mockApiData);
-    expect(md).toContain('curl -X GET http://localhost:3000/users/:id');
+    expect(md).toContain("curl -X GET 'http://localhost:3000/users/:id'");
   });
 
   it('handles functions without jsdoc', () => {
@@ -220,7 +220,7 @@ describe('generateMarkdown', () => {
     const md = generateMarkdown(mockApiData, {
       serverUrl: 'https://api.example.com',
     });
-    expect(md).toContain('curl -X GET https://api.example.com/users/:id');
+    expect(md).toContain("curl -X GET 'https://api.example.com/users/:id'");
     expect(md).not.toContain('http://localhost:3000');
   });
 
@@ -360,7 +360,7 @@ describe('generateMarkdown', () => {
         routes: [makeRoute('HEAD', '/ping', [])],
       },
     ]);
-    expect(md).toContain('curl -I http://localhost:3000/ping');
+    expect(md).toContain("curl -I 'http://localhost:3000/ping'");
   });
 
   it('shows a deprecation notice with the message', () => {

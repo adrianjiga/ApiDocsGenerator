@@ -444,15 +444,27 @@ describe('describeReturns', () => {
 
 describe('curlCommand', () => {
   it('passes the method with -X', () => {
-    expect(curlCommand('POST', 'http://h/a')).toBe('curl -X POST http://h/a');
+    expect(curlCommand('POST', 'http://h/a')).toBe("curl -X POST 'http://h/a'");
   });
 
   it('uses -I for HEAD, which has no response body', () => {
-    expect(curlCommand('HEAD', 'http://h/a')).toBe('curl -I http://h/a');
+    expect(curlCommand('HEAD', 'http://h/a')).toBe("curl -I 'http://h/a'");
   });
 
   it('sends a plain request for ALL', () => {
-    expect(curlCommand('ALL', 'http://h/a')).toBe('curl http://h/a');
+    expect(curlCommand('ALL', 'http://h/a')).toBe("curl 'http://h/a'");
+  });
+
+  it('quotes the URL so shells leave ? and * alone', () => {
+    expect(curlCommand('GET', 'http://h/users/:id?')).toBe(
+      "curl -X GET 'http://h/users/:id?'",
+    );
+  });
+
+  it('escapes single quotes inside the URL', () => {
+    expect(curlCommand('GET', "http://h/it's")).toBe(
+      "curl -X GET 'http://h/it'\\''s'",
+    );
   });
 });
 
