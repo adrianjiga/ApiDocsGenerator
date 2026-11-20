@@ -105,7 +105,7 @@ Returned by `analyzer.analyzeCoverage(apiData)` and printed by
   With `acceptTypeScriptReturns`, a declared TypeScript return type counts as
   the `@returns`.
 - A route is fully documented with a description and a `@param` for each path
-  parameter; `@returns` is optional.
+  parameter (`@param id` or `@param params.id`); `@returns` is optional.
 
 ### Generation result
 

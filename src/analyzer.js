@@ -227,11 +227,17 @@ function isVoidType(type) {
  * @param {boolean} [options.requireReturns=true] - Whether a @returns tag is required
  * @param {boolean} [options.acceptTypeScriptReturns=false] - Whether a declared
  *   TypeScript return type stands in for a @returns tag
+ * @param {boolean} [options.pathParamPrefix=false] - Whether `@param params.id`
+ *   documents the parameter `id`, as Express's `req.params.id` does for routes
  * @returns {Object} Status object with isFullyDocumented, isPartiallyDocumented, missing, existing
  */
 function checkDocumentation(
   item,
-  { requireReturns = true, acceptTypeScriptReturns = false } = {},
+  {
+    requireReturns = true,
+    acceptTypeScriptReturns = false,
+    pathParamPrefix = false,
+  } = {},
 ) {
   const existing = {
     description: null,
@@ -264,7 +270,11 @@ function checkDocumentation(
 
   // Check params
   const paramTags = getParamTags(item.jsdoc.tags);
-  const documentedParamNames = paramTags.map((tag) => tag.name);
+  const documentedParamNames = paramTags.map((tag) =>
+    pathParamPrefix && tag.name?.startsWith('params.')
+      ? tag.name.slice('params.'.length)
+      : tag.name,
+  );
   existing.params = documentedParamNames;
 
   const destructured = destructuredParamTags(item.params, paramTags);
@@ -322,7 +332,10 @@ function checkFunctionDocumentation(func, options) {
  * @returns {Object} Status object with isFullyDocumented, isPartiallyDocumented, missing, existing
  */
 function checkRouteDocumentation(route) {
-  return checkDocumentation(route, { requireReturns: false });
+  return checkDocumentation(route, {
+    requireReturns: false,
+    pathParamPrefix: true,
+  });
 }
 
 export { analyzeCoverage, checkRouteDocumentation };

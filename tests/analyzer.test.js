@@ -704,3 +704,43 @@ describe('destructured parameters after undocumented ones', () => {
     expect(gaps(item)).toEqual([]);
   });
 });
+
+describe('route path params documented as params.<name>', () => {
+  const routeWith = (names) =>
+    makeRoute('GET', '/users/:id', ['id'], {
+      description: 'Get a user',
+      tags: names.map((name) => ({
+        tag: 'param',
+        name,
+        type: 'string',
+        description: 'User id',
+      })),
+    });
+
+  it('accepts @param params.id for the path parameter id', () => {
+    expect(checkRouteDocumentation(routeWith(['params.id']))).toMatchObject({
+      isFullyDocumented: true,
+      missing: [],
+    });
+  });
+
+  it('still accepts the plain @param id', () => {
+    expect(checkRouteDocumentation(routeWith(['id'])).isFullyDocumented).toBe(
+      true,
+    );
+  });
+
+  it('does not accept params.<name> for function parameters', () => {
+    const fn = makeFunction('f', ['id'], {
+      description: 'Does f',
+      tags: [
+        { tag: 'param', name: 'params.id', type: 'string', description: 'x' },
+        { tag: 'returns', type: 'void', description: '' },
+      ],
+    });
+    const report = analyzeCoverage([
+      { file: 'a.js', fileName: 'a.js', functions: [fn], routes: [] },
+    ]);
+    expect(report.gaps[0].missing).toEqual(['params']);
+  });
+});

@@ -235,11 +235,11 @@ and route with `checkDocumentation(item, { requireReturns })`. With
 `exportedOnly`, functions whose `exported` flag is false are skipped; routes
 always count.
 
-| Check       | Passes when                                                    | Functions | Routes                     |
-| ----------- | -------------------------------------------------------------- | --------- | -------------------------- |
-| description | the JSDoc description is non-empty after trimming              | required  | required                   |
-| params      | every parameter name has a `@param` tag with exactly that name | required  | required (path parameters) |
-| returns     | there is a `@returns` or `@return` tag, of any type            | required  | optional                   |
+| Check       | Passes when                                                    | Functions | Routes                                                  |
+| ----------- | -------------------------------------------------------------- | --------- | ------------------------------------------------------- |
+| description | the JSDoc description is non-empty after trimming              | required  | required                                                |
+| params      | every parameter name has a `@param` tag with exactly that name | required  | required (path parameters; `params.<name>` also counts) |
+| returns     | there is a `@returns` or `@return` tag, of any type            | required  | optional                                                |
 
 `@returns {void}`, `{undefined}` and `{never}` count as present and are recorded
 as `existing.voidReturn`.
