@@ -761,4 +761,22 @@ app.get('/items/:id?', handler);
     );
     expect(spec.paths['/items'].delete.requestBody).toBeUndefined();
   });
+
+  it('never issues the same operationId twice', () => {
+    const spec = parse([
+      {
+        file: '/src/app.js',
+        fileName: 'app.js',
+        functions: [],
+        routes: [
+          makeRoute('GET', '/users/:id', ['id']),
+          makeRoute('GET', '/users/id', []),
+          makeRoute('GET', '/users/id-1', []),
+        ],
+      },
+    ]);
+    const ids = Object.values(spec.paths).map((ops) => ops.get.operationId);
+    expect(ids).toEqual(['get-users-id', 'get-users-id-1', 'get-users-id-1-1']);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
 });

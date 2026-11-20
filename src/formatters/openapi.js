@@ -271,7 +271,7 @@ function buildOperation(route, openApiPath, operationId, tag) {
 function generateOpenAPI(apiData, config = {}) {
   const paths = new Map();
   const tagSet = new Map();
-  const usedOperationIds = new Map();
+  const usedOperationIds = new Set();
 
   const fromAll = new Set();
 
@@ -304,9 +304,11 @@ function generateOpenAPI(apiData, config = {}) {
           let operationId = existing?.operationId;
           if (!operationId) {
             const baseId = deriveOperationId(method, openApiPath);
-            const count = usedOperationIds.get(baseId) || 0;
-            usedOperationIds.set(baseId, count + 1);
-            operationId = count === 0 ? baseId : `${baseId}-${count}`;
+            operationId = baseId;
+            for (let n = 1; usedOperationIds.has(operationId); n++) {
+              operationId = `${baseId}-${n}`;
+            }
+            usedOperationIds.add(operationId);
           }
 
           operations[method] = buildOperation(
