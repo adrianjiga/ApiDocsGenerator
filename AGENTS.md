@@ -15,6 +15,7 @@ Node.js CLI (npm package `@adrianjiga/api-docs-generator`, CLI command `api-docs
 
 - Entrypoint: `bin/api-docs-generator` → `src/cli.js`. `src/index.js` is the package `main` export.
 - Pipeline: `parser.js` (`parseDirectory` → `scanDirectory`/`parseFile`, using `@typescript-eslint/typescript-estree`) → `analyzer.js` (`analyzeCoverage`) → `generator.js` (`generate`).
+- `src/parser.js` is the public parser entry; the work lives in `src/parser/`: `ast.js` (parse + traverse helpers), `jsdoc.js` (comments, tag normalization, matching), `exports.js` (module-level scope, exported names), `routes.js` (route detection, server inference), `items.js` (`collectItems`), `scan.js` (directory walk). Tests import from `src/parser.js` only.
 - Formatters live in `src/formatters/` and are wired in `registry.js`. Two shapes:
   - `type: 'doc'` — `generate(apiData, config)` returns a string written to its `filename` (e.g. markdown → `API.md`).
   - `type: 'report'` — `generate(report, threshold?)`; `filename: null` means print to stdout (terminal).

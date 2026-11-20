@@ -5,6 +5,7 @@ report. The pipeline has three stages, each in its own module:
 
 ```
 parser.js (parseDirectory)  →  analyzer.js (analyzeCoverage)  →  formatters/*
+   └─ parser/: scan, ast, jsdoc, exports, routes, items
      scan, parse, detect,          coverage per item,              Markdown, HTML,
      match JSDoc                   per file and overall            JSON, OpenAPI,
                                                                    terminal, dashboard
@@ -15,7 +16,7 @@ parser, the analyzer and one report formatter. `scan` runs only the parser.
 
 ## Scanning
 
-`scanDirectory(dir, excludePattern)` in `src/parser.js` walks the tree with
+`scanDirectory(dir, excludePattern)` in `src/parser/scan.js` walks the tree with
 `fs.readdir(..., { withFileTypes: true })`.
 
 - **Files kept**: names matching `/\.(js|jsx|ts|tsx|mjs|cjs|mts|cts)$/`, minus

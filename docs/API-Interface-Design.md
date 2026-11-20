@@ -296,7 +296,7 @@ metadata flags, which only affect `generate` output.
 
 ### Adding a route form
 
-1. In `src/parser.js`, route calls reach `handleRouteExpression(node, functions, routeServers)`
+1. In `src/parser/routes.js`, route calls reach `handleRouteExpression(node, functions, routeServers)`
    from the `CallExpression` case of `collectItems`. Add the new shape there
    (or a helper next to `handleRouteObject` and `findRouteChainRoot`).
 2. Emit routes only through `pushRoute(functions, method, path, line, group?, docLines?)`:
@@ -311,9 +311,9 @@ metadata flags, which only affect `generate` output.
 
 ### Adding a detected function form
 
-1. Add a `case` to the switch in `collectItems` (`src/parser.js`), or extend
-   `handleAssignment`, `handleObjectMethods` or `handleClassDeclaration`.
-2. Emit items through `pushFunction(functions, fnNode, { name, line, exported, docLines?, className?, static?, methodKind? })`.
+1. Add a `case` to the switch in `collectItems` (`src/parser/items.js`), or
+   extend `handleAssignment`, `handleObjectMethods` or `handleClassDeclaration`.
+2. Emit items through `pushFunction(functions, fnNode, { name, line, exported, docLines?, className?, static?, methodKind? }, source)`.
 3. Decide scope: module-level-only forms should check
    `exports.moduleLevel.has(node)` (built by `collectExports`), and exported
    detection should go through `isExported(node, name)`.

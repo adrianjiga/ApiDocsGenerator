@@ -50,8 +50,9 @@ CLI options ──► resolveConfig ──► parser.parseDirectory ──► ap
    - `collectJSDoc(ast)` turns every `/** */` block into a parsed comment
      (via `comment-parser`) and records `nextLine`, the line of the first code
      token after it;
-   - `collectItems(ast, routeServers)` walks the AST once and collects function
-     and route items;
+   - `collectItems(ast, source, routeServers)` walks the AST once and collects
+     function and route items (`source` is the text, used to read TypeScript
+     types);
    - `matchJSDocToItems(jsdocs, items)` attaches each comment to the item it
      documents (see [JSDoc Matching](#jsdoc-matching)).
 5. **Output** —
@@ -184,20 +185,26 @@ unparseable files.
 
 ## File Map
 
-| File                              | Responsibility                                                                                            |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `bin/api-docs-generator`          | Executable shim; imports and calls `run()`                                                                |
-| `src/cli.js`                      | commander program, `generate`/`audit`/`scan` actions, `resolveConfig`, `run`                              |
-| `src/index.js`                    | Library entry; re-exports `analyzer`, `generator`, `parser`                                               |
-| `src/generator.js`                | Default config, config discovery/loading, `generate()` orchestration, `GENERATION_REPORT.md`              |
-| `src/parser.js`                   | Directory scan, single-pass AST parse, item collection, export tracking, JSDoc matching, `parseDirectory` |
-| `src/analyzer.js`                 | Coverage rules (`checkDocumentation`) and `analyzeCoverage` report                                        |
-| `src/utils.js`                    | Default exclude pattern, HTML escaping, slugs/ids, param names, tag helpers, file labels, percentages     |
-| `src/formatters/registry.js`      | Format name → `{ generate, filename, type }` map, including aliases                                       |
-| `src/formatters/markdown.js`      | `API.md`; TOC anchors follow GitHub's heading slugs                                                       |
-| `src/formatters/html.js`          | Self-contained `index.html`; all source text escaped                                                      |
-| `src/formatters/json.js`          | `api.json` with a `meta` block and scan-relative file paths                                               |
-| `src/formatters/openapi.js`       | `openapi.yaml` (OpenAPI 3.0.3) from routes only                                                           |
-| `src/formatters/terminal.js`      | Coverage report printed to stdout; colour only on a TTY without `NO_COLOR`                                |
-| `src/formatters/dashboard.js`     | Self-contained `coverage-dashboard.html` coverage report                                                  |
-| `src/formatters/shared-styles.js` | `BASE_CSS` shared by the HTML formatters                                                                  |
+| File                              | Responsibility                                                                                        |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `bin/api-docs-generator`          | Executable shim; imports and calls `run()`                                                            |
+| `src/cli.js`                      | commander program, `generate`/`audit`/`scan` actions, `resolveConfig`, `run`                          |
+| `src/index.js`                    | Library entry; re-exports `analyzer`, `generator`, `parser`                                           |
+| `src/generator.js`                | Default config, config discovery/loading, `generate()` orchestration, `GENERATION_REPORT.md`          |
+| `src/parser.js`                   | Parser entry point: `parseFile`, `parseDirectory`, and re-exports of the public parser functions      |
+| `src/parser/ast.js`               | `parseSource` (typescript-estree), `traverse`, and AST helpers shared by the other parser modules     |
+| `src/parser/jsdoc.js`             | Comment collection, tag normalization, `parseJSDoc`, `matchJSDocToItems`                              |
+| `src/parser/exports.js`           | `collectExports`: module-level scope (blocks, IIFE, UMD) and exported names                           |
+| `src/parser/routes.js`            | HTTP methods, route server inference, Express/Fastify route handlers, `extractRouteParams`            |
+| `src/parser/items.js`             | Function, class and object-method collection; `collectItems` and `extractFunctions`                   |
+| `src/parser/scan.js`              | `scanDirectory` and `compileExcludeRegex`                                                             |
+| `src/analyzer.js`                 | Coverage rules (`checkDocumentation`) and `analyzeCoverage` report                                    |
+| `src/utils.js`                    | Default exclude pattern, HTML escaping, slugs/ids, param names, tag helpers, file labels, percentages |
+| `src/formatters/registry.js`      | Format name → `{ generate, filename, type }` map, including aliases                                   |
+| `src/formatters/markdown.js`      | `API.md`; TOC anchors follow GitHub's heading slugs                                                   |
+| `src/formatters/html.js`          | Self-contained `index.html`; all source text escaped                                                  |
+| `src/formatters/json.js`          | `api.json` with a `meta` block and scan-relative file paths                                           |
+| `src/formatters/openapi.js`       | `openapi.yaml` (OpenAPI 3.0.3) from routes only                                                       |
+| `src/formatters/terminal.js`      | Coverage report printed to stdout; colour only on a TTY without `NO_COLOR`                            |
+| `src/formatters/dashboard.js`     | Self-contained `coverage-dashboard.html` coverage report                                              |
+| `src/formatters/shared-styles.js` | `BASE_CSS` shared by the HTML formatters                                                              |
