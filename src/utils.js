@@ -177,6 +177,18 @@ function describeReturns(item) {
 }
 
 /**
+ * curl command that sends a request with a route's method
+ * @param {string} method - Uppercase HTTP method, or ALL
+ * @param {string} url - Request URL
+ * @returns {string} e.g. `curl -X POST http://localhost:3000/users`
+ */
+function curlCommand(method, url) {
+  if (method === 'ALL') return `curl ${url}`;
+  if (method === 'HEAD') return `curl -I ${url}`;
+  return `curl -X ${method} ${url}`;
+}
+
+/**
  * Escape HTML special characters
  * @param {string} text - Text to escape
  * @returns {string} Escaped text
@@ -324,6 +336,7 @@ export {
   calcPercentage,
   cleanTagDescription,
   coverageLevel,
+  curlCommand,
   DEFAULT_COVERAGE_THRESHOLD,
   DEFAULT_EXCLUDE_PATTERN,
   describeParams,

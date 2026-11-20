@@ -1,4 +1,5 @@
 import {
+  curlCommand,
   describeParams,
   describeReturns,
   escapeHtml,
@@ -393,7 +394,7 @@ function generateHTML(apiData, config = {}) {
 
         html += `
           <h5 style="margin-top: 15px;">💡 Example Request</h5>
-          <div class="code-block">curl -X ${escapeHtml(route.method)} ${escapeHtml(config.serverUrl || 'http://localhost:3000')}${escapeHtml(route.path)}</div>
+          <div class="code-block">${escapeHtml(curlCommand(route.method, `${config.serverUrl || 'http://localhost:3000'}${route.path}`))}</div>
         </div>`;
       });
 

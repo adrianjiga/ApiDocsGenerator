@@ -510,6 +510,25 @@ describe('additional route forms', () => {
       .filter((f) => f.type === 'route')
       .map((r) => `${r.method} ${r.path}`);
 
+  it('detects all, head and options routes', () => {
+    const source = `
+app.all('/any', h);
+app.head('/ping', h);
+app.options('/cors', h);
+app.route('/chain').head(h).options(h);
+fastify.route({ method: ['HEAD', 'OPTIONS'], url: '/f', handler: h });
+`;
+    expect(routePaths(source)).toEqual([
+      'ALL /any',
+      'HEAD /ping',
+      'OPTIONS /cors',
+      'OPTIONS /chain',
+      'HEAD /chain',
+      'HEAD /f',
+      'OPTIONS /f',
+    ]);
+  });
+
   it('accepts template literals without expressions as paths', () => {
     const source = `
 app.get(\`/users\`, h);

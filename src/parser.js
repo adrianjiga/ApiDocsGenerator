@@ -11,7 +11,16 @@ import {
 
 const JSDOC_REGEX = /\/\*\*\s*([\s\S]*?)\*\//g;
 
-const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch'];
+const HTTP_METHODS = [
+  'get',
+  'post',
+  'put',
+  'delete',
+  'patch',
+  'head',
+  'options',
+  'all',
+];
 
 const FUNCTION_TYPES = ['FunctionExpression', 'ArrowFunctionExpression'];
 

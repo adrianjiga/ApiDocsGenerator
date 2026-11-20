@@ -666,4 +666,25 @@ app.get('/items/:id?', handler);
       204: { description: 'No content' },
     });
   });
+
+  it('leaves out ALL routes, which have no OpenAPI operation', () => {
+    const spec = parse([
+      {
+        file: '/src/app.js',
+        fileName: 'app.js',
+        functions: [],
+        routes: [
+          makeRoute('ALL', '/any', []),
+          makeRoute('HEAD', '/ping', []),
+          makeRoute('OPTIONS', '/ping', []),
+        ],
+      },
+    ]);
+    expect(spec.paths).toEqual({
+      '/ping': {
+        head: expect.objectContaining({ operationId: 'head-ping' }),
+        options: expect.objectContaining({ operationId: 'options-ping' }),
+      },
+    });
+  });
 });

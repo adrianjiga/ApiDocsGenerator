@@ -1,4 +1,5 @@
 import {
+  curlCommand,
   describeParams,
   describeReturns,
   githubSlug,
@@ -122,7 +123,7 @@ function generateMarkdown(apiData, config = {}) {
 
         md += '**Example Request:**\n\n';
         md += '```bash\n';
-        md += `curl -X ${route.method} ${config.serverUrl || 'http://localhost:3000'}${route.path}\n`;
+        md += `${curlCommand(route.method, `${config.serverUrl || 'http://localhost:3000'}${route.path}`)}\n`;
         md += '```\n\n';
       });
     }

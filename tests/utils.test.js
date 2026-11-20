@@ -3,6 +3,7 @@ import {
   calcPercentage,
   cleanTagDescription,
   coverageLevel,
+  curlCommand,
   describeParams,
   describeReturns,
   escapeHtml,
@@ -410,5 +411,19 @@ describe('describeReturns', () => {
 
   it('returns nothing without a tag or a type', () => {
     expect(describeReturns({ jsdoc: null })).toEqual([]);
+  });
+});
+
+describe('curlCommand', () => {
+  it('passes the method with -X', () => {
+    expect(curlCommand('POST', 'http://h/a')).toBe('curl -X POST http://h/a');
+  });
+
+  it('uses -I for HEAD, which has no response body', () => {
+    expect(curlCommand('HEAD', 'http://h/a')).toBe('curl -I http://h/a');
+  });
+
+  it('sends a plain request for ALL', () => {
+    expect(curlCommand('ALL', 'http://h/a')).toBe('curl http://h/a');
   });
 });

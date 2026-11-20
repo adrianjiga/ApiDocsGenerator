@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { generateMarkdown } from '../../src/formatters/markdown.js';
-import { mockApiData } from '../fixtures.js';
+import { makeRoute, mockApiData } from '../fixtures.js';
 
 const typedApiData = [
   {
@@ -315,5 +315,17 @@ describe('generateMarkdown', () => {
     expect(out).toContain('- `a` (`string`)\n');
     expect(out).toContain('- `b` (`number`, optional, default `1`)\n');
     expect(out).toContain('- `Promise<void>`\n');
+  });
+
+  it('writes a curl -I example for HEAD routes', () => {
+    const md = generateMarkdown([
+      {
+        file: '/src/app.js',
+        fileName: 'app.js',
+        functions: [],
+        routes: [makeRoute('HEAD', '/ping', [])],
+      },
+    ]);
+    expect(md).toContain('curl -I http://localhost:3000/ping');
   });
 });

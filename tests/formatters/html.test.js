@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { generateHTML } from '../../src/formatters/html.js';
-import { mockApiData } from '../fixtures.js';
+import { makeRoute, mockApiData } from '../fixtures.js';
 
 const typedApiData = [
   {
@@ -365,5 +365,19 @@ describe('generateHTML', () => {
       '<code>number</code> <span class="param-flag">optional</span>',
     );
     expect(out).toContain('<code>Promise&lt;void&gt;</code>');
+  });
+
+  it('writes a plain curl example for ALL routes', () => {
+    const html = generateHTML([
+      {
+        file: '/src/app.js',
+        fileName: 'app.js',
+        functions: [],
+        routes: [makeRoute('ALL', '/any', [])],
+      },
+    ]);
+    expect(html).toContain(
+      '<div class="code-block">curl http://localhost:3000/any</div>',
+    );
   });
 });

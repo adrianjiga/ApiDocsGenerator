@@ -11,6 +11,17 @@ const METHOD_SUCCESS_CODE = {
   delete: 204,
 };
 
+const OPENAPI_METHODS = new Set([
+  'get',
+  'put',
+  'post',
+  'delete',
+  'options',
+  'head',
+  'patch',
+  'trace',
+]);
+
 /**
  * Expand a route path's optional parts into the concrete paths they allow.
  * Express 4 marks an optional segment as `/:id?`; Express 5 wraps optional
@@ -252,6 +263,7 @@ function generateOpenAPI(apiData, config = {}) {
   for (const file of apiData) {
     for (const route of file.routes) {
       const method = route.method.toLowerCase();
+      if (!OPENAPI_METHODS.has(method)) continue;
       const sourceFile = file.fileName;
 
       if (!tagSet.has(sourceFile)) {
