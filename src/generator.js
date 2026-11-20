@@ -19,6 +19,7 @@ const defaultConfig = {
   // broad detection.
   routeServers: [],
   acceptTypeScriptReturns: false,
+  exportedOnly: false,
 };
 
 /**

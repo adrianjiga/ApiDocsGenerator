@@ -6,9 +6,14 @@ import { calcPercentage, getParamTags, getReturnTags } from './utils.js';
  * @param {Object} [options] - Analysis options
  * @param {boolean} [options.acceptTypeScriptReturns=false] - Count a declared
  *   TypeScript return type as a documented @returns
+ * @param {boolean} [options.exportedOnly=false] - Leave out functions that are
+ *   not exported; routes always count
  * @returns {Object} Coverage analysis with summary, per-file breakdown, and gaps
  */
-function analyzeCoverage(apiData, { acceptTypeScriptReturns = false } = {}) {
+function analyzeCoverage(
+  apiData,
+  { acceptTypeScriptReturns = false, exportedOnly = false } = {},
+) {
   if (!Array.isArray(apiData)) {
     return {
       summary: {
@@ -46,6 +51,7 @@ function analyzeCoverage(apiData, { acceptTypeScriptReturns = false } = {}) {
 
       // Analyze functions
       fileData.functions?.forEach((func) => {
+        if (exportedOnly && !func.exported) return;
         try {
           fileTotalItems++;
           totalFunctions++;

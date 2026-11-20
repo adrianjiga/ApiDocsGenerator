@@ -553,3 +553,49 @@ describe('acceptTypeScriptReturns', () => {
     expect(report.gaps[0].missing).toEqual(['returns']);
   });
 });
+
+describe('exportedOnly', () => {
+  const fn = (name, exported, jsdoc = null) => ({
+    ...makeFunction(name, [], jsdoc),
+    exported,
+  });
+  const data = [
+    {
+      file: 'a.js',
+      fileName: 'a.js',
+      functions: [
+        fn('publicFn', true, fullyDocumentedJsdoc([])),
+        fn('helper', false),
+      ],
+      routes: [makeRoute('GET', '/users', [])],
+    },
+    {
+      file: 'internal.js',
+      fileName: 'internal.js',
+      functions: [fn('onlyInternal', false)],
+      routes: [],
+    },
+  ];
+
+  it('counts every function by default', () => {
+    const report = analyzeCoverage(data);
+    expect(report.summary.totalFunctions).toBe(3);
+  });
+
+  it('leaves out functions that are not exported', () => {
+    const report = analyzeCoverage(data, { exportedOnly: true });
+    expect(report.summary.totalFunctions).toBe(1);
+    expect(report.summary.documentedFunctions).toBe(1);
+    expect(report.gaps.map((g) => g.name)).toEqual(['GET /users']);
+  });
+
+  it('still counts routes', () => {
+    const report = analyzeCoverage(data, { exportedOnly: true });
+    expect(report.summary.totalRoutes).toBe(1);
+  });
+
+  it('drops files left with no counted items', () => {
+    const report = analyzeCoverage(data, { exportedOnly: true });
+    expect(report.files.map((f) => f.fileName)).toEqual(['a.js']);
+  });
+});

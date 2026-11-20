@@ -246,6 +246,7 @@ describe('audit command', () => {
     await program.parseAsync(['node', 'cli.js', 'audit', '-d', '/tmp/src']);
     expect(analyzeCoverage).toHaveBeenCalledWith(mockData, {
       acceptTypeScriptReturns: false,
+      exportedOnly: false,
     });
   });
 
@@ -466,5 +467,25 @@ describe('--route-servers', () => {
         ? generator.generate.mock.calls[0][3]
         : parser.parseDirectory.mock.calls[0][1];
     expect(config.routeServers).toEqual(['api', 'v1']);
+  });
+});
+
+describe('--exported-only', () => {
+  it('asks the analyzer to count only exported functions', async () => {
+    analyzeCoverage.mockClear();
+    parser.parseDirectory.mockResolvedValue([
+      { fileName: 'a.js', functions: [{ name: 'fn' }], routes: [] },
+    ]);
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    await program.parseAsync([
+      'node',
+      'cli.js',
+      'audit',
+      '-d',
+      '/tmp/src',
+      '--exported-only',
+    ]);
+    expect(analyzeCoverage.mock.calls[0][1].exportedOnly).toBe(true);
   });
 });

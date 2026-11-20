@@ -32,6 +32,7 @@ async function resolveConfig(options) {
   if (options.apiTitle) config.apiTitle = options.apiTitle;
   if (options.apiVersion) config.apiVersion = options.apiVersion;
   if (options.exclude) config.excludePattern = options.exclude;
+  if (options.exportedOnly) config.exportedOnly = true;
   if (options.routeServers) {
     config.routeServers = options.routeServers
       .split(',')
@@ -152,6 +153,10 @@ program
     '-o, --output <file>',
     'Output file for dashboard format (default: coverage-dashboard.html)',
   )
+  .option(
+    '--exported-only',
+    'Count only exported functions (and all routes) towards coverage',
+  )
   .option('-c, --config <path>', 'Path to apidocs.config.js')
   .option('--exclude <pattern>', 'Directory exclude regex pattern')
   .option(
@@ -179,6 +184,7 @@ program
 
     const result = analyzeCoverage(apiData, {
       acceptTypeScriptReturns: config.acceptTypeScriptReturns,
+      exportedOnly: config.exportedOnly,
     });
 
     if (format === 'json') {
