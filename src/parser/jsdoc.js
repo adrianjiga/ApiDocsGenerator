@@ -3,7 +3,13 @@ import { parseSource } from './ast.js';
 
 const JSDOC_REGEX = /\/\*\*\s*([\s\S]*?)\*\//g;
 
-const NAMELESS_TAGS = new Set(['returns', 'return', 'throws', 'yields']);
+const NAMELESS_TAGS = new Set([
+  'returns',
+  'return',
+  'throws',
+  'exception',
+  'yields',
+]);
 
 const FREE_TEXT_TAGS = new Set(['example', 'deprecated', 'see']);
 

@@ -637,3 +637,17 @@ describe('parseJSDoc – free-text tags', () => {
     expect(deprecated.description).toBe('');
   });
 });
+
+describe('parseJSDoc – @exception', () => {
+  it('keeps the whole description, like @throws', () => {
+    const [jsdoc] = parseJSDoc(
+      '/** @exception {TypeError} When input is bad */\nfunction f() {}',
+    );
+    expect(jsdoc.parsed.tags[0]).toMatchObject({
+      tag: 'exception',
+      type: 'TypeError',
+      name: '',
+      description: 'When input is bad',
+    });
+  });
+});
