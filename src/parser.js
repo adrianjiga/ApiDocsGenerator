@@ -55,6 +55,50 @@ function parseSource(sourceCode, filePath) {
 
 const NAMELESS_TAGS = new Set(['returns', 'return', 'throws', 'yields']);
 
+const FREE_TEXT_TAGS = new Set(['example', 'deprecated', 'see']);
+
+/**
+ * Text that follows a tag, rebuilt from comment-parser's raw line tokens so
+ * that line breaks and indentation survive
+ * @param {Object} tag - Tag parsed by comment-parser
+ * @returns {string} Tag text with one line per comment line
+ */
+function rawTagText(tag) {
+  const lines = (tag.source ?? []).map(({ tokens }, index) => {
+    const indent = index === 0 ? '' : tokens.postDelimiter.slice(1);
+    const text =
+      tokens.type +
+      tokens.postType +
+      tokens.name +
+      tokens.postName +
+      tokens.description;
+    return (indent + text).trimEnd();
+  });
+  while (lines.length > 0 && lines.at(-1) === '') lines.pop();
+  return lines.join('\n').replace(/^\s+/, '');
+}
+
+/**
+ * Keep the whole text of tags whose content is free text rather than
+ * `{type} name description`: `@example` code with its line breaks and
+ * indentation, and `@deprecated` and `@see` text (which may hold an inline
+ * `{@link}`) on one line
+ * @param {Object} tag - Tag parsed by comment-parser
+ * @returns {Object} The tag with its text as description, no type and no name
+ */
+function normalizeFreeTextTag(tag) {
+  if (!FREE_TEXT_TAGS.has(tag.tag)) return tag;
+  const text = rawTagText(tag);
+  const { default: _default, ...rest } = tag;
+  return {
+    ...rest,
+    type: '',
+    name: '',
+    optional: false,
+    description: tag.tag === 'example' ? text : text.replace(/\s+/g, ' '),
+  };
+}
+
 /**
  * Put back the first word of tags that take no name. comment-parser reads
  * every tag as `{type} name description`, so `@returns {number} The sum`
@@ -88,7 +132,12 @@ function toJSDoc(raw, startLine, endLine) {
       const [block] = parsed;
       return {
         raw,
-        parsed: { ...block, tags: block.tags.map(normalizeNamelessTag) },
+        parsed: {
+          ...block,
+          tags: block.tags.map((tag) =>
+            normalizeFreeTextTag(normalizeNamelessTag(tag)),
+          ),
+        },
         loc: {
           start: { line: startLine, column: 0 },
           end: { line: endLine, column: 0 },

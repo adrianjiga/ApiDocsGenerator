@@ -571,3 +571,69 @@ describe('error scenarios', () => {
     expect(result).toEqual([]);
   });
 });
+
+describe('parseJSDoc – free-text tags', () => {
+  const tagsOf = (comment) =>
+    parseJSDoc(`${comment}\nfunction f() {}`)[0].parsed.tags.map((t) => ({
+      tag: t.tag,
+      type: t.type,
+      name: t.name,
+      description: t.description,
+    }));
+
+  it('keeps @example line breaks and relative indentation', () => {
+    const [example] = tagsOf(`/**
+ * @example
+ * // setup
+ * if (ok) {
+ *   run();
+ * }
+ */`);
+    expect(example).toEqual({
+      tag: 'example',
+      type: '',
+      name: '',
+      description: '// setup\nif (ok) {\n  run();\n}',
+    });
+  });
+
+  it('keeps code written on the @example line and before the closing */', () => {
+    const [example] = tagsOf(`/**
+ * @example run(1);
+ * run(2); */`);
+    expect(example.description).toBe('run(1);\nrun(2);');
+  });
+
+  it('keeps a <caption> as part of the @example text', () => {
+    const [example] = tagsOf(`/**
+ * @example <caption>Basic</caption>
+ * run();
+ */`);
+    expect(example.description).toBe('<caption>Basic</caption>\nrun();');
+  });
+
+  it('keeps the whole @deprecated message', () => {
+    const [deprecated] = tagsOf('/** @deprecated Use sum() instead */');
+    expect(deprecated).toMatchObject({
+      name: '',
+      description: 'Use sum() instead',
+    });
+  });
+
+  it('keeps @see text with an inline link, joined onto one line', () => {
+    const [see] = tagsOf(`/**
+ * @see {@link https://example.com|Docs} for
+ *   more
+ */`);
+    expect(see).toMatchObject({
+      type: '',
+      name: '',
+      description: '{@link https://example.com|Docs} for more',
+    });
+  });
+
+  it('leaves @deprecated with no message empty', () => {
+    const [deprecated] = tagsOf('/** @deprecated */');
+    expect(deprecated.description).toBe('');
+  });
+});
