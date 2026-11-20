@@ -667,24 +667,75 @@ app.get('/items/:id?', handler);
     });
   });
 
-  it('leaves out ALL routes, which have no OpenAPI operation', () => {
+  it('expands ALL routes into every standard method', () => {
+    const spec = parse([
+      {
+        file: '/src/app.js',
+        fileName: 'app.js',
+        functions: [],
+        routes: [makeRoute('ALL', '/proxy', [])],
+      },
+    ]);
+    const operations = spec.paths['/proxy'];
+    expect(Object.keys(operations)).toEqual([
+      'get',
+      'post',
+      'put',
+      'patch',
+      'delete',
+      'head',
+      'options',
+    ]);
+    expect(operations.get.operationId).toBe('get-proxy');
+    expect(operations.post.responses).toEqual({
+      201: { description: 'Resource created' },
+    });
+  });
+
+  it('lets an explicit route replace the operation an earlier ALL produced', () => {
     const spec = parse([
       {
         file: '/src/app.js',
         fileName: 'app.js',
         functions: [],
         routes: [
-          makeRoute('ALL', '/any', []),
-          makeRoute('HEAD', '/ping', []),
-          makeRoute('OPTIONS', '/ping', []),
+          makeRoute('ALL', '/items', [], {
+            description: 'Catch-all',
+            tags: [],
+          }),
+          makeRoute('GET', '/items', [], {
+            description: 'List items',
+            tags: [],
+          }),
         ],
       },
     ]);
-    expect(spec.paths).toEqual({
-      '/ping': {
-        head: expect.objectContaining({ operationId: 'head-ping' }),
-        options: expect.objectContaining({ operationId: 'options-ping' }),
-      },
+    expect(spec.paths['/items'].get).toMatchObject({
+      summary: 'List items',
+      operationId: 'get-items',
     });
+    expect(spec.paths['/items'].post.summary).toBe('Catch-all');
+  });
+
+  it('does not let a later ALL replace an explicit route', () => {
+    const spec = parse([
+      {
+        file: '/src/app.js',
+        fileName: 'app.js',
+        functions: [],
+        routes: [
+          makeRoute('GET', '/items', [], {
+            description: 'List items',
+            tags: [],
+          }),
+          makeRoute('ALL', '/items', [], {
+            description: 'Catch-all',
+            tags: [],
+          }),
+        ],
+      },
+    ]);
+    expect(spec.paths['/items'].get.summary).toBe('List items');
+    expect(spec.paths['/items'].delete.summary).toBe('Catch-all');
   });
 });

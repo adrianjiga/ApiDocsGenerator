@@ -22,6 +22,16 @@ const OPENAPI_METHODS = new Set([
   'trace',
 ]);
 
+const ALL_METHODS = [
+  'get',
+  'post',
+  'put',
+  'patch',
+  'delete',
+  'head',
+  'options',
+];
+
 /**
  * Expand a route path's optional parts into the concrete paths they allow.
  * Express 4 marks an optional segment as `/:id?`; Express 5 wraps optional
@@ -261,10 +271,13 @@ function generateOpenAPI(apiData, config = {}) {
   const tagSet = new Map();
   const usedOperationIds = new Map();
 
+  const fromAll = new Set();
+
   for (const file of apiData) {
     for (const route of file.routes) {
-      const method = route.method.toLowerCase();
-      if (!OPENAPI_METHODS.has(method)) continue;
+      const isAll = route.method.toUpperCase() === 'ALL';
+      const methods = isAll ? ALL_METHODS : [route.method.toLowerCase()];
+      if (!methods.every((m) => OPENAPI_METHODS.has(m))) continue;
       const sourceFile = file.fileName;
 
       if (!tagSet.has(sourceFile)) {
@@ -279,25 +292,33 @@ function generateOpenAPI(apiData, config = {}) {
         if (!paths.has(openApiPath)) {
           paths.set(openApiPath, {});
         }
+        const operations = paths.get(openApiPath);
 
-        // A path/method pair may exist only once in an OpenAPI spec. Earlier
-        // routes win; later duplicates are skipped rather than silently
-        // overwriting the operation already registered for that pair.
-        if (paths.get(openApiPath)[method]) {
-          continue;
+        for (const method of methods) {
+          const key = `${method} ${openApiPath}`;
+          const existing = operations[method];
+          // A path/method pair may exist only once in an OpenAPI spec. Earlier
+          // routes win, except that an explicit route replaces an operation
+          // expanded from an earlier `all` route.
+          if (existing && (isAll || !fromAll.has(key))) continue;
+
+          let operationId = existing?.operationId;
+          if (!operationId) {
+            const baseId = deriveOperationId(method, openApiPath);
+            const count = usedOperationIds.get(baseId) || 0;
+            usedOperationIds.set(baseId, count + 1);
+            operationId = count === 0 ? baseId : `${baseId}-${count}`;
+          }
+
+          operations[method] = buildOperation(
+            { ...route, method: method.toUpperCase() },
+            openApiPath,
+            operationId,
+            sourceFile,
+          );
+          if (isAll) fromAll.add(key);
+          else fromAll.delete(key);
         }
-
-        const baseId = deriveOperationId(method, openApiPath);
-        const count = usedOperationIds.get(baseId) || 0;
-        usedOperationIds.set(baseId, count + 1);
-        const operationId = count === 0 ? baseId : `${baseId}-${count}`;
-
-        paths.get(openApiPath)[method] = buildOperation(
-          route,
-          openApiPath,
-          operationId,
-          sourceFile,
-        );
       }
     }
   }

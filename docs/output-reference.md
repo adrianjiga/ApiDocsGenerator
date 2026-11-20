@@ -296,6 +296,9 @@ paths:
   response `description` is the `@returns` description, or `Resource created`,
   `No content` or `Successful response`. No response schemas are generated.
 - `@deprecated` sets `deprecated: true`.
+- An `all` route (`app.all('/proxy')`) becomes one operation per method:
+  `get`, `post`, `put`, `patch`, `delete`, `head` and `options`. An explicit
+  route for the same path and method takes precedence, wherever it appears.
 - There is one tag per source file name. If the same path and method are
   declared twice, only the first one is kept.
 

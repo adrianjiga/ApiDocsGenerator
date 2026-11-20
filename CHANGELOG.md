@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Calls on names a file binds only to values that cannot be a server (`new Map()`, `new URLSearchParams()`, literals, object literals, functions) are no longer reported as routes, so `cache.get('/key')` on a `Map` is ignored. Servers from calls, imports, parameters and other classes are still detected
 - `--exported-only` flag and `exportedOnly` config key for `audit`: only exported functions (and all routes) count towards coverage
 - `--route-servers app,router` flag for `generate`, `audit` and `scan`
-- `head`, `options` and `all` routes; OpenAPI output leaves out `all`, which has no OpenAPI operation. HEAD examples use `curl -I`
+- `head`, `options` and `all` routes; OpenAPI has no `all` operation, so an `all` route becomes `get`, `post`, `put`, `patch`, `delete`, `head` and `options` operations, which explicit routes for the same path replace. HEAD examples use `curl -I`
 - Route paths written as template literals without expressions, e.g. ``app.get(`/users`)``
 - Markdown and HTML show `@deprecated`, `@throws` and `@see`, and an item's own `@example` blocks in place of the generated usage example or `curl` request. Inline `{@link}` references to `http(s)` URLs become links
 - Coverage summary reports `partiallyDocumentedFunctions`, `partiallyDocumentedRoutes` and `undocumentedRoutes`; `partiallyDocumented` stays as the total of both kinds

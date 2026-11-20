@@ -168,8 +168,10 @@ Calls are inspected only when the callee is a member expression
 | `fastify.route({ method: ['GET', 'POST'], path: '/b' })` | `GET /b`, `POST /b`         | The call                   |
 
 - Methods are `get`, `post`, `put`, `delete`, `patch`, `head`, `options` and
-  `all` (case-insensitive in Fastify objects). OpenAPI output leaves out `all`
-  routes, which have no OpenAPI operation.
+  `all` (case-insensitive in Fastify objects). OpenAPI has no `all`
+  operation, so `all` routes are expanded into `get`, `post`, `put`, `patch`,
+  `delete`, `head` and `options`; an explicit route for the same path and
+  method replaces the expanded operation.
 - The path must be a string literal, or a template literal without `${}`
   expressions, starting with `/`. Variables, interpolated templates and
   absolute URLs (`http.get('https://...')`) are ignored.
