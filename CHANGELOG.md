@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `@exception` descriptions keep their first word, as `@throws` ones do
 - Prototype methods of an exported constructor are marked exported, so `--exported-only` counts them
 - `curl` examples single-quote the URL, so paths with `?` or `*` (such as `/users/:id?`) work when pasted into zsh
+- `audit` with nothing in scope (for example `--exported-only` on code with no exports) prints `Nothing to audit` and exits `0` instead of failing at 0%
 - The audit accepts `@param params.id` for a route's `:id`, as the OpenAPI output already did
 - A TypeScript `this` parameter is no longer listed as a parameter that needs a `@param`
 - Optional route parameters (`/users/:id?`, Express 5 `/users{/:id}`) produced invalid OpenAPI paths and operationIds; each now becomes one path without the parameter and one with it

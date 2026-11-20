@@ -489,3 +489,43 @@ describe('--exported-only', () => {
     expect(analyzeCoverage.mock.calls[0][1].exportedOnly).toBe(true);
   });
 });
+
+describe('audit with nothing in scope', () => {
+  it('passes and says so instead of failing at 0%', async () => {
+    parser.parseDirectory.mockResolvedValue([
+      { fileName: 'a.js', functions: [{ name: 'helper' }], routes: [] },
+    ]);
+    analyzeCoverage.mockReturnValue({
+      summary: { totalFunctions: 0, totalRoutes: 0, coveragePercentage: 0 },
+    });
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {});
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    await program.parseAsync([
+      'node',
+      'cli.js',
+      'audit',
+      '-d',
+      '/tmp/src',
+      '--exported-only',
+    ]);
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(errors.mock.calls.flat().join('\n')).toContain(
+      'Nothing to audit: no functions or routes in scope (--exported-only',
+    );
+  });
+
+  it('still fails below the threshold when there are items', async () => {
+    parser.parseDirectory.mockResolvedValue([
+      { fileName: 'a.js', functions: [{ name: 'fn' }], routes: [] },
+    ]);
+    analyzeCoverage.mockReturnValue({
+      summary: { totalFunctions: 1, totalRoutes: 0, coveragePercentage: 0 },
+    });
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    await program.parseAsync(['node', 'cli.js', 'audit', '-d', '/tmp/src']);
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+});

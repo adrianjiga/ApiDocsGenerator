@@ -218,9 +218,16 @@ program
       process.exit(1);
     }
 
-    const coverage = result.summary.coveragePercentage;
+    const { totalFunctions, totalRoutes, coveragePercentage } = result.summary;
 
-    if (coverage < threshold) {
+    if (totalFunctions === 0 && totalRoutes === 0) {
+      console.error(
+        `Nothing to audit: no functions or routes in scope${config.exportedOnly ? ' (--exported-only counts exported functions and routes only)' : ''}.\n`,
+      );
+      return;
+    }
+
+    if (coveragePercentage < threshold) {
       process.exit(1);
     }
   });

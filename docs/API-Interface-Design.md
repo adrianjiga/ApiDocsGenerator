@@ -275,7 +275,9 @@ The file's values are shallow-merged over the defaults.
 
 `audit` and `scan` accept `--exclude` and `--route-servers` but not the three
 metadata flags, which only affect `generate` output.
-`--exported-only` applies to `audit` only.
+`--exported-only` applies to `audit` only. When no function or route is in
+scope, `audit` prints `Nothing to audit` and exits `0` instead of failing at
+0% coverage.
 
 ## Extensibility Guide
 
