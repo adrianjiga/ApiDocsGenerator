@@ -414,3 +414,92 @@ client.delete("/files/:id");
     expect(result.filter((f) => f.type === 'route')).toHaveLength(1);
   });
 });
+
+describe('TypeScript signatures', () => {
+  it('reads parameter types, optionality, defaults and the return type', () => {
+    const source =
+      'function typed(a: string, b?: number, c: Map<string, number> = new Map(), ...rest: string[]): Promise<void> {}';
+    const [fn] = extractFunctions(source);
+    expect(fn.params).toEqual(['a', 'b', 'c', '...rest']);
+    expect(fn.paramDetails).toEqual([
+      { name: 'a', optional: false, type: 'string' },
+      { name: 'b', optional: true, type: 'number' },
+      {
+        name: 'c',
+        optional: true,
+        type: 'Map<string, number>',
+        defaultValue: 'new Map()',
+      },
+      { name: '...rest', optional: false, type: 'string[]' },
+    ]);
+    expect(fn.returnType).toBe('Promise<void>');
+  });
+
+  it('collapses multi-line types onto one line', () => {
+    const source = `const f = (opts: {
+      a: string;
+      b: number;
+    }): void => {};`;
+    const [fn] = extractFunctions(source);
+    expect(fn.paramDetails[0].type).toBe('{ a: string; b: number; }');
+  });
+
+  it('types destructured parameters', () => {
+    const source = 'function f({ x }: { x: number } = { x: 1 }) {}';
+    const [fn] = extractFunctions(source);
+    expect(fn.paramDetails).toEqual([
+      {
+        name: '{x}',
+        optional: true,
+        type: '{ x: number }',
+        defaultValue: '{ x: 1 }',
+      },
+    ]);
+  });
+
+  it('skips the TypeScript this parameter', () => {
+    const source = 'function f(this: Window, a: number) {}';
+    const [fn] = extractFunctions(source);
+    expect(fn.params).toEqual(['a']);
+    expect(fn.paramDetails).toHaveLength(1);
+  });
+
+  it('types class methods and constructor parameter properties', () => {
+    const source = `class A {
+      constructor(private readonly x: number = 2) {}
+      get(id: string): A | undefined { return undefined; }
+    }`;
+    const [ctor, get] = extractFunctions(source);
+    expect(ctor.paramDetails).toEqual([
+      { name: 'x', optional: true, type: 'number', defaultValue: '2' },
+    ]);
+    expect(get.returnType).toBe('A | undefined');
+  });
+
+  it('leaves types out for plain JavaScript', () => {
+    const [fn] = extractFunctions('function f(a, b = 1) {}');
+    expect(fn.paramDetails).toEqual([
+      { name: 'a', optional: false },
+      { name: 'b', optional: true, defaultValue: '1' },
+    ]);
+    expect(fn).not.toHaveProperty('returnType');
+  });
+
+  it('carries types through parseFile', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'apidocs-ts-'));
+    const file = path.join(dir, 'a.ts');
+    fs.writeFileSync(
+      file,
+      'export function f(a: string): number { return 1; }',
+    );
+    try {
+      const api = await parseFile(file);
+      expect(api.functions[0]).toMatchObject({
+        paramDetails: [{ name: 'a', optional: false, type: 'string' }],
+        returnType: 'number',
+      });
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

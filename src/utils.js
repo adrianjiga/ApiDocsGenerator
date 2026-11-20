@@ -77,6 +77,48 @@ function getParamName(param) {
 }
 
 /**
+ * Source text of a node with whitespace runs collapsed to one space
+ * @param {Object} [node] - AST node with a `range`
+ * @param {string} source - Source code the node was parsed from
+ * @returns {string|undefined} Node text, or undefined without a node
+ */
+function nodeText(node, source) {
+  if (!node?.range || typeof source !== 'string') return undefined;
+  return source.slice(node.range[0], node.range[1]).replace(/\s+/g, ' ');
+}
+
+/**
+ * Read a parameter's name, TypeScript type, optionality and default value
+ * @param {Object} param - Parameter node from AST
+ * @param {string} source - Source code the node was parsed from
+ * @returns {{name: string, optional: boolean, type?: string, defaultValue?: string}} Parameter details
+ */
+function getParamDetails(param, source) {
+  const inner = param.type === 'TSParameterProperty' ? param.parameter : param;
+  const target = inner.type === 'AssignmentPattern' ? inner.left : inner;
+  const details = {
+    name: getParamName(param),
+    optional: !!target.optional || inner.type === 'AssignmentPattern',
+  };
+  const type = nodeText(target.typeAnnotation?.typeAnnotation, source);
+  if (type) details.type = type;
+  if (inner.type === 'AssignmentPattern') {
+    details.defaultValue = nodeText(inner.right, source);
+  }
+  return details;
+}
+
+/**
+ * Whether a parameter node is TypeScript's `this` type declaration, which is
+ * not a real parameter
+ * @param {Object} param - Parameter node from AST
+ * @returns {boolean} True for `this: Type`
+ */
+function isThisParam(param) {
+  return param.type === 'Identifier' && param.name === 'this';
+}
+
+/**
  * Escape HTML special characters
  * @param {string} text - Text to escape
  * @returns {string} Escaped text
@@ -227,10 +269,13 @@ export {
   DEFAULT_COVERAGE_THRESHOLD,
   DEFAULT_EXCLUDE_PATTERN,
   escapeHtml,
+  getParamDetails,
   getParamName,
   getParamTags,
   getReturnTags,
   githubSlug,
+  isThisParam,
+  nodeText,
   sanitizeHtmlId,
   stripControlChars,
   uniqueFileLabels,

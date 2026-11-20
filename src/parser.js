@@ -2,7 +2,12 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { parse as tsParse } from '@typescript-eslint/typescript-estree';
 import { parse } from 'comment-parser';
-import { DEFAULT_EXCLUDE_PATTERN, getParamName } from './utils.js';
+import {
+  DEFAULT_EXCLUDE_PATTERN,
+  getParamDetails,
+  isThisParam,
+  nodeText,
+} from './utils.js';
 
 const JSDOC_REGEX = /\/\*\*\s*([\s\S]*?)\*\//g;
 
@@ -165,12 +170,19 @@ function parseJSDoc(sourceCode) {
  * @param {Object} fnNode - Function AST node (declaration, expression or arrow)
  * @param {Object} info - Name, line, export flag, optional class details and
  *   optional extra docLines a preceding JSDoc may point at (e.g. an `export` line)
+ * @param {string} source - Source code the node was parsed from
  */
-function pushFunction(functions, fnNode, info) {
+function pushFunction(functions, fnNode, info, source) {
+  const paramDetails = fnNode.params
+    .filter((p) => !isThisParam(p))
+    .map((p) => getParamDetails(p, source));
+  const returnType = nodeText(fnNode.returnType?.typeAnnotation, source);
   const item = {
     type: 'function',
     name: info.name,
-    params: fnNode.params.map((p) => getParamName(p)),
+    params: paramDetails.map((d) => d.name),
+    paramDetails,
+    ...(returnType && { returnType }),
     line: info.line,
     nodeType: info.nodeType || fnNode.type,
     async: !!fnNode.async,
@@ -231,8 +243,14 @@ function commonJsExportDepth(target) {
  * @param {Object} objectNode - ObjectExpression node
  * @param {Array} functions - Accumulator array for extracted function metadata
  * @param {Object} options - Optional name prefix and export flag
+ * @param {string} source - Source code the node was parsed from
  */
-function handleObjectMethods(objectNode, functions, { prefix, exported }) {
+function handleObjectMethods(
+  objectNode,
+  functions,
+  { prefix, exported },
+  source,
+) {
   for (const prop of objectNode.properties) {
     if (
       prop.type !== 'Property' ||
@@ -242,11 +260,16 @@ function handleObjectMethods(objectNode, functions, { prefix, exported }) {
       continue;
     const key = propertyKey(prop);
     if (!key) continue;
-    pushFunction(functions, prop.value, {
-      name: prefix ? `${prefix}.${key}` : key,
-      line: prop.loc?.start.line || 0,
-      exported,
-    });
+    pushFunction(
+      functions,
+      prop.value,
+      {
+        name: prefix ? `${prefix}.${key}` : key,
+        line: prop.loc?.start.line || 0,
+        exported,
+      },
+      source,
+    );
   }
 }
 
@@ -254,8 +277,9 @@ function handleObjectMethods(objectNode, functions, { prefix, exported }) {
  * Handle assignments of functions to CommonJS exports or class prototypes
  * @param {Object} node - AssignmentExpression node
  * @param {Array} functions - Accumulator array for extracted function metadata
+ * @param {string} source - Source code the node was parsed from
  */
-function handleAssignment(node, functions) {
+function handleAssignment(node, functions, source) {
   const target = memberPath(node.left);
   if (!target || target.length < 2) return;
 
@@ -266,15 +290,16 @@ function handleAssignment(node, functions) {
   if (depth >= 0) {
     const rest = target.slice(depth);
     if (rest.length === 0 && value.type === 'ObjectExpression') {
-      handleObjectMethods(value, functions, { exported: true });
+      handleObjectMethods(value, functions, { exported: true }, source);
       return;
     }
     if (rest.length > 1 || !FUNCTION_TYPES.includes(value.type)) return;
-    pushFunction(functions, value, {
-      name: rest[0] || value.id?.name || 'default',
-      line,
-      exported: true,
-    });
+    pushFunction(
+      functions,
+      value,
+      { name: rest[0] || value.id?.name || 'default', line, exported: true },
+      source,
+    );
     return;
   }
 
@@ -283,11 +308,12 @@ function handleAssignment(node, functions) {
     target[1] === 'prototype' &&
     FUNCTION_TYPES.includes(value.type)
   ) {
-    pushFunction(functions, value, {
-      name: target[2],
-      line,
-      className: target[0],
-    });
+    pushFunction(
+      functions,
+      value,
+      { name: target[2], line, className: target[0] },
+      source,
+    );
   }
 }
 
@@ -435,8 +461,9 @@ function handleRouteExpression(node, functions, routeServers) {
  * @param {Array} functions - Accumulator array for extracted function metadata
  * @param {boolean} exported - Whether the class is exported
  * @param {string} [className] - Name to use when the class itself is anonymous
+ * @param {string} source - Source code the node was parsed from
  */
-function handleClassDeclaration(node, functions, exported, className) {
+function handleClassDeclaration(node, functions, exported, className, source) {
   if (!node.body?.body) return;
   const name = node.id?.name || className || 'anonymous';
 
@@ -450,15 +477,20 @@ function handleClassDeclaration(node, functions, exported, className) {
       FUNCTION_TYPES.includes(member.value?.type);
     if ((!isMethod && !isFunctionField) || !member.value) continue;
 
-    pushFunction(functions, member.value, {
-      name: member.key?.name || member.key?.value || 'anonymous',
-      line: member.loc?.start.line || 0,
-      nodeType: isMethod ? 'MethodDefinition' : 'PropertyDefinition',
-      exported,
-      className: name,
-      static: member.static,
-      methodKind: isMethod ? member.kind || 'method' : 'method',
-    });
+    pushFunction(
+      functions,
+      member.value,
+      {
+        name: member.key?.name || member.key?.value || 'anonymous',
+        line: member.loc?.start.line || 0,
+        nodeType: isMethod ? 'MethodDefinition' : 'PropertyDefinition',
+        exported,
+        className: name,
+        static: member.static,
+        methodKind: isMethod ? member.kind || 'method' : 'method',
+      },
+      source,
+    );
   }
 }
 
@@ -614,10 +646,11 @@ function collectExports(ast) {
 /**
  * Collect functions, class methods and routes from a parsed AST
  * @param {Object} ast - Program AST
+ * @param {string} source - Source code the AST was parsed from
  * @param {string[]} [routeServers] - Optional list of allowed server identifiers
  * @returns {Array} Array of function and route metadata objects
  */
-function collectItems(ast, routeServers) {
+function collectItems(ast, source, routeServers) {
   const functions = [];
   const exports = collectExports(ast);
   const isExported = (node, name) =>
@@ -629,12 +662,17 @@ function collectItems(ast, routeServers) {
     switch (node.type) {
       case 'FunctionDeclaration':
         if (!exports.moduleLevel.has(node)) break;
-        pushFunction(functions, node, {
-          name: node.id?.name || 'anonymous',
-          line: node.loc?.start.line || 0,
-          exported: isExported(node, node.id?.name),
-          docLines: exportDocLines(node),
-        });
+        pushFunction(
+          functions,
+          node,
+          {
+            name: node.id?.name || 'anonymous',
+            line: node.loc?.start.line || 0,
+            exported: isExported(node, node.id?.name),
+            docLines: exportDocLines(node),
+          },
+          source,
+        );
         break;
       case 'ClassDeclaration':
         if (!exports.moduleLevel.has(node)) break;
@@ -642,6 +680,8 @@ function collectItems(ast, routeServers) {
           node,
           functions,
           isExported(node, node.id?.name),
+          undefined,
+          source,
         );
         break;
       case 'VariableDeclarator': {
@@ -649,27 +689,42 @@ function collectItems(ast, routeServers) {
         const name = node.id?.type === 'Identifier' ? node.id.name : undefined;
         const exported = isExported(node, name);
         if (FUNCTION_TYPES.includes(node.init?.type)) {
-          pushFunction(functions, node.init, {
-            name: name || 'anonymous',
-            line: node.loc?.start.line || 0,
-            exported,
-            docLines: exportDocLines(node),
-          });
+          pushFunction(
+            functions,
+            node.init,
+            {
+              name: name || 'anonymous',
+              line: node.loc?.start.line || 0,
+              exported,
+              docLines: exportDocLines(node),
+            },
+            source,
+          );
         } else if (node.init?.type === 'ClassExpression') {
-          handleClassDeclaration(node.init, functions, exported, name);
+          handleClassDeclaration(node.init, functions, exported, name, source);
         } else if (node.init?.type === 'ObjectExpression' && name) {
-          handleObjectMethods(node.init, functions, { prefix: name, exported });
+          handleObjectMethods(
+            node.init,
+            functions,
+            { prefix: name, exported },
+            source,
+          );
         }
         break;
       }
       case 'ExportDefaultDeclaration':
         if (node.declaration?.type === 'ObjectExpression') {
-          handleObjectMethods(node.declaration, functions, { exported: true });
+          handleObjectMethods(
+            node.declaration,
+            functions,
+            { exported: true },
+            source,
+          );
         }
         break;
       case 'AssignmentExpression':
         if (node.operator === '=' && exports.moduleLevel.has(node)) {
-          handleAssignment(node, functions);
+          handleAssignment(node, functions, source);
         }
         break;
       case 'CallExpression':
@@ -692,7 +747,7 @@ function collectItems(ast, routeServers) {
  */
 function extractFunctions(sourceCode, routeServers) {
   const ast = parseSource(sourceCode);
-  return ast ? collectItems(ast, routeServers) : [];
+  return ast ? collectItems(ast, sourceCode, routeServers) : [];
 }
 
 /**
@@ -806,7 +861,9 @@ async function parseFile(filePath, config = {}) {
   const fileName = path.basename(filePath);
   const ast = parseSource(sourceCode, filePath);
   const jsdocs = ast ? collectJSDoc(ast) : [];
-  const functions = ast ? collectItems(ast, config.routeServers) : [];
+  const functions = ast
+    ? collectItems(ast, sourceCode, config.routeServers)
+    : [];
   const { jsdocMap, itemKey } = matchJSDocToItems(jsdocs, functions);
 
   const api = {
@@ -825,6 +882,8 @@ async function parseFile(filePath, config = {}) {
       const item = {
         name: fn.name,
         params: fn.params,
+        paramDetails: fn.paramDetails,
+        ...(fn.returnType && { returnType: fn.returnType }),
         line: fn.line,
         jsdoc: jsdoc?.parsed || null,
         description: description,
