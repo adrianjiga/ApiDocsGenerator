@@ -514,3 +514,36 @@ describe('TypeScript signatures', () => {
     }
   });
 });
+
+describe('TypeScript signatures – literal whitespace', () => {
+  it('keeps whitespace inside string defaults as written', () => {
+    const [fn] = extractFunctions(
+      'function pad(s, fill = \'    \', sep = "a  b") {}',
+    );
+    expect(fn.paramDetails.map((d) => d.defaultValue)).toEqual([
+      undefined,
+      "'    '",
+      '"a  b"',
+    ]);
+  });
+
+  it('keeps line breaks inside template literal defaults', () => {
+    const [fn] = extractFunctions('function f(s = `a\n  b`) {}');
+    expect(fn.paramDetails[0].defaultValue).toBe('`a\n  b`');
+  });
+
+  it('keeps escaped quotes inside strings without ending them early', () => {
+    const [fn] = extractFunctions("function f(s = 'it\\'s   ok',  n =  1) {}");
+    expect(fn.paramDetails.map((d) => d.defaultValue)).toEqual([
+      "'it\\'s   ok'",
+      '1',
+    ]);
+  });
+
+  it('still collapses whitespace between tokens of a type', () => {
+    const [fn] = extractFunctions(`function f(o: {
+      label: 'a  b';
+    }) {}`);
+    expect(fn.paramDetails[0].type).toBe("{ label: 'a  b'; }");
+  });
+});

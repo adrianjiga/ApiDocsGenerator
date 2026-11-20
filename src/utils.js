@@ -77,14 +77,39 @@ function getParamName(param) {
 }
 
 /**
- * Source text of a node with whitespace runs collapsed to one space
+ * Collapse runs of whitespace to one space, except inside string and template
+ * literals, whose text is kept as written
+ * @param {string} text - Source text
+ * @returns {string} Text with whitespace between tokens collapsed
+ */
+function collapseWhitespace(text) {
+  let out = '';
+  let quote = null;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (quote) {
+      out += ch;
+      if (ch === '\\' && i + 1 < text.length) out += text[++i];
+      else if (ch === quote) quote = null;
+    } else if (/\s/.test(ch)) {
+      if (!out.endsWith(' ')) out += ' ';
+    } else {
+      if (ch === "'" || ch === '"' || ch === '`') quote = ch;
+      out += ch;
+    }
+  }
+  return out;
+}
+
+/**
+ * Source text of a node with whitespace between tokens collapsed to one space
  * @param {Object} [node] - AST node with a `range`
  * @param {string} source - Source code the node was parsed from
  * @returns {string|undefined} Node text, or undefined without a node
  */
 function nodeText(node, source) {
   if (!node?.range || typeof source !== 'string') return undefined;
-  return source.slice(node.range[0], node.range[1]).replace(/\s+/g, ' ');
+  return collapseWhitespace(source.slice(node.range[0], node.range[1]));
 }
 
 /**
