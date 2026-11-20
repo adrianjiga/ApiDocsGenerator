@@ -442,4 +442,44 @@ describe('generateMarkdown', () => {
     ]);
     expect(out).toContain('**File:** `routes/users.js`');
   });
+
+  it('keeps a code span intact when a type or default contains backticks', () => {
+    const md = generateMarkdown([
+      {
+        ...typedApiData[0],
+        functions: [
+          {
+            ...typedApiData[0].functions[0],
+            paramDetails: [
+              {
+                name: 'id',
+                optional: true,
+                type: '`a` | `b`',
+                defaultValue: '`user-1`',
+              },
+            ],
+            params: ['id'],
+          },
+        ],
+      },
+    ]);
+    expect(md).toContain(
+      '- `id` (`` `a` | `b` ``, optional, default `` `user-1` ``)',
+    );
+  });
+
+  it('percent-encodes parentheses in link URLs and escapes brackets in labels', () => {
+    const md = generateMarkdown(
+      taggedFn([
+        {
+          tag: 'see',
+          description:
+            '{@link https://en.wikipedia.org/wiki/Foo_(bar) Foo [disambiguation]}',
+        },
+      ]),
+    );
+    expect(md).toContain(
+      '- [Foo \\[disambiguation\\]](https://en.wikipedia.org/wiki/Foo_%28bar%29)\n',
+    );
+  });
 });

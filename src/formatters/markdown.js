@@ -9,6 +9,32 @@ import {
 } from '../utils.js';
 
 /**
+ * Inline code span that survives backticks in the text, using a backtick run
+ * longer than any inside it and padding with spaces when the text starts or
+ * ends with a backtick
+ * @param {string} text - Text to show as code
+ * @returns {string} Markdown code span
+ */
+function inlineCode(text) {
+  const longestRun = Math.max(
+    0,
+    ...Array.from(text.matchAll(/`+/g), (m) => m[0].length),
+  );
+  const fence = '`'.repeat(longestRun + 1);
+  const pad = text.startsWith('`') || text.endsWith('`') ? ' ' : '';
+  return `${fence}${pad}${text}${pad}${fence}`;
+}
+
+/**
+ * Link text with the characters that would end it early escaped
+ * @param {string} text - Link label
+ * @returns {string} Escaped label
+ */
+function escapeLinkLabel(text) {
+  return text.replace(/[\\[\]]/g, '\\$&');
+}
+
+/**
  * Render tag text with its inline {@link} references as Markdown links, or
  * as code when the target is not a URL
  * @param {string} text - Tag text
@@ -19,8 +45,8 @@ function linkText(text) {
     .map((segment) => {
       if ('text' in segment) return segment.text;
       return segment.url
-        ? `[${segment.label}](${segment.target})`
-        : `\`${segment.label}\``;
+        ? `[${escapeLinkLabel(segment.label)}](${segment.target.replace(/[()]/g, (c) => (c === '(' ? '%28' : '%29'))})`
+        : inlineCode(segment.label);
     })
     .join('');
 }
@@ -62,7 +88,7 @@ function throwsAndSee(extras) {
   if (extras.throws.length > 0) {
     md += '**Throws:**\n\n';
     for (const t of extras.throws) {
-      const type = t.type ? `\`${t.type}\`` : '';
+      const type = t.type ? inlineCode(t.type) : '';
       const separator = type && t.description ? ': ' : '';
       md += `- ${type}${separator}${linkText(t.description)}\n`;
     }
@@ -99,10 +125,10 @@ function examplesSection(extras, language) {
  * @returns {string} e.g. "`number`, optional, default `1`"
  */
 function paramMeta(param) {
-  const parts = [`\`${param.type || 'any'}\``];
+  const parts = [inlineCode(param.type || 'any')];
   if (param.optional) parts.push('optional');
   if (param.defaultValue !== undefined) {
-    parts.push(`default \`${param.defaultValue}\``);
+    parts.push(`default ${inlineCode(param.defaultValue)}`);
   }
   return parts.join(', ');
 }
@@ -171,7 +197,7 @@ function generateMarkdown(apiData, config = {}) {
         if (params.length > 0) {
           md += '**Parameters:**\n\n';
           params.forEach((param) => {
-            md += `- \`${param.name}\` (${paramMeta(param)})`;
+            md += `- ${inlineCode(param.name)} (${paramMeta(param)})`;
             md += param.description ? `: ${param.description}\n` : '\n';
           });
           md += '\n';
@@ -183,7 +209,7 @@ function generateMarkdown(apiData, config = {}) {
         if (returns.length > 0) {
           md += '**Returns:**\n\n';
           returns.forEach((ret) => {
-            md += `- \`${ret.type || 'any'}\``;
+            md += `- ${inlineCode(ret.type || 'any')}`;
             md += ret.description ? `: ${ret.description}\n` : '\n';
           });
           md += '\n';
