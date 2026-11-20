@@ -169,7 +169,7 @@ functions or routes.
   "meta": {
     "generated": "<timestamp>",
     "tool": "api-docs-generator",
-    "toolVersion": "0.1.0",
+    "toolVersion": "0.2.0",
     "apiVersion": "1.0.0"
   },
   "files": [
