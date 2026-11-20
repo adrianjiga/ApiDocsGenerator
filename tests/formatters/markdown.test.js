@@ -430,4 +430,16 @@ describe('generateMarkdown', () => {
     expect(md).toContain('**Example:**\n\n```\ncurl /health\n```\n');
     expect(md).not.toContain('**Example Request:**');
   });
+
+  it('shows the path relative to the scanned directory', () => {
+    const out = generateMarkdown([
+      {
+        ...mockApiData[0],
+        file: '/abs/src/routes/users.js',
+        fileName: 'users.js',
+        relativePath: 'routes/users.js',
+      },
+    ]);
+    expect(out).toContain('**File:** `routes/users.js`');
+  });
 });

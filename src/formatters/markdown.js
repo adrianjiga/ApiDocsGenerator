@@ -148,7 +148,7 @@ function generateMarkdown(apiData, config = {}) {
     const label = labels.get(file.file);
     fileHeadingIndex.set(file.file, headings.length);
     md += heading(2, label);
-    md += `**File:** \`${file.fileName}\`\n\n`;
+    md += `**File:** \`${file.relativePath ?? file.fileName}\`\n\n`;
 
     // Functions
     if (file.functions.length > 0) {

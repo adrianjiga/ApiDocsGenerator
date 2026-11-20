@@ -434,7 +434,7 @@ function generateHTML(apiData, config = {}) {
     html += `
     <div class="file-section" id="${ids.get(file.file)}">
       <h2>${escapeHtml(label)}</h2>
-      <div class="file-path">📁 ${escapeHtml(file.fileName)}</div>`;
+      <div class="file-path">📁 ${escapeHtml(file.relativePath ?? file.fileName)}</div>`;
 
     // Functions
     if (file.functions.length > 0) {

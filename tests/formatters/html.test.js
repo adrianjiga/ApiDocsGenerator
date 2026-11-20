@@ -470,4 +470,16 @@ describe('generateHTML', () => {
     expect(html).toContain('<div class="code-block">curl /health</div>');
     expect(html).not.toContain('Example Request');
   });
+
+  it('shows the path relative to the scanned directory', () => {
+    const out = generateHTML([
+      {
+        ...mockApiData[0],
+        file: '/abs/src/routes/users.js',
+        fileName: 'users.js',
+        relativePath: 'routes/users.js',
+      },
+    ]);
+    expect(out).toContain('<div class="file-path">📁 routes/users.js</div>');
+  });
 });

@@ -85,6 +85,8 @@ curl -X GET http://localhost:3000/users/:id
 ```
 ````
 
+- The `**File:**` line (and the 📁 line in `index.html`) is the path relative
+  to the scanned directory, e.g. `routes/users.js`.
 - A function without a JSDoc block gets `**Description:** No description
   provided`. Its parameters and TypeScript return type are still listed, or
   `**Parameters:** none` when it has no parameters.
