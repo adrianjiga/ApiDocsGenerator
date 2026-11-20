@@ -599,3 +599,47 @@ describe('exportedOnly', () => {
     expect(report.files.map((f) => f.fileName)).toEqual(['a.js']);
   });
 });
+
+describe('per-kind summary counts', () => {
+  const partialJsdoc = { description: 'Has a description', tags: [] };
+  const data = [
+    {
+      file: 'a.js',
+      fileName: 'a.js',
+      functions: [
+        makeFunction('full', ['a'], fullyDocumentedJsdoc(['a'])),
+        makeFunction('partial', ['a'], partialJsdoc),
+        makeFunction('none', ['a'], null),
+      ],
+      routes: [
+        makeRoute('GET', '/a/:id', ['id'], partialJsdoc),
+        makeRoute('GET', '/b', [], null),
+        makeRoute('GET', '/c', [], null),
+      ],
+    },
+  ];
+
+  it('splits partial and undocumented counts by kind', () => {
+    const { summary } = analyzeCoverage(data);
+    expect(summary).toMatchObject({
+      documentedFunctions: 1,
+      partiallyDocumentedFunctions: 1,
+      undocumentedFunctions: 1,
+      documentedRoutes: 0,
+      partiallyDocumentedRoutes: 1,
+      undocumentedRoutes: 2,
+    });
+  });
+
+  it('keeps partiallyDocumented as the total of both kinds', () => {
+    expect(analyzeCoverage(data).summary.partiallyDocumented).toBe(2);
+  });
+
+  it('zeroes the per-kind counts for non-array input', () => {
+    expect(analyzeCoverage(null).summary).toMatchObject({
+      partiallyDocumentedFunctions: 0,
+      partiallyDocumentedRoutes: 0,
+      undocumentedRoutes: 0,
+    });
+  });
+});

@@ -21,8 +21,11 @@ function analyzeCoverage(
         documentedFunctions: 0,
         undocumentedFunctions: 0,
         partiallyDocumented: 0,
+        partiallyDocumentedFunctions: 0,
         totalRoutes: 0,
         documentedRoutes: 0,
+        undocumentedRoutes: 0,
+        partiallyDocumentedRoutes: 0,
         coveragePercentage: 0,
         functionCoverage: 0,
         routeCoverage: 0,
@@ -40,7 +43,7 @@ function analyzeCoverage(
   let partiallyDocumentedFunctions = 0;
   let totalRoutes = 0;
   let documentedRoutes = 0;
-  let partiallyDocumented = 0;
+  let partiallyDocumentedRoutes = 0;
 
   // Process each file
   apiData.forEach((fileData) => {
@@ -64,7 +67,6 @@ function analyzeCoverage(
             fileDocumentedItems++;
             documentedFunctions++;
           } else if (docStatus.isPartiallyDocumented) {
-            partiallyDocumented++;
             partiallyDocumentedFunctions++;
           }
 
@@ -102,7 +104,7 @@ function analyzeCoverage(
             fileDocumentedItems++;
             documentedRoutes++;
           } else if (docStatus.isPartiallyDocumented) {
-            partiallyDocumented++;
+            partiallyDocumentedRoutes++;
           }
 
           if (!docStatus.isFullyDocumented) {
@@ -155,6 +157,8 @@ function analyzeCoverage(
   const totalDocumentedItems = documentedFunctions + documentedRoutes;
   const undocumentedFunctions =
     totalFunctions - documentedFunctions - partiallyDocumentedFunctions;
+  const undocumentedRoutes =
+    totalRoutes - documentedRoutes - partiallyDocumentedRoutes;
 
   const coveragePercentage = calcPercentage(totalDocumentedItems, totalItems);
   const functionCoverage = calcPercentage(documentedFunctions, totalFunctions);
@@ -165,9 +169,13 @@ function analyzeCoverage(
       totalFunctions,
       documentedFunctions,
       undocumentedFunctions,
-      partiallyDocumented,
+      partiallyDocumented:
+        partiallyDocumentedFunctions + partiallyDocumentedRoutes,
+      partiallyDocumentedFunctions,
       totalRoutes,
       documentedRoutes,
+      undocumentedRoutes,
+      partiallyDocumentedRoutes,
       coveragePercentage,
       functionCoverage,
       routeCoverage,

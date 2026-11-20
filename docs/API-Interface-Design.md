@@ -64,17 +64,20 @@ Returned by `analyzer.analyzeCoverage(apiData)` and printed by
 
 `summary`:
 
-| Field                   | Type     | Notes                                                                              |
-| ----------------------- | -------- | ---------------------------------------------------------------------------------- |
-| `totalFunctions`        | `number` |                                                                                    |
-| `documentedFunctions`   | `number` | Fully documented                                                                   |
-| `undocumentedFunctions` | `number` | Functions with no JSDoc                                                            |
-| `partiallyDocumented`   | `number` | Functions **and** routes with JSDoc that is incomplete                             |
-| `totalRoutes`           | `number` |                                                                                    |
-| `documentedRoutes`      | `number` | Fully documented                                                                   |
-| `coveragePercentage`    | `number` | Fully documented items / all items × 100, one decimal; `0` when there are no items |
-| `functionCoverage`      | `number` | Same, functions only                                                               |
-| `routeCoverage`         | `number` | Same, routes only                                                                  |
+| Field                          | Type     | Notes                                                                                       |
+| ------------------------------ | -------- | ------------------------------------------------------------------------------------------- |
+| `totalFunctions`               | `number` |                                                                                             |
+| `documentedFunctions`          | `number` | Fully documented                                                                            |
+| `undocumentedFunctions`        | `number` | Functions with no JSDoc                                                                     |
+| `partiallyDocumentedFunctions` | `number` | Functions with JSDoc that is incomplete                                                     |
+| `partiallyDocumented`          | `number` | Functions **and** routes with JSDoc that is incomplete (the sum of the two per-kind counts) |
+| `totalRoutes`                  | `number` |                                                                                             |
+| `documentedRoutes`             | `number` | Fully documented                                                                            |
+| `undocumentedRoutes`           | `number` | Routes with no JSDoc                                                                        |
+| `partiallyDocumentedRoutes`    | `number` | Routes with JSDoc that is incomplete                                                        |
+| `coveragePercentage`           | `number` | Fully documented items / all items × 100, one decimal; `0` when there are no items          |
+| `functionCoverage`             | `number` | Same, functions only                                                                        |
+| `routeCoverage`                | `number` | Same, routes only                                                                           |
 
 `files[]` (files with at least one item): `fileName`, `filePath`,
 `totalItems`, `documentedItems`, `coveragePercentage`, `gaps`.

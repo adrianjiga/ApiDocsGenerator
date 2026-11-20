@@ -372,8 +372,11 @@ file with no gaps shows `All items documented`; a run with no gaps ends with
     "documentedFunctions": 1,
     "undocumentedFunctions": 1,
     "partiallyDocumented": 1,
+    "partiallyDocumentedFunctions": 1,
     "totalRoutes": 2,
     "documentedRoutes": 1,
+    "undocumentedRoutes": 1,
+    "partiallyDocumentedRoutes": 0,
     "coveragePercentage": 40,
     "functionCoverage": 33.3,
     "routeCoverage": 50
@@ -408,16 +411,17 @@ file with no gaps shows `All items documented`; a run with no gaps ends with
 }
 ```
 
-| Field                           | Meaning                                                                                                        |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `summary.coveragePercentage`    | Fully documented items / all items, one decimal; the value `--threshold` is compared with                      |
-| `summary.partiallyDocumented`   | Functions and routes that have a JSDoc block but are missing something                                         |
-| `summary.undocumentedFunctions` | Functions with no JSDoc block (routes are not counted here)                                                    |
-| `files[]`                       | One entry per file that has at least one item, with that file's gaps                                           |
-| `gaps[].type`                   | `function` or `route`; for a route, `name` is `METHOD /path`                                                   |
-| `gaps[].missing`                | Any of `description`, `params`, `returns` (`returns` never for routes)                                         |
-| `gaps[].existing`               | What the JSDoc block does have; `existing.voidReturn` is set for `@returns {void}`, `{undefined}` or `{never}` |
-| `filePath`                      | Path relative to the scanned directory                                                                         |
+| Field                                                                       | Meaning                                                                                                        |
+| --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `summary.coveragePercentage`                                                | Fully documented items / all items, one decimal; the value `--threshold` is compared with                      |
+| `summary.partiallyDocumented`                                               | Functions and routes that have a JSDoc block but are missing something                                         |
+| `summary.partiallyDocumentedFunctions`, `summary.partiallyDocumentedRoutes` | The same, per kind                                                                                             |
+| `summary.undocumentedFunctions`, `summary.undocumentedRoutes`               | Functions or routes with no JSDoc block                                                                        |
+| `files[]`                                                                   | One entry per file that has at least one item, with that file's gaps                                           |
+| `gaps[].type`                                                               | `function` or `route`; for a route, `name` is `METHOD /path`                                                   |
+| `gaps[].missing`                                                            | Any of `description`, `params`, `returns` (`returns` never for routes)                                         |
+| `gaps[].existing`                                                           | What the JSDoc block does have; `existing.voidReturn` is set for `@returns {void}`, `{undefined}` or `{never}` |
+| `filePath`                                                                  | Path relative to the scanned directory                                                                         |
 
 Without `--output`, the JSON is printed to stdout with nothing else around it,
 so it can be piped or redirected. With `--output <file>` it is written to that

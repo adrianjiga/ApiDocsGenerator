@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `head`, `options` and `all` routes; OpenAPI output leaves out `all`, which has no OpenAPI operation. HEAD examples use `curl -I`
 - Route paths written as template literals without expressions, e.g. ``app.get(`/users`)``
 - Markdown and HTML show `@deprecated`, `@throws` and `@see`, and an item's own `@example` blocks in place of the generated usage example or `curl` request. Inline `{@link}` references to `http(s)` URLs become links
+- Coverage summary reports `partiallyDocumentedFunctions`, `partiallyDocumentedRoutes` and `undocumentedRoutes`; `partiallyDocumented` stays as the total of both kinds
 - OpenAPI query parameters from `@param query.<name>` tags and a JSON request body from `@param body` and `@param body.<field>` tags
 
 ### Fixed

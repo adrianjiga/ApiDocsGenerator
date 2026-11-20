@@ -114,8 +114,10 @@ CLI options ──► resolveConfig ──► parser.parseDirectory ──► ap
 {
   summary: {
     totalFunctions, documentedFunctions, undocumentedFunctions,
+    partiallyDocumentedFunctions,
     partiallyDocumented,           // functions and routes combined
-    totalRoutes, documentedRoutes,
+    totalRoutes, documentedRoutes, undocumentedRoutes,
+    partiallyDocumentedRoutes,
     coveragePercentage,            // fully documented items / all items, 1 decimal
     functionCoverage, routeCoverage,
   },
