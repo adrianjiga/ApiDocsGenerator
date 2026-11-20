@@ -727,3 +727,38 @@ describe('parseDirectory relative paths', () => {
     expect(path.isAbsolute(result[0].file)).toBe(true);
   });
 });
+
+describe('prototype methods of exported constructors', () => {
+  const protoExported = (source) =>
+    extractFunctions(source)
+      .filter((f) => f.className === 'Foo')
+      .map((f) => [f.name, f.exported]);
+
+  it('marks them exported when the constructor is in module.exports', () => {
+    expect(
+      protoExported(`
+function Foo() {}
+Foo.prototype.bar = function (x) {};
+module.exports = { Foo };
+`),
+    ).toEqual([['bar', true]]);
+  });
+
+  it('marks them exported for an ESM-exported constructor', () => {
+    expect(
+      protoExported(`
+export function Foo() {}
+Foo.prototype.bar = function () {};
+`),
+    ).toEqual([['bar', true]]);
+  });
+
+  it('keeps them unexported for a private constructor', () => {
+    expect(
+      protoExported(`
+function Foo() {}
+Foo.prototype.bar = function () {};
+`),
+    ).toEqual([['bar', false]]);
+  });
+});

@@ -85,9 +85,11 @@ function handleObjectMethods(
  * @param {Object} node - AssignmentExpression node
  * @param {Array} functions - Accumulator array for extracted function metadata
  * @param {string} source - Source code the node was parsed from
+ * @param {Set<string>} [exportedNames] - Exported module-level names, used to
+ *   mark prototype methods of an exported constructor as exported
  * @returns {void}
  */
-function handleAssignment(node, functions, source) {
+function handleAssignment(node, functions, source, exportedNames = new Set()) {
   const target = memberPath(node.left);
   if (!target || target.length < 2) return;
 
@@ -119,7 +121,12 @@ function handleAssignment(node, functions, source) {
     pushFunction(
       functions,
       value,
-      { name: target[2], line, className: target[0] },
+      {
+        name: target[2],
+        line,
+        className: target[0],
+        exported: exportedNames.has(target[0]),
+      },
       source,
     );
   }
@@ -180,6 +187,10 @@ function collectItems(ast, source, routeServers) {
   const exports = collectExports(ast);
   const isExported = (node, name) =>
     exports.declarations.has(node) || (!!name && exports.names.has(name));
+  const exportedNames = new Set(exports.names);
+  for (const decl of exports.declarations) {
+    if (decl.id?.type === 'Identifier') exportedNames.add(decl.id.name);
+  }
   const exportDocLines = (node) =>
     exports.exportLines.has(node) ? [exports.exportLines.get(node)] : undefined;
 
@@ -249,7 +260,7 @@ function collectItems(ast, source, routeServers) {
         break;
       case 'AssignmentExpression':
         if (node.operator === '=' && exports.moduleLevel.has(node)) {
-          handleAssignment(node, functions, source);
+          handleAssignment(node, functions, source, exportedNames);
         }
         break;
       case 'CallExpression':
