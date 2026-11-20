@@ -7,7 +7,7 @@ Node.js CLI (npm package `@adrianjiga/api-docs-generator`, CLI command `api-docs
 - Test: `npm test` (vitest). Single file: `npx vitest run tests/parser.test.js`. Single test: `npx vitest run tests/parser.test.js -t "name"`.
 - Lint: `npm run lint` / `npm run lint:fix` (Biome, `biome.json`; `examples/` is excluded from linting).
 - Format: `npm run format:check` / `npm run format` (Biome: single quotes, semi, trailing commas). `npm run check` runs lint + format together.
-- CI order (`.github/workflows/ci.yml`, Node 22, 24 and 26): `npm run check` (Biome lint + format + import order) → test. Run both before finishing.
+- CI order (`.github/workflows/ci.yml`, Node 22, 24 and 26): `npm run check` (Biome lint + format + import order) → test → `npm run audit:self` (audits `src/` at threshold 100: every function needs a description, `@param` per param, and `@returns`, `{void}` included). Run all three before finishing.
 - `npm run generate` variants run the CLI against `./examples` and write into `examples/docs/` (gitignored).
 - `npm run audit` exits `1` when coverage is below threshold — this is the CLI's CI hook, not a test failure.
 
@@ -15,16 +15,17 @@ Node.js CLI (npm package `@adrianjiga/api-docs-generator`, CLI command `api-docs
 
 - Entrypoint: `bin/api-docs-generator` → `src/cli.js`. `src/index.js` is the package `main` export.
 - Pipeline: `parser.js` (`parseDirectory` → `scanDirectory`/`parseFile`, using `@typescript-eslint/typescript-estree`) → `analyzer.js` (`analyzeCoverage`) → `generator.js` (`generate`).
+- `src/parser.js` is the public parser entry; the work lives in `src/parser/`: `ast.js` (parse + traverse helpers), `jsdoc.js` (comments, tag normalization, matching), `exports.js` (module-level scope, exported names), `routes.js` (route detection, server filtering), `items.js` (`collectItems`), `scan.js` (directory walk). Tests import from `src/parser.js` only.
 - Formatters live in `src/formatters/` and are wired in `registry.js`. Two shapes:
   - `type: 'doc'` — `generate(apiData, config)` returns a string written to its `filename` (e.g. markdown → `API.md`).
   - `type: 'report'` — `generate(report, threshold?)`; `filename: null` means print to stdout (terminal).
   - Aliases exist: `md`→markdown, `swagger`→openapi. `generate` skips unknown formats rather than failing.
-- Config: first of `apidocs.config.js`/`.mjs`/`.cjs` in cwd (or `--config`), loaded via dynamic `import()` in `generator.js:loadConfig`, merged over defaults. Keys: `excludePattern`, `serverUrl`, `apiTitle`, `apiVersion`, `routeServers`. Vitest's loader accepts ESM in CommonJS packages where Node doesn't, so test real-Node config behaviour by spawning the CLI. Repo root has `apidocs.config.js` — don't break it.
+- Config: first of `apidocs.config.js`/`.mjs`/`.cjs` in cwd (or `--config`), loaded via dynamic `import()` in `generator.js:loadConfig`, merged over defaults. Keys: `excludePattern`, `serverUrl`, `apiTitle`, `apiVersion`, `routeServers`, `acceptTypeScriptReturns`, `exportedOnly`. Vitest's loader accepts ESM in CommonJS packages where Node doesn't, so test real-Node config behaviour by spawning the CLI. Repo root has `apidocs.config.js` — don't break it.
 
 ## Gotchas
 
 - JSDoc matching (`matchJSDocToItems`): a comment must end within 2 lines above the item, and the first code token after it must be on the item's line. Each comment documents at most one item. `/** */` only; `//` comments are ignored.
-- Route detection: `x.<get|post|put|delete|patch>('/path', ...)`, chained `x.route('/path').get(...)`, and Fastify `x.route({ method, url })`. Paths must be string literals starting with `/`; `routeServers` config restricts `x`.
+- Route detection: `x.<get|post|put|delete|patch|head|options|all>('/path', ...)`, chained `x.route('/path').get(...)`, and Fastify `x.route({ method, url })`. Paths must be string literals (or `${}`-free template literals) starting with `/`. `x` must be in `routeServers` (config or `--route-servers`); when that's empty, anything counts except HTTP clients (imports of `axios`, `supertest`… and what's created from them) and names the file binds only to non-server values like `new Map()`, literals or functions (`routeServerFilter` / `nonServerNames` in `src/parser/routes.js`).
 - Files over 1 MB are skipped with a warning (`MAX_FILE_SIZE_BYTES`). Minified bundles: add to `excludePattern`.
 - `@returns {void|undefined|never}` counts as fully documented; a missing `@returns` is a gap for functions only — routes don't need one.
 - Audit coverage = fully documented items / total items. Dashboard output default filename is `coverage-dashboard.html`.

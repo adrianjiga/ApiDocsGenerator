@@ -77,6 +77,284 @@ function getParamName(param) {
 }
 
 /**
+ * Collapse runs of whitespace to one space, except inside string and template
+ * literals, whose text is kept as written
+ * @param {string} text - Source text
+ * @returns {string} Text with whitespace between tokens collapsed
+ */
+function collapseWhitespace(text) {
+  let out = '';
+  let quote = null;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (quote) {
+      out += ch;
+      if (ch === '\\' && i + 1 < text.length) out += text[++i];
+      else if (ch === quote) quote = null;
+    } else if (/\s/.test(ch)) {
+      if (!out.endsWith(' ')) out += ' ';
+    } else {
+      if (ch === "'" || ch === '"' || ch === '`') quote = ch;
+      out += ch;
+    }
+  }
+  return out;
+}
+
+/**
+ * Source text of a node with whitespace between tokens collapsed to one space
+ * @param {Object} [node] - AST node with a `range`
+ * @param {string} source - Source code the node was parsed from
+ * @returns {string|undefined} Node text, or undefined without a node
+ */
+function nodeText(node, source) {
+  if (!node?.range || typeof source !== 'string') return undefined;
+  return collapseWhitespace(source.slice(node.range[0], node.range[1]));
+}
+
+/**
+ * Read a parameter's name, TypeScript type, optionality and default value
+ * @param {Object} param - Parameter node from AST
+ * @param {string} source - Source code the node was parsed from
+ * @returns {{name: string, optional: boolean, type?: string, defaultValue?: string}} Parameter details
+ */
+function getParamDetails(param, source) {
+  const inner = param.type === 'TSParameterProperty' ? param.parameter : param;
+  const target = inner.type === 'AssignmentPattern' ? inner.left : inner;
+  const details = {
+    name: getParamName(param),
+    optional: !!target.optional || inner.type === 'AssignmentPattern',
+  };
+  const type = nodeText(target.typeAnnotation?.typeAnnotation, source);
+  if (type) details.type = type;
+  if (inner.type === 'AssignmentPattern') {
+    details.defaultValue = nodeText(inner.right, source);
+  }
+  return details;
+}
+
+/**
+ * Whether a parameter node is TypeScript's `this` type declaration, which is
+ * not a real parameter
+ * @param {Object} param - Parameter node from AST
+ * @returns {boolean} True for `this: Type`
+ */
+function isThisParam(param) {
+  return param.type === 'Identifier' && param.name === 'this';
+}
+
+/**
+ * Pair destructured parameters (`{a, b}`, `[a, b]`), which have no name of
+ * their own, with the top-level @param tags that document them. Tags follow
+ * the parameter order, so the parameters are walked with a cursor into the
+ * top-level tags: a named parameter with a tag moves it on, a named parameter
+ * without one does not, and a destructured parameter takes the tag at the
+ * cursor (e.g. `@param {Object} options`) unless that tag names a real
+ * parameter.
+ * @param {string[]} paramNames - Parameter names from the parser
+ * @param {Array} paramTags - The item's @param tags
+ * @returns {Map<number, Object>} Tag for each paired destructured parameter, by its index
+ */
+function destructuredParamTags(paramNames, paramTags) {
+  const plain = paramNames.map((n) => (n.startsWith('...') ? n.slice(3) : n));
+  const topLevel = paramTags.filter(
+    (tag) => tag.name && !tag.name.includes('.'),
+  );
+  const tagged = new Set(topLevel.map((tag) => tag.name));
+  const pairs = new Map();
+  let cursor = 0;
+  plain.forEach((name, index) => {
+    if (!/^[{[]/.test(name)) {
+      if (tagged.has(name)) cursor++;
+      return;
+    }
+    const tag = topLevel[cursor];
+    if (tag && !plain.includes(tag.name)) {
+      pairs.set(index, tag);
+      cursor++;
+    }
+  });
+  return pairs;
+}
+
+/**
+ * Parameters to document for an item: its JSDoc @param tags, with the type,
+ * optionality and default filled in from the TypeScript signature where the
+ * tag leaves them out, followed by signature parameters no tag covers
+ * @param {Object} item - Function or route with jsdoc and optional paramDetails
+ * @returns {Array<{name: string, type?: string, description: string, optional: boolean, defaultValue?: string}>} Parameters in display order
+ */
+function describeParams(item) {
+  const tags = getParamTags(item.jsdoc?.tags).filter(
+    (tag) => tag.name && tag.name !== '-',
+  );
+  const details = item.paramDetails ?? [];
+  const plain = (name) => (name.startsWith('...') ? name.slice(3) : name);
+  const byName = new Map(details.map((d) => [plain(d.name), d]));
+  const destructured = new Map(
+    Array.from(
+      destructuredParamTags(
+        details.map((d) => d.name),
+        tags,
+      ),
+      ([index, tag]) => [tag, details[index]],
+    ),
+  );
+  const used = new Set();
+
+  const described = tags.map((tag) => {
+    const detail = !tag.name?.includes('.')
+      ? (byName.get(tag.name) ?? destructured.get(tag))
+      : undefined;
+    if (detail) used.add(detail);
+    const defaultValue = tag.default ?? detail?.defaultValue;
+    return {
+      name: tag.name,
+      ...((tag.type || detail?.type) && { type: tag.type || detail.type }),
+      description: cleanTagDescription(tag.description),
+      optional: !!tag.optional || !!detail?.optional,
+      ...(defaultValue !== undefined && { defaultValue }),
+    };
+  });
+
+  for (const detail of details) {
+    if (used.has(detail)) continue;
+    described.push({ ...detail, description: '' });
+  }
+  return described;
+}
+
+/**
+ * Return values to document for an item: its JSDoc @returns tags, with the
+ * type filled in from the TypeScript return type where a tag leaves it out,
+ * or the TypeScript return type alone when there is no tag
+ * @param {Object} item - Function with jsdoc and optional returnType
+ * @returns {Array<{type?: string, description: string}>} Return values
+ */
+function describeReturns(item) {
+  const tags = getReturnTags(item.jsdoc?.tags);
+  if (tags.length === 0) {
+    return item.returnType ? [{ type: item.returnType, description: '' }] : [];
+  }
+  return tags.map((tag) => ({
+    ...((tag.type || item.returnType) && {
+      type: tag.type || item.returnType,
+    }),
+    description: cleanTagDescription(tag.description),
+  }));
+}
+
+/**
+ * Tags of an item's JSDoc beyond its description, parameters and return
+ * value: whether it is deprecated, what it throws, what it refers to and its
+ * examples
+ * @param {Object} item - Function or route with jsdoc
+ * @returns {{deprecated?: string, throws: Array<{type?: string, description: string}>, see: string[], examples: Array<{caption?: string, code: string}>}}
+ *   `deprecated` is the deprecation message, empty when none is given, and
+ *   absent when the item is not deprecated
+ */
+function describeExtras(item) {
+  const tags = item.jsdoc?.tags ?? [];
+  const deprecatedTag = tags.find((t) => t.tag === 'deprecated');
+  return {
+    ...(deprecatedTag && { deprecated: deprecatedTag.description || '' }),
+    throws: tags
+      .filter((t) => t.tag === 'throws' || t.tag === 'exception')
+      .map((t) => ({
+        ...(t.type && { type: t.type }),
+        description: cleanTagDescription(t.description),
+      })),
+    see: tags
+      .filter((t) => t.tag === 'see' && t.description)
+      .map((t) => t.description),
+    examples: tags
+      .filter((t) => t.tag === 'example' && t.description)
+      .map((t) => {
+        const caption = t.description.match(
+          /^<caption>([\s\S]*?)<\/caption>\s*/,
+        );
+        return caption
+          ? {
+              caption: caption[1].trim(),
+              code: t.description.slice(caption[0].length),
+            }
+          : { code: t.description };
+      })
+      .filter((example) => example.code),
+  };
+}
+
+const INLINE_LINK_REGEX =
+  /\{@link(?:code|plain)?\s+([^}\s|]+)(?:\s*\|\s*|\s+)?([^}]*)\}/g;
+
+/**
+ * Split text into plain runs and inline `{@link target}` /
+ * `{@link target|label}` / `{@link target label}` references
+ * @param {string} text - Tag text
+ * @returns {Array<{text: string}|{target: string, label: string, url: boolean}>}
+ *   Segments in order; `url` is true when the target is an http(s) URL
+ */
+function inlineLinks(text) {
+  const segments = [];
+  let last = 0;
+  for (const match of text.matchAll(INLINE_LINK_REGEX)) {
+    if (match.index > last) {
+      segments.push({ text: text.slice(last, match.index) });
+    }
+    const target = match[1];
+    segments.push({
+      target,
+      label: match[2].trim() || target,
+      url: /^https?:\/\//.test(target),
+    });
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) segments.push({ text: text.slice(last) });
+  return segments;
+}
+
+/**
+ * curl command that sends a request with a route's method. The URL is
+ * single-quoted so shells do not expand `?`, `*` or `&` in route paths.
+ * @param {string} method - Uppercase HTTP method, or ALL
+ * @param {string} url - Request URL
+ * @returns {string} e.g. `curl -X POST 'http://localhost:3000/users'`
+ */
+function curlCommand(method, url) {
+  const quoted = `'${url.replaceAll("'", "'\\''")}'`;
+  if (method === 'ALL') return `curl ${quoted}`;
+  if (method === 'HEAD') return `curl -I ${quoted}`;
+  return `curl -X ${method} ${quoted}`;
+}
+
+/**
+ * Normalize a routeServers setting to a list of identifiers. A string is
+ * split on commas, as `--route-servers` is; anything that is neither a string
+ * nor an array is ignored with a warning.
+ * @param {*} value - routeServers as written in the config
+ * @returns {string[]} Trimmed, non-empty identifiers
+ */
+function normalizeRouteServers(value) {
+  if (value === undefined || value === null) return [];
+  const list =
+    typeof value === 'string'
+      ? value.split(',')
+      : Array.isArray(value)
+        ? value
+        : null;
+  if (!list) {
+    console.warn(
+      `Warning: routeServers must be an array of identifiers or a comma-separated string; ignoring ${JSON.stringify(value)}.`,
+    );
+    return [];
+  }
+  return list
+    .filter((name) => typeof name === 'string')
+    .map((name) => name.trim())
+    .filter(Boolean);
+}
+
+/**
  * Escape HTML special characters
  * @param {string} text - Text to escape
  * @returns {string} Escaped text
@@ -224,13 +502,23 @@ export {
   calcPercentage,
   cleanTagDescription,
   coverageLevel,
+  curlCommand,
   DEFAULT_COVERAGE_THRESHOLD,
   DEFAULT_EXCLUDE_PATTERN,
+  describeExtras,
+  describeParams,
+  describeReturns,
+  destructuredParamTags,
   escapeHtml,
+  getParamDetails,
   getParamName,
   getParamTags,
   getReturnTags,
   githubSlug,
+  inlineLinks,
+  isThisParam,
+  nodeText,
+  normalizeRouteServers,
   sanitizeHtmlId,
   stripControlChars,
   uniqueFileLabels,

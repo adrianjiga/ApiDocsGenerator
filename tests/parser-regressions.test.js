@@ -590,6 +590,213 @@ app.route('/z').get(h);
     );
     expect(result.map((r) => r.path)).toEqual(['/z']);
   });
+
+  describe('HEAD, OPTIONS, ALL and template literal paths', () => {
+    const routePaths = (source) =>
+      extractFunctions(source)
+        .filter((f) => f.type === 'route')
+        .map((r) => `${r.method} ${r.path}`);
+
+    it('detects all, head and options routes', () => {
+      const source = `
+  app.all('/any', h);
+  app.head('/ping', h);
+  app.options('/cors', h);
+  app.route('/chain').head(h).options(h);
+  fastify.route({ method: ['HEAD', 'OPTIONS'], url: '/f', handler: h });
+  `;
+      expect(routePaths(source)).toEqual([
+        'ALL /any',
+        'HEAD /ping',
+        'OPTIONS /cors',
+        'OPTIONS /chain',
+        'HEAD /chain',
+        'HEAD /f',
+        'OPTIONS /f',
+      ]);
+    });
+
+    it('accepts template literals without expressions as paths', () => {
+      const source = `
+  app.get(\`/users\`, h);
+  app.route(\`/items\`).post(h);
+  fastify.route({ method: \`PUT\`, url: \`/f\`, handler: h });
+  app.get(\`/users/\${id}\`, h);
+  `;
+      expect(routePaths(source)).toEqual([
+        'GET /users',
+        'POST /items',
+        'PUT /f',
+      ]);
+    });
+
+    it('still ignores Promise.all and other non-path calls', () => {
+      expect(routePaths('Promise.all([a, b]);')).toEqual([]);
+    });
+  });
+});
+
+describe('route server inference', () => {
+  const routePaths = (source, routeServers) =>
+    extractFunctions(source, routeServers)
+      .filter((f) => f.type === 'route')
+      .map((r) => `${r.method} ${r.path}`);
+
+  it('ignores Map lookups in a file that creates an Express app', () => {
+    const source = `
+import express from 'express';
+const app = express();
+const cache = new Map();
+cache.get('/key');
+app.get('/users', h);
+`;
+    expect(routePaths(source)).toEqual(['GET /users']);
+  });
+
+  it('ignores values that cannot be servers in a file that creates none', () => {
+    const source = `
+const params = new URLSearchParams(query);
+const lookup = { get: (k) => k };
+const paths = ['/a'];
+params.get('/q');
+lookup.get('/x');
+paths.all('/y');
+api.get('/users', h);
+`;
+    expect(routePaths(source)).toEqual(['GET /users']);
+  });
+
+  it('keeps routes on parameters next to a created server', () => {
+    const source = `
+import express from 'express';
+export function mount(router) {
+  router.get('/a', h);
+}
+const app = express();
+app.get('/b', h);
+const register = (server = defaultServer) => server.post('/c', h);
+`;
+    expect(routePaths(source)).toEqual(['GET /a', 'GET /b', 'POST /c']);
+  });
+
+  it('keeps routes on imported routers and servers from unknown calls', () => {
+    const source = `
+import { router as users } from './users.js';
+const app = require('express')();
+const api = createApp();
+const local = require('./app');
+const hono = new Hono();
+users.get('/u', h);
+app.get('/a', h);
+api.get('/b', h);
+local.get('/c', h);
+hono.get('/d', h);
+`;
+    expect(routePaths(source)).toEqual([
+      'GET /u',
+      'GET /a',
+      'GET /b',
+      'GET /c',
+      'GET /d',
+    ]);
+  });
+
+  it('keeps a name bound to both a server and a non-server value', () => {
+    const source = `
+let server = new Map();
+server = fastify();
+server.get('/a', h);
+`;
+    expect(routePaths(source)).toEqual(['GET /a']);
+  });
+
+  it('keeps routes on member expressions such as this.app', () => {
+    const source = `
+class Api {
+  start() {
+    this.app.get('/a', h);
+  }
+}
+`;
+    expect(routePaths(source)).toEqual(['GET /a']);
+  });
+
+  it('applies to chained and Fastify object routes', () => {
+    const source = `
+const cache = new Map();
+cache.route('/x').get(h);
+cache.route({ method: 'GET', url: '/y', handler: h });
+router.route('/items').get(h).post(h);
+`;
+    expect(routePaths(source)).toEqual(['POST /items', 'GET /items']);
+  });
+
+  it('ignores calls through imported or required HTTP clients', () => {
+    const source = `
+import axios from 'axios';
+const got = require('got');
+const { default: ky } = require('ky');
+axios.get('/users');
+got.post('/orders');
+ky.get('/items');
+app.get('/real', h);
+`;
+    expect(routePaths(source)).toEqual(['GET /real']);
+  });
+
+  it('ignores clients created from a client library', () => {
+    const source = `
+import axios from 'axios';
+const api = axios.create({ baseURL: '/api' });
+const v2 = api.extend();
+api.get('/users');
+v2.delete('/users/1');
+router.get('/real', h);
+`;
+    expect(routePaths(source)).toEqual(['GET /real']);
+  });
+
+  it('ignores supertest requests in tests', () => {
+    const source = `
+const request = require('supertest');
+const app = require('../app');
+const agent = request.agent(app);
+it('lists users', async () => {
+  await request(app).get('/users').expect(200);
+  await agent.post('/login').send({});
+});
+`;
+    expect(routePaths(source)).toEqual([]);
+  });
+
+  it('keeps an app that is also passed to supertest', () => {
+    const source = `
+import request from 'supertest';
+import express from 'express';
+const app = express();
+app.get('/health', h);
+request(app).get('/health');
+`;
+    expect(routePaths(source)).toEqual(['GET /health']);
+  });
+
+  it('matches whole names when routeServers is given as a string', () => {
+    const source = `
+a.get('/x', h);
+r.get('/y', h);
+app.get('/z', h);
+`;
+    expect(routePaths(source, 'app,router')).toEqual(['GET /z']);
+  });
+
+  it('lets explicit routeServers override inference', () => {
+    const source = `
+const app = express();
+app.get('/a', h);
+api.get('/b', h);
+`;
+    expect(routePaths(source, ['api'])).toEqual(['GET /b']);
+  });
 });
 
 describe('parseDirectory relative paths', () => {
@@ -598,5 +805,144 @@ describe('parseDirectory relative paths', () => {
     const result = await parseDirectory(tmpDir);
     expect(result[0].relativePath).toBe('src/lib/util.js');
     expect(path.isAbsolute(result[0].file)).toBe(true);
+  });
+});
+
+describe('prototype methods of exported constructors', () => {
+  const protoExported = (source) =>
+    extractFunctions(source)
+      .filter((f) => f.className === 'Foo')
+      .map((f) => [f.name, f.exported]);
+
+  it('marks them exported when the constructor is in module.exports', () => {
+    expect(
+      protoExported(`
+function Foo() {}
+Foo.prototype.bar = function (x) {};
+module.exports = { Foo };
+`),
+    ).toEqual([['bar', true]]);
+  });
+
+  it('marks them exported for an ESM-exported constructor', () => {
+    expect(
+      protoExported(`
+export function Foo() {}
+Foo.prototype.bar = function () {};
+`),
+    ).toEqual([['bar', true]]);
+  });
+
+  it('keeps them unexported for a private constructor', () => {
+    expect(
+      protoExported(`
+function Foo() {}
+Foo.prototype.bar = function () {};
+`),
+    ).toEqual([['bar', false]]);
+  });
+});
+
+describe('TypeScript overloads', () => {
+  const parseTs = async (source) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'apidocs-overload-'));
+    const file = path.join(dir, 'a.ts');
+    fs.writeFileSync(file, source);
+    try {
+      return await parseFile(file);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  };
+
+  it('reports one method per overloaded class method', async () => {
+    const api = await parseTs(`
+export class A {
+  /** Format a value */
+  format(a: string): string;
+  format(a: number): string;
+  format(a: any): string { return String(a); }
+}
+`);
+    expect(api.functions.map((f) => [f.name, f.line])).toEqual([['format', 6]]);
+    expect(api.functions[0].description).toBe('Format a value');
+  });
+
+  it('keeps static and instance overloads apart', async () => {
+    const api = await parseTs(`
+class A {
+  static of(a: string): A;
+  static of(a: any): A { return new A(); }
+  of(a: string): void;
+  of(a: any): void {}
+}
+`);
+    expect(api.functions.map((f) => [f.name, f.static])).toEqual([
+      ['of', true],
+      ['of', false],
+    ]);
+  });
+
+  it('keeps abstract methods and declare-only signatures', async () => {
+    const api = await parseTs(`
+abstract class Base {
+  abstract run(): void;
+}
+declare class Lib {
+  load(a: string): void;
+  load(a: number): void;
+}
+`);
+    expect(api.functions.map((f) => [f.className, f.name, f.line])).toEqual([
+      ['Base', 'run', 3],
+      ['Lib', 'load', 7],
+    ]);
+  });
+
+  it('documents a function from a JSDoc above its first overload', async () => {
+    const api = await parseTs(`
+/** Parse input */
+export function parse(a: string): number;
+export function parse(a: number): number;
+export function parse(a: any): number { return Number(a); }
+`);
+    expect(api.functions.map((f) => [f.name, f.line, f.description])).toEqual([
+      ['parse', 5, 'Parse input'],
+    ]);
+  });
+});
+
+describe('default-exported function expressions', () => {
+  it('detects export default of an arrow function as default', () => {
+    const [fn] = extractFunctions('export default async (req, res) => {};');
+    expect(fn).toMatchObject({
+      name: 'default',
+      params: ['req', 'res'],
+      exported: true,
+      async: true,
+    });
+  });
+
+  it('uses the name of a named function expression', () => {
+    const [fn] = extractFunctions('export default (function handler(req) {});');
+    expect(fn).toMatchObject({ name: 'handler', exported: true });
+  });
+
+  it('attaches the JSDoc above export default', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'apidocs-default-'));
+    const file = path.join(dir, 'handler.js');
+    fs.writeFileSync(
+      file,
+      '/**\n * Handle a request\n * @param {Object} req - Request\n * @returns {void}\n */\nexport default (req) => {};\n',
+    );
+    try {
+      const api = await parseFile(file);
+      expect(api.functions[0]).toMatchObject({
+        name: 'default',
+        description: 'Handle a request',
+      });
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

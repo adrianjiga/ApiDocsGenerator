@@ -1,12 +1,102 @@
 import {
-  cleanTagDescription,
+  curlCommand,
+  describeExtras,
+  describeParams,
+  describeReturns,
   escapeHtml,
-  getParamTags,
-  getReturnTags,
+  inlineLinks,
   sanitizeHtmlId,
   uniqueFileLabels,
 } from '../utils.js';
 import { BASE_CSS } from './shared-styles.js';
+
+/**
+ * Escape tag text and render its inline {@link} references: http(s) targets
+ * as links, anything else as code
+ * @param {string} text - Tag text
+ * @returns {string} HTML fragment
+ */
+function linkText(text) {
+  return inlineLinks(text)
+    .map((segment) => {
+      if ('text' in segment) return escapeHtml(segment.text);
+      return segment.url
+        ? `<a href="${escapeHtml(segment.target)}">${escapeHtml(segment.label)}</a>`
+        : `<code>${escapeHtml(segment.label)}</code>`;
+    })
+    .join('');
+}
+
+/**
+ * Deprecation notice for an item, or nothing when it is not deprecated
+ * @param {Object} extras - Result of describeExtras
+ * @returns {string} HTML fragment
+ */
+function deprecatedNotice(extras) {
+  if (extras.deprecated === undefined) return '';
+  const message = extras.deprecated ? ` ${linkText(extras.deprecated)}` : '';
+  return `<div class="deprecated"><strong>Deprecated</strong>${message}</div>`;
+}
+
+/**
+ * Throws and See also sections of an item
+ * @param {Object} extras - Result of describeExtras
+ * @returns {string} HTML fragment, empty when there is nothing to show
+ */
+function throwsAndSee(extras) {
+  let html = '';
+  if (extras.throws.length > 0) {
+    html += `<div class="throws">
+                <h5>⚠️ Throws</h5>`;
+    for (const t of extras.throws) {
+      const type = t.type ? `<code>${escapeHtml(t.type)}</code>` : '';
+      const separator = type && t.description ? ' — ' : '';
+      html += `<div class="param-item">${type}${separator}${linkText(t.description)}</div>`;
+    }
+    html += '</div>';
+  }
+  if (extras.see.length > 0) {
+    html += `<div class="see">
+                <h5>🔗 See</h5>`;
+    for (const see of extras.see) {
+      html += `<div class="param-item">${linkText(see)}</div>`;
+    }
+    html += '</div>';
+  }
+  return html;
+}
+
+/**
+ * The item's own @example blocks
+ * @param {Object} extras - Result of describeExtras
+ * @returns {string} HTML fragment, empty when there are no examples
+ */
+function examplesSection(extras) {
+  if (extras.examples.length === 0) return '';
+  let html = `
+          <h5 style="margin-top: 15px;">💡 ${extras.examples.length > 1 ? 'Examples' : 'Example'}</h5>`;
+  for (const example of extras.examples) {
+    if (example.caption) {
+      html += `<div class="example-caption">${escapeHtml(example.caption)}</div>`;
+    }
+    html += `<div class="code-block">${escapeHtml(example.code)}</div>`;
+  }
+  return html;
+}
+
+/**
+ * Type, optionality and default of a parameter, as shown after its name
+ * @param {Object} param - Parameter from describeParams
+ * @returns {string} HTML fragment
+ */
+function paramMeta(param) {
+  let meta = `<code>${escapeHtml(param.type || 'any')}</code>`;
+  if (param.optional) meta += ' <span class="param-flag">optional</span>';
+  if (param.defaultValue !== undefined) {
+    meta += ` <span class="param-flag">default</span> <code>${escapeHtml(param.defaultValue)}</code>`;
+  }
+  return meta;
+}
 
 /**
  * Assign a unique HTML id to each file section, suffixing repeats with -2, -3…
@@ -30,6 +120,7 @@ function sectionIds(fileSections, labels) {
 /**
  * Generate HTML documentation
  * @param {Array} apiData - Array of parsed API metadata
+ * @param {Object} [config] - Configuration; reads apiTitle and serverUrl
  * @returns {string} HTML formatted documentation
  */
 function generateHTML(apiData, config = {}) {
@@ -45,17 +136,63 @@ function generateHTML(apiData, config = {}) {
   <title>${pageTitle}</title>
   <meta name="description" content="Auto-generated API documentation for ${pageTitle}">
   <style>
+    :root {
+      color-scheme: dark;
+      --page-bg: linear-gradient(135deg, #0a0a0f 0%, #13131a 50%, #0f1419 100%);
+      --text: #f8fafc;
+      --heading: #f8fafc;
+      --text-soft: #cbd5e1;
+      --muted: #94a3b8;
+      --faint: #64748b;
+      --header-text: #ffffff;
+      --surface-1: #13131a;
+      --surface-2: #1a1a24;
+      --header-end: #202535;
+      --code-bg-1: #0a0a0f;
+      --code-bg-2: #13131a;
+      --accent: #6366f1;
+      --link: #a5f3fc;
+      --success: #10b981;
+      --warning-text: #fcd34d;
+      --shadow: rgba(0, 0, 0, 0.4);
+      --shadow-inset: rgba(0, 0, 0, 0.3);
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        color-scheme: light;
+        --page-bg: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #eef2ff 100%);
+        --text: #0f172a;
+        --heading: #0f172a;
+        --text-soft: #334155;
+        --muted: #475569;
+        --faint: #64748b;
+        --header-text: #0f172a;
+        --surface-1: #ffffff;
+        --surface-2: #f8fafc;
+        --header-end: #eef2ff;
+        --code-bg-1: #f1f5f9;
+        --code-bg-2: #e2e8f0;
+        --accent: #4f46e5;
+        --link: #0e7490;
+        --success: #047857;
+        --warning-text: #92400e;
+        --shadow: rgba(15, 23, 42, 0.08);
+        --shadow-inset: rgba(15, 23, 42, 0.06);
+      }
+    }
+
     ${BASE_CSS}
 
     .container { max-width: 1200px; margin: 0 auto; padding: 2rem; position: relative; z-index: 1; }
 
     header {
-      background: linear-gradient(135deg, #1a1a24 0%, #202535 100%);
-      color: white;
+      background: linear-gradient(135deg, var(--surface-2) 0%, var(--header-end) 100%);
+      color: var(--header-text);
       padding: 3rem 2rem;
       margin: -2rem -2rem 3rem -2rem;
       border-radius: 0;
-      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 12px 32px var(--shadow);
       text-align: center;
       border-bottom: 1px solid rgba(99, 102, 241, 0.2);
       animation: fadeInDown 0.6s ease;
@@ -75,11 +212,11 @@ function generateHTML(apiData, config = {}) {
     }
 
     nav {
-      background: linear-gradient(135deg, #13131a 0%, #1a1a24 100%);
+      background: linear-gradient(135deg, var(--surface-1) 0%, var(--surface-2) 100%);
       padding: 1.5rem;
       margin-bottom: 2rem;
       border-radius: 0.875rem;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 8px 32px var(--shadow);
       border: 1px solid rgba(99, 102, 241, 0.1);
       backdrop-filter: blur(10px);
       animation: fadeInUp 0.6s ease;
@@ -88,7 +225,7 @@ function generateHTML(apiData, config = {}) {
     nav h2 {
       font-size: 1.25rem;
       margin-bottom: 1rem;
-      color: #6366f1;
+      color: var(--accent);
       font-weight: 700;
     }
 
@@ -97,7 +234,7 @@ function generateHTML(apiData, config = {}) {
     nav li { margin: 0.5rem 0; }
 
     nav a {
-      color: #a5f3fc;
+      color: var(--link);
       text-decoration: none;
       transition: all 0.2s ease;
       font-weight: 500;
@@ -107,16 +244,16 @@ function generateHTML(apiData, config = {}) {
     }
 
     nav a:hover {
-      color: #6366f1;
-      border-bottom-color: #6366f1;
+      color: var(--accent);
+      border-bottom-color: var(--accent);
     }
 
     .file-section {
-      background: linear-gradient(135deg, #13131a 0%, #1a1a24 100%);
+      background: linear-gradient(135deg, var(--surface-1) 0%, var(--surface-2) 100%);
       padding: 2rem;
       margin-bottom: 1.5rem;
       border-radius: 0.875rem;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 8px 32px var(--shadow);
       border: 1px solid rgba(99, 102, 241, 0.1);
       transition: all 0.3s ease;
       animation: fadeInUp 0.6s ease;
@@ -129,7 +266,7 @@ function generateHTML(apiData, config = {}) {
     }
 
     .file-section h2 {
-      color: #f8fafc;
+      color: var(--heading);
       margin-bottom: 0.75rem;
       padding-bottom: 0.75rem;
       border-bottom: 2px solid rgba(99, 102, 241, 0.2);
@@ -138,7 +275,7 @@ function generateHTML(apiData, config = {}) {
     }
 
     .file-path {
-      color: #94a3b8;
+      color: var(--muted);
       font-size: 0.8125rem;
       font-family: 'Courier New', monospace;
       margin-bottom: 1.5rem;
@@ -149,7 +286,7 @@ function generateHTML(apiData, config = {}) {
     .subsection { margin-top: 2rem; }
 
     .subsection h3 {
-      color: #6366f1;
+      color: var(--accent);
       margin-bottom: 1rem;
       font-size: 1.25rem;
       font-weight: 700;
@@ -174,14 +311,14 @@ function generateHTML(apiData, config = {}) {
     }
 
     .item h4 {
-      color: #f8fafc;
+      color: var(--heading);
       margin-bottom: 0.75rem;
       font-family: 'Courier New', monospace;
       font-weight: 600;
     }
 
     .meta {
-      color: #94a3b8;
+      color: var(--muted);
       font-size: 0.8125rem;
       margin-bottom: 0.75rem;
       font-weight: 500;
@@ -190,13 +327,13 @@ function generateHTML(apiData, config = {}) {
     .description {
       margin: 0.75rem 0;
       font-style: italic;
-      color: #cbd5e1;
+      color: var(--text-soft);
     }
 
     .params, .returns { margin: 0.75rem 0; }
 
     .params h5, .returns h5 {
-      color: #10b981;
+      color: var(--success);
       font-size: 0.875rem;
       margin-bottom: 0.75rem;
       margin-top: 1rem;
@@ -222,9 +359,16 @@ function generateHTML(apiData, config = {}) {
     }
 
     .param-name {
-      color: #10b981;
+      color: var(--success);
       font-weight: bold;
       font-family: 'Courier New', monospace;
+    }
+
+    .param-flag {
+      color: var(--muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
     .method-badge {
@@ -247,8 +391,8 @@ function generateHTML(apiData, config = {}) {
     }
 
     .code-block {
-      background: linear-gradient(135deg, #0a0a0f 0%, #13131a 100%);
-      color: #a5f3fc;
+      background: linear-gradient(135deg, var(--code-bg-1) 0%, var(--code-bg-2) 100%);
+      color: var(--link);
       padding: 1.5rem;
       border-radius: 0.5rem;
       overflow-x: auto;
@@ -256,13 +400,44 @@ function generateHTML(apiData, config = {}) {
       font-family: 'Courier New', monospace;
       font-size: 0.875rem;
       border: 1px solid rgba(99, 102, 241, 0.1);
-      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
+      box-shadow: inset 0 2px 8px var(--shadow-inset);
+      white-space: pre;
     }
+
+    .throws h5, .see h5 {
+      color: var(--success);
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+      margin-top: 1rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .deprecated {
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      border-left: 3px solid #f59e0b;
+      border-radius: 0.375rem;
+      color: var(--warning-text);
+      padding: 0.5rem 1rem;
+      margin: 0.75rem 0;
+      font-size: 0.875rem;
+    }
+
+    .example-caption {
+      color: var(--muted);
+      font-size: 0.8125rem;
+      font-style: italic;
+      margin-top: 0.75rem;
+    }
+
+    .item a { color: var(--link); }
 
     footer {
       text-align: center;
       padding: 1.5rem;
-      color: #64748b;
+      color: var(--faint);
       font-size: 0.8125rem;
       margin-top: 3rem;
       border-top: 1px solid rgba(99, 102, 241, 0.1);
@@ -305,7 +480,7 @@ function generateHTML(apiData, config = {}) {
     html += `
     <div class="file-section" id="${ids.get(file.file)}">
       <h2>${escapeHtml(label)}</h2>
-      <div class="file-path">📁 ${escapeHtml(file.fileName)}</div>`;
+      <div class="file-path">📁 ${escapeHtml(file.relativePath ?? file.fileName)}</div>`;
 
     // Functions
     if (file.functions.length > 0) {
@@ -318,37 +493,38 @@ function generateHTML(apiData, config = {}) {
           <h4>${escapeHtml(fn.name)}(${fn.params.map((p) => escapeHtml(p)).join(', ')})</h4>
           <div class="meta">📍 Line ${fn.line}</div>`;
 
-        if (fn.jsdoc) {
-          html += `<div class="description">${escapeHtml(fn.jsdoc.description)}</div>`;
+        const extras = describeExtras(fn);
+        html += deprecatedNotice(extras);
 
-          if (fn.jsdoc.tags && fn.jsdoc.tags.length > 0) {
-            const params = getParamTags(fn.jsdoc.tags);
-            if (params.length > 0) {
-              html += `<div class="params">
+        html += `<div class="description">${escapeHtml(fn.jsdoc ? fn.jsdoc.description : fn.description)}</div>`;
+
+        const params = describeParams(fn);
+        if (params.length > 0) {
+          html += `<div class="params">
                 <h5>📥 Parameters</h5>`;
-              params.forEach((param) => {
-                html += `<div class="param-item"><span class="param-name">${escapeHtml(param.name)}</span> <code>${escapeHtml(param.type || 'any')}</code> — ${escapeHtml(cleanTagDescription(param.description))}</div>`;
-              });
-              html += `</div>`;
-            }
-
-            const returns = getReturnTags(fn.jsdoc.tags);
-            if (returns.length > 0) {
-              html += `<div class="returns">
-                <h5>📤 Returns</h5>`;
-              returns.forEach((ret) => {
-                html += `<div class="param-item"><code>${escapeHtml(ret.type || 'any')}</code> — ${escapeHtml(cleanTagDescription(ret.description))}</div>`;
-              });
-              html += `</div>`;
-            }
-          }
-        } else {
-          html += `<div class="description">${escapeHtml(fn.description)}</div>`;
+          params.forEach((param) => {
+            html += `<div class="param-item"><span class="param-name">${escapeHtml(param.name)}</span> ${paramMeta(param)}${param.description ? ` — ${escapeHtml(param.description)}` : ''}</div>`;
+          });
+          html += `</div>`;
         }
 
-        html += `
+        const returns = describeReturns(fn);
+        if (returns.length > 0) {
+          html += `<div class="returns">
+                <h5>📤 Returns</h5>`;
+          returns.forEach((ret) => {
+            html += `<div class="param-item"><code>${escapeHtml(ret.type || 'any')}</code>${ret.description ? ` — ${escapeHtml(ret.description)}` : ''}</div>`;
+          });
+          html += `</div>`;
+        }
+
+        html += throwsAndSee(extras);
+        html +=
+          examplesSection(extras) ||
+          `
           <h5 style="margin-top: 15px;">💡 Usage Example</h5>
-          <div class="code-block">${escapeHtml(fn.name)}(${fn.params.map((p) => escapeHtml(p)).join(', ')});</div>
+          <div class="code-block">${escapeHtml(fn.name)}(${fn.params.map((p) => escapeHtml(p)).join(', ')});</div>`;
+        html += `
         </div>`;
       });
 
@@ -366,6 +542,9 @@ function generateHTML(apiData, config = {}) {
           <h4><span class="method-badge">${escapeHtml(route.method)}</span> ${escapeHtml(route.path)}</h4>
           <div class="meta">📍 Line ${route.line}</div>`;
 
+        const extras = describeExtras(route);
+        html += deprecatedNotice(extras);
+
         if (route.jsdoc?.description) {
           html += `<div class="description">${escapeHtml(route.jsdoc.description)}</div>`;
         }
@@ -377,9 +556,13 @@ function generateHTML(apiData, config = {}) {
           </div>`;
         }
 
-        html += `
+        html += throwsAndSee(extras);
+        html +=
+          examplesSection(extras) ||
+          `
           <h5 style="margin-top: 15px;">💡 Example Request</h5>
-          <div class="code-block">curl -X ${escapeHtml(route.method)} ${escapeHtml(config.serverUrl || 'http://localhost:3000')}${escapeHtml(route.path)}</div>
+          <div class="code-block">${escapeHtml(curlCommand(route.method, `${config.serverUrl || 'http://localhost:3000'}${route.path}`))}</div>`;
+        html += `
         </div>`;
       });
 

@@ -5,6 +5,7 @@ report. The pipeline has three stages, each in its own module:
 
 ```
 parser.js (parseDirectory)  →  analyzer.js (analyzeCoverage)  →  formatters/*
+   └─ parser/: scan, ast, jsdoc, exports, routes, items
      scan, parse, detect,          coverage per item,              Markdown, HTML,
      match JSDoc                   per file and overall            JSON, OpenAPI,
                                                                    terminal, dashboard
@@ -15,7 +16,7 @@ parser, the analyzer and one report formatter. `scan` runs only the parser.
 
 ## Scanning
 
-`scanDirectory(dir, excludePattern)` in `src/parser.js` walks the tree with
+`scanDirectory(dir, excludePattern)` in `src/parser/scan.js` walks the tree with
 `fs.readdir(..., { withFileTypes: true })`.
 
 - **Files kept**: names matching `/\.(js|jsx|ts|tsx|mjs|cjs|mts|cts)$/`, minus
@@ -105,19 +106,21 @@ to.
 
 ### Functions
 
-| Source form                                         | Item name             | Notes                                                                                              |
-| --------------------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------- |
-| `function f() {}`                                   | `f`                   | Module level only                                                                                  |
-| `export default function () {}`                     | `anonymous`           |                                                                                                    |
-| `const f = () => {}` / `const f = function () {}`   | `f`                   | Module level only                                                                                  |
-| `class A { m() {} }` / `const A = class { m() {} }` | `m`, class `A`        | Module-level classes; every method, including `constructor`, getters, setters and abstract methods |
-| `class A { m = () => {} }`                          | `m`, class `A`        | Fields (including `accessor` fields) holding an arrow function or function expression              |
-| `A.prototype.m = function () {}`                    | `m`, class `A`        | Module level only                                                                                  |
-| `const api = { list() {}, get: () => {} }`          | `api.list`, `api.get` | Module level only; getters and setters skipped                                                     |
-| `export default { list() {} }`                      | `list`                | Exported                                                                                           |
-| `module.exports = function main() {}`               | `main` (or `default`) | Module level only; exported                                                                        |
-| `exports.f = () => {}` / `module.exports.f = ...`   | `f`                   | Module level only; exported                                                                        |
-| `module.exports = { a() {}, b: () => {} }`          | `a`, `b`              | Module level only; exported                                                                        |
+| Source form                                         | Item name             | Notes                                                                                                                                                                                            |
+| --------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `function f() {}`                                   | `f`                   | Module level only                                                                                                                                                                                |
+| `export default function () {}`                     | `anonymous`           |                                                                                                                                                                                                  |
+| `export default (req, res) => {}`                   | `default`             | Also `export default (function name() {})`, which uses `name`; exported                                                                                                                          |
+| `const f = () => {}` / `const f = function () {}`   | `f`                   | Module level only                                                                                                                                                                                |
+| `class A { m() {} }` / `const A = class { m() {} }` | `m`, class `A`        | Module-level classes; every method, including `constructor`, getters, setters and abstract methods                                                                                               |
+| `class A { m = () => {} }`                          | `m`, class `A`        | Fields (including `accessor` fields) holding an arrow function or function expression                                                                                                            |
+| `m(a: string): void; m(a: any) {}` (overloads)      | `m` once              | One item for the implementation; a JSDoc above any overload signature documents it. Top-level `function` overloads work the same way. A `declare class` signature with no implementation is kept |
+| `A.prototype.m = function () {}`                    | `m`, class `A`        | Module level only                                                                                                                                                                                |
+| `const api = { list() {}, get: () => {} }`          | `api.list`, `api.get` | Module level only; getters and setters skipped                                                                                                                                                   |
+| `export default { list() {} }`                      | `list`                | Exported                                                                                                                                                                                         |
+| `module.exports = function main() {}`               | `main` (or `default`) | Module level only; exported                                                                                                                                                                      |
+| `exports.f = () => {}` / `module.exports.f = ...`   | `f`                   | Module level only; exported                                                                                                                                                                      |
+| `module.exports = { a() {}, b: () => {} }`          | `a`, `b`              | Module level only; exported                                                                                                                                                                      |
 
 Parameter names come from `getParamName`: rest parameters become `...name`,
 default values are dropped, and destructured parameters become `{a, b}` or
@@ -166,14 +169,33 @@ Calls are inspected only when the callee is a member expression
 | `fastify.route({ method: 'GET', url: '/a' })`            | `GET /a`                    | The call                   |
 | `fastify.route({ method: ['GET', 'POST'], path: '/b' })` | `GET /b`, `POST /b`         | The call                   |
 
-- Methods are `get`, `post`, `put`, `delete` and `patch` (case-insensitive in
-  Fastify objects).
-- The path must be a string literal starting with `/`. Template literals,
-  variables and absolute URLs (`http.get('https://...')`) are ignored.
+- Methods are `get`, `post`, `put`, `delete`, `patch`, `head`, `options` and
+  `all` (case-insensitive in Fastify objects). OpenAPI has no `all`
+  operation, so `all` routes are expanded into `get`, `post`, `put`, `patch`,
+  `delete`, `head` and `options`; an explicit route for the same path and
+  method replaces the expanded operation.
+- The path must be a string literal, or a template literal without `${}`
+  expressions, starting with `/`. Variables, interpolated templates and
+  absolute URLs (`http.get('https://...')`) are ignored.
 - Path parameters are taken from `:name` segments (`/:(\w+)/g`).
-- When `routeServers` is set in the config, the object the method is called on
-  (for a chain, the object `.route()` is called on) must be an identifier in
-  that list. An empty list means no filter.
+- The object the method is called on (for a chain, the object `.route()` is
+  called on) must pass `routeServerFilter`:
+  - When `routeServers` is set, it must be an identifier in that list.
+  - Otherwise, any object counts except a name the file binds only to values
+    that cannot be a server (`nonServerNames`): literals, object and array
+    literals, functions and classes, and `new` of a JavaScript built-in
+    (`Map`, `Set`, `URLSearchParams`, `Headers`…). So `const cache = new Map();
+    cache.get('/key')` is not a route.
+  - A name with any other binding in the file counts as a possible server:
+    calls (`express()`, `createApp()`, `require('./app')`), `new` of any other
+    class (`new Hono()`), function parameters and imports. Scopes are not
+    tracked, so one such binding anywhere in the file is enough. Member
+    expressions such as `this.app` count.
+  - HTTP clients never count: names imported or required from `axios`,
+    `got`, `ky`, `superagent`, `supertest`, `undici`, `node-fetch`, `needle`,
+    `request`, `http` or `https`, names created from them (`axios.create()`,
+    `request.agent(app)`), and call chains that start with one
+    (`request(app).get('/users')`).
 
 Routes from one call (a chain, or a Fastify object with several methods) share
 a `group` id, the source offset of the call. This is internal and never written
@@ -215,14 +237,16 @@ real block.
 
 ## Coverage rules
 
-`analyzeCoverage(apiData)` in `src/analyzer.js` checks every function and route
-with `checkDocumentation(item, { requireReturns })`.
+`analyzeCoverage(apiData, options)` in `src/analyzer.js` checks every function
+and route with `checkDocumentation(item, { requireReturns })`. With
+`exportedOnly`, functions whose `exported` flag is false are skipped; routes
+always count.
 
-| Check       | Passes when                                                    | Functions | Routes                     |
-| ----------- | -------------------------------------------------------------- | --------- | -------------------------- |
-| description | the JSDoc description is non-empty after trimming              | required  | required                   |
-| params      | every parameter name has a `@param` tag with exactly that name | required  | required (path parameters) |
-| returns     | there is a `@returns` or `@return` tag, of any type            | required  | optional                   |
+| Check       | Passes when                                                    | Functions | Routes                                                  |
+| ----------- | -------------------------------------------------------------- | --------- | ------------------------------------------------------- |
+| description | the JSDoc description is non-empty after trimming              | required  | required                                                |
+| params      | every parameter name has a `@param` tag with exactly that name | required  | required (path parameters; `params.<name>` also counts) |
+| returns     | there is a `@returns` or `@return` tag, of any type            | required  | optional                                                |
 
 `@returns {void}`, `{undefined}` and `{never}` count as present and are recorded
 as `existing.voidReturn`.
@@ -235,10 +259,13 @@ has no parameters.
 
 Parameters are matched by name (`isParamDocumented`). A rest parameter
 `...args` matches `@param args`. A destructured parameter (`{a, b}` or
-`[a, b]`) has no name of its own, so it matches the top-level `@param` at the
-same position, such as `@param {Object} options`, as long as that tag is not
-named after one of the function's other parameters. Tags for its properties
-(`options.a`) are allowed but not required.
+`[a, b]`) has no name of its own, so it matches the top-level `@param` in its
+position, such as `@param {Object} options`, as long as that tag is not named
+after one of the function's other parameters (`destructuredParamTags`).
+Positions count tags, not parameters: in `f(id, name, {a})` documented only by
+`@param name` and `@param options`, `{a}` matches `options` even though `id`
+has no tag. Tags for its properties (`options.a`) are allowed but not
+required.
 
 Percentages use `calcPercentage`: `part / total * 100` rounded to one decimal,
 and `0` when the total is `0`.

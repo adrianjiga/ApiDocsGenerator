@@ -11,8 +11,8 @@ export const BASE_CSS = `
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       line-height: 1.6;
-      color: #f8fafc;
-      background: linear-gradient(135deg, #0a0a0f 0%, #13131a 50%, #0f1419 100%);
+      color: var(--text, #f8fafc);
+      background: var(--page-bg, linear-gradient(135deg, #0a0a0f 0%, #13131a 50%, #0f1419 100%));
       position: relative;
       overflow-x: hidden;
     }

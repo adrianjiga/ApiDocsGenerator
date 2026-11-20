@@ -70,6 +70,16 @@ describe('resolveConfig', () => {
     expect(config.excludePattern).toBe('vendor|tmp');
   });
 
+  it('splits --route-servers into a trimmed list', async () => {
+    const config = await resolveConfig({ routeServers: 'app, router,,' });
+    expect(config.routeServers).toEqual(['app', 'router']);
+  });
+
+  it('leaves routeServers from the config file when the flag is absent', async () => {
+    const config = await resolveConfig({});
+    expect(config.routeServers).toEqual([]);
+  });
+
   it('loads from a custom config path', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cli-test-'));
     const configFile = path.join(tmpDir, 'apidocs.config.js');
@@ -234,7 +244,10 @@ describe('audit command', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
 
     await program.parseAsync(['node', 'cli.js', 'audit', '-d', '/tmp/src']);
-    expect(analyzeCoverage).toHaveBeenCalledWith(mockData);
+    expect(analyzeCoverage).toHaveBeenCalledWith(mockData, {
+      acceptTypeScriptReturns: false,
+      exportedOnly: false,
+    });
   });
 
   it('uses terminal format by default', async () => {
@@ -426,5 +439,93 @@ describe('run', () => {
       process.argv = originalArgv;
       process.exitCode = originalExitCode;
     }
+  });
+});
+
+describe('--route-servers', () => {
+  it.each([
+    ['generate', ['generate', '-d', '/tmp/src']],
+    ['scan', ['scan', '/tmp/src']],
+    ['audit', ['audit', '-d', '/tmp/src']],
+  ])('passes the list to the parser for %s', async (command, args) => {
+    generator.generate.mockClear();
+    parser.parseDirectory.mockClear();
+    parser.parseDirectory.mockResolvedValue([
+      { fileName: 'a.js', functions: [], routes: [] },
+    ]);
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    await program.parseAsync([
+      'node',
+      'cli.js',
+      ...args,
+      '--route-servers',
+      'api,v1',
+    ]);
+    const config =
+      command === 'generate'
+        ? generator.generate.mock.calls[0][3]
+        : parser.parseDirectory.mock.calls[0][1];
+    expect(config.routeServers).toEqual(['api', 'v1']);
+  });
+});
+
+describe('--exported-only', () => {
+  it('asks the analyzer to count only exported functions', async () => {
+    analyzeCoverage.mockClear();
+    parser.parseDirectory.mockResolvedValue([
+      { fileName: 'a.js', functions: [{ name: 'fn' }], routes: [] },
+    ]);
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    await program.parseAsync([
+      'node',
+      'cli.js',
+      'audit',
+      '-d',
+      '/tmp/src',
+      '--exported-only',
+    ]);
+    expect(analyzeCoverage.mock.calls[0][1].exportedOnly).toBe(true);
+  });
+});
+
+describe('audit with nothing in scope', () => {
+  it('passes and says so instead of failing at 0%', async () => {
+    parser.parseDirectory.mockResolvedValue([
+      { fileName: 'a.js', functions: [{ name: 'helper' }], routes: [] },
+    ]);
+    analyzeCoverage.mockReturnValue({
+      summary: { totalFunctions: 0, totalRoutes: 0, coveragePercentage: 0 },
+    });
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {});
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    await program.parseAsync([
+      'node',
+      'cli.js',
+      'audit',
+      '-d',
+      '/tmp/src',
+      '--exported-only',
+    ]);
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(errors.mock.calls.flat().join('\n')).toContain(
+      'Nothing to audit: no functions or routes in scope (--exported-only',
+    );
+  });
+
+  it('still fails below the threshold when there are items', async () => {
+    parser.parseDirectory.mockResolvedValue([
+      { fileName: 'a.js', functions: [{ name: 'fn' }], routes: [] },
+    ]);
+    analyzeCoverage.mockReturnValue({
+      summary: { totalFunctions: 1, totalRoutes: 0, coveragePercentage: 0 },
+    });
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    await program.parseAsync(['node', 'cli.js', 'audit', '-d', '/tmp/src']);
+    expect(exitSpy).toHaveBeenCalledWith(1);
   });
 });

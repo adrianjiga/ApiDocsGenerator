@@ -6,6 +6,7 @@ const { version: toolVersion } = require('../../package.json');
 /**
  * Generate JSON documentation
  * @param {Array} apiData - Array of parsed API metadata
+ * @param {Object} [config] - Configuration; reads apiVersion
  * @returns {string} JSON formatted documentation
  */
 function generateJSON(apiData, config = {}) {
@@ -22,6 +23,8 @@ function generateJSON(apiData, config = {}) {
       functions: file.functions.map((fn) => ({
         name: fn.name,
         params: fn.params,
+        paramDetails: fn.paramDetails ?? [],
+        ...(fn.returnType && { returnType: fn.returnType }),
         description: fn.description,
         line: fn.line,
         async: fn.async || false,

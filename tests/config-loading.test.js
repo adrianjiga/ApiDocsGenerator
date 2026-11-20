@@ -44,6 +44,21 @@ describe('loadConfig', () => {
     );
   });
 
+  it('normalizes routeServers written as a string', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'apidocs-'));
+    const configFile = path.join(tmpDir, 'apidocs.config.mjs');
+    fs.writeFileSync(
+      configFile,
+      'export default { routeServers: "app, router" };\n',
+    );
+    try {
+      const config = await loadConfig(configFile);
+      expect(config.routeServers).toEqual(['app', 'router']);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   it('merges user overrides over defaults', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'apidocs-'));
     const configFile = path.join(tmpDir, 'apidocs.config.js');

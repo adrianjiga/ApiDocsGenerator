@@ -1,6 +1,62 @@
 import { describe, expect, it } from 'vitest';
 import { generateMarkdown } from '../../src/formatters/markdown.js';
-import { mockApiData } from '../fixtures.js';
+import { makeRoute, mockApiData } from '../fixtures.js';
+
+const typedApiData = [
+  {
+    file: '/src/a.ts',
+    fileName: 'a.ts',
+    functions: [
+      {
+        name: 'typed',
+        params: ['a', 'b'],
+        paramDetails: [
+          { name: 'a', optional: false, type: 'string' },
+          { name: 'b', optional: true, type: 'number', defaultValue: '1' },
+        ],
+        returnType: 'Promise<void>',
+        description: 'No description provided',
+        line: 1,
+        jsdoc: null,
+      },
+    ],
+    routes: [],
+  },
+];
+
+const taggedFn = (tags) => [
+  {
+    file: '/src/a.js',
+    fileName: 'a.js',
+    functions: [
+      {
+        name: 'divide',
+        params: ['a', 'b'],
+        description: 'Divide',
+        line: 1,
+        jsdoc: { description: 'Divide', tags },
+      },
+    ],
+    routes: [],
+  },
+];
+
+const taggedRoute = (tags) => [
+  {
+    file: '/src/a.js',
+    fileName: 'a.js',
+    functions: [],
+    routes: [
+      {
+        method: 'GET',
+        path: '/health',
+        params: [],
+        line: 1,
+        jsdoc: { description: 'Health', tags },
+      },
+    ],
+  },
+];
 
 describe('generateMarkdown', () => {
   it('includes a title header', () => {
@@ -51,7 +107,7 @@ describe('generateMarkdown', () => {
 
   it('includes curl example for routes', () => {
     const md = generateMarkdown(mockApiData);
-    expect(md).toContain('curl -X GET http://localhost:3000/users/:id');
+    expect(md).toContain("curl -X GET 'http://localhost:3000/users/:id'");
   });
 
   it('handles functions without jsdoc', () => {
@@ -164,7 +220,7 @@ describe('generateMarkdown', () => {
     const md = generateMarkdown(mockApiData, {
       serverUrl: 'https://api.example.com',
     });
-    expect(md).toContain('curl -X GET https://api.example.com/users/:id');
+    expect(md).toContain("curl -X GET 'https://api.example.com/users/:id'");
     expect(md).not.toContain('http://localhost:3000');
   });
 
@@ -286,5 +342,151 @@ describe('generateMarkdown', () => {
     const md = generateMarkdown(data);
     expect(md).toContain('[ab.js](#abjs)');
     expect(md).toContain('[a.b.js](#abjs-1)');
+  });
+
+  it('shows TypeScript types when there is no JSDoc', () => {
+    const out = generateMarkdown(typedApiData);
+    expect(out).toContain('- `a` (`string`)\n');
+    expect(out).toContain('- `b` (`number`, optional, default `1`)\n');
+    expect(out).toContain('- `Promise<void>`\n');
+  });
+
+  it('writes a curl -I example for HEAD routes', () => {
+    const md = generateMarkdown([
+      {
+        file: '/src/app.js',
+        fileName: 'app.js',
+        functions: [],
+        routes: [makeRoute('HEAD', '/ping', [])],
+      },
+    ]);
+    expect(md).toContain("curl -I 'http://localhost:3000/ping'");
+  });
+
+  it('shows a deprecation notice with the message', () => {
+    const md = generateMarkdown(
+      taggedFn([{ tag: 'deprecated', description: 'Use {@link safeDivide}' }]),
+    );
+    expect(md).toContain('> **Deprecated:** Use `safeDivide`\n');
+  });
+
+  it('shows a bare deprecation notice without a message', () => {
+    const md = generateMarkdown(
+      taggedFn([{ tag: 'deprecated', description: '' }]),
+    );
+    expect(md).toContain('> **Deprecated**\n');
+  });
+
+  it('lists @throws and @see, linking URLs', () => {
+    const md = generateMarkdown(
+      taggedFn([
+        { tag: 'throws', type: 'RangeError', description: 'When b is 0' },
+        { tag: 'throws', type: '', description: 'On overflow' },
+        { tag: 'see', description: '{@link https://mdn.io|MDN} for numbers' },
+      ]),
+    );
+    expect(md).toContain(
+      '**Throws:**\n\n- `RangeError`: When b is 0\n- On overflow\n',
+    );
+    expect(md).toContain('**See:**\n\n- [MDN](https://mdn.io) for numbers\n');
+  });
+
+  it('uses @example in place of the generated usage example', () => {
+    const md = generateMarkdown(
+      taggedFn([
+        {
+          tag: 'example',
+          description: '<caption>Basic</caption>\ndivide(6, 3);\n// => 2',
+        },
+      ]),
+    );
+    expect(md).toContain(
+      '**Example:**\n\n_Basic_\n\n```javascript\ndivide(6, 3);\n// => 2\n```\n',
+    );
+    expect(md).not.toContain('**Usage Example:**');
+  });
+
+  it('labels several examples as Examples', () => {
+    const md = generateMarkdown(
+      taggedFn([
+        { tag: 'example', description: 'a();' },
+        { tag: 'example', description: 'b();' },
+      ]),
+    );
+    expect(md).toContain('**Examples:**');
+  });
+
+  it('lengthens the fence when the example contains backticks', () => {
+    const md = generateMarkdown(
+      taggedFn([{ tag: 'example', description: 'const s = ```x```;' }]),
+    );
+    expect(md).toContain('````javascript\nconst s = ```x```;\n````\n');
+  });
+
+  it('uses a route @example in place of the generated curl request', () => {
+    const md = generateMarkdown(
+      taggedRoute([{ tag: 'example', description: 'curl /health' }]),
+    );
+    expect(md).toContain('**Example:**\n\n```\ncurl /health\n```\n');
+    expect(md).not.toContain('**Example Request:**');
+  });
+
+  it('shows the path relative to the scanned directory', () => {
+    const out = generateMarkdown([
+      {
+        ...mockApiData[0],
+        file: '/abs/src/routes/users.js',
+        fileName: 'users.js',
+        relativePath: 'routes/users.js',
+      },
+    ]);
+    expect(out).toContain('**File:** `routes/users.js`');
+  });
+
+  it('keeps a code span intact when a type or default contains backticks', () => {
+    const md = generateMarkdown([
+      {
+        ...typedApiData[0],
+        functions: [
+          {
+            ...typedApiData[0].functions[0],
+            paramDetails: [
+              {
+                name: 'id',
+                optional: true,
+                type: '`a` | `b`',
+                defaultValue: '`user-1`',
+              },
+            ],
+            params: ['id'],
+          },
+        ],
+      },
+    ]);
+    expect(md).toContain(
+      '- `id` (`` `a` | `b` ``, optional, default `` `user-1` ``)',
+    );
+  });
+
+  it('percent-encodes parentheses in link URLs and escapes brackets in labels', () => {
+    const md = generateMarkdown(
+      taggedFn([
+        {
+          tag: 'see',
+          description:
+            '{@link https://en.wikipedia.org/wiki/Foo_(bar) Foo [disambiguation]}',
+        },
+      ]),
+    );
+    expect(md).toContain(
+      '- [Foo \\[disambiguation\\]](https://en.wikipedia.org/wiki/Foo_%28bar%29)\n',
+    );
+  });
+
+  it('writes no empty code span for a @param tag without a name', () => {
+    const md = generateMarkdown(
+      taggedFn([{ tag: 'param', name: '', type: 'string', description: 'x' }]),
+    );
+    expect(md).not.toContain('- ``');
   });
 });

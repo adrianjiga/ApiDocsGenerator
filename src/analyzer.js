@@ -1,11 +1,24 @@
-import { calcPercentage, getParamTags, getReturnTags } from './utils.js';
+import {
+  calcPercentage,
+  destructuredParamTags,
+  getParamTags,
+  getReturnTags,
+} from './utils.js';
 
 /**
  * Analyze documentation coverage for parsed API data
  * @param {Array} apiData - Array of file objects from parseDirectory()
+ * @param {Object} [options] - Analysis options
+ * @param {boolean} [options.acceptTypeScriptReturns=false] - Count a declared
+ *   TypeScript return type as a documented @returns
+ * @param {boolean} [options.exportedOnly=false] - Leave out functions that are
+ *   not exported; routes always count
  * @returns {Object} Coverage analysis with summary, per-file breakdown, and gaps
  */
-function analyzeCoverage(apiData) {
+function analyzeCoverage(
+  apiData,
+  { acceptTypeScriptReturns = false, exportedOnly = false } = {},
+) {
   if (!Array.isArray(apiData)) {
     return {
       summary: {
@@ -13,8 +26,11 @@ function analyzeCoverage(apiData) {
         documentedFunctions: 0,
         undocumentedFunctions: 0,
         partiallyDocumented: 0,
+        partiallyDocumentedFunctions: 0,
         totalRoutes: 0,
         documentedRoutes: 0,
+        undocumentedRoutes: 0,
+        partiallyDocumentedRoutes: 0,
         coveragePercentage: 0,
         functionCoverage: 0,
         routeCoverage: 0,
@@ -32,7 +48,7 @@ function analyzeCoverage(apiData) {
   let partiallyDocumentedFunctions = 0;
   let totalRoutes = 0;
   let documentedRoutes = 0;
-  let partiallyDocumented = 0;
+  let partiallyDocumentedRoutes = 0;
 
   // Process each file
   apiData.forEach((fileData) => {
@@ -43,17 +59,19 @@ function analyzeCoverage(apiData) {
 
       // Analyze functions
       fileData.functions?.forEach((func) => {
+        if (exportedOnly && !func.exported) return;
         try {
           fileTotalItems++;
           totalFunctions++;
 
-          const docStatus = checkFunctionDocumentation(func);
+          const docStatus = checkFunctionDocumentation(func, {
+            acceptTypeScriptReturns,
+          });
 
           if (docStatus.isFullyDocumented) {
             fileDocumentedItems++;
             documentedFunctions++;
           } else if (docStatus.isPartiallyDocumented) {
-            partiallyDocumented++;
             partiallyDocumentedFunctions++;
           }
 
@@ -91,7 +109,7 @@ function analyzeCoverage(apiData) {
             fileDocumentedItems++;
             documentedRoutes++;
           } else if (docStatus.isPartiallyDocumented) {
-            partiallyDocumented++;
+            partiallyDocumentedRoutes++;
           }
 
           if (!docStatus.isFullyDocumented) {
@@ -144,6 +162,8 @@ function analyzeCoverage(apiData) {
   const totalDocumentedItems = documentedFunctions + documentedRoutes;
   const undocumentedFunctions =
     totalFunctions - documentedFunctions - partiallyDocumentedFunctions;
+  const undocumentedRoutes =
+    totalRoutes - documentedRoutes - partiallyDocumentedRoutes;
 
   const coveragePercentage = calcPercentage(totalDocumentedItems, totalItems);
   const functionCoverage = calcPercentage(documentedFunctions, totalFunctions);
@@ -154,9 +174,13 @@ function analyzeCoverage(apiData) {
       totalFunctions,
       documentedFunctions,
       undocumentedFunctions,
-      partiallyDocumented,
+      partiallyDocumented:
+        partiallyDocumentedFunctions + partiallyDocumentedRoutes,
+      partiallyDocumentedFunctions,
       totalRoutes,
       documentedRoutes,
+      undocumentedRoutes,
+      partiallyDocumentedRoutes,
       coveragePercentage,
       functionCoverage,
       routeCoverage,
@@ -168,31 +192,32 @@ function analyzeCoverage(apiData) {
 
 /**
  * Whether a parameter has a matching @param tag. Rest parameters (`...args`)
- * match `@param args`. Destructured parameters (`{a, b}`, `[a, b]`) have no
- * name of their own, so they match the top-level @param at the same position,
- * e.g. `@param {Object} options` for the first parameter, unless that tag is
- * the one for another, named parameter.
+ * match `@param args`. Destructured parameters (`{a, b}`, `[a, b]`) match the
+ * tag destructuredParamTags pairs them with.
  * @param {string} paramName - Parameter name from the parser
  * @param {number} index - Position of the parameter
  * @param {string[]} documentedNames - Names of all @param tags
- * @param {Array} topLevelTags - @param tags whose name has no `.`
- * @param {string[]} paramNames - Names of all the item's parameters, without `...`
+ * @param {Map<number, Object>} destructured - Result of destructuredParamTags
  * @returns {boolean} True when the parameter is documented
  */
-function isParamDocumented(
-  paramName,
-  index,
-  documentedNames,
-  topLevelTags,
-  paramNames,
-) {
+function isParamDocumented(paramName, index, documentedNames, destructured) {
   const name = paramName.startsWith('...') ? paramName.slice(3) : paramName;
-  if (documentedNames.includes(paramName) || documentedNames.includes(name)) {
-    return true;
-  }
-  if (!/^[{[]/.test(name)) return false;
-  const tag = topLevelTags[index];
-  return !!tag && !paramNames.includes(tag.name);
+  return (
+    documentedNames.includes(paramName) ||
+    documentedNames.includes(name) ||
+    destructured.has(index)
+  );
+}
+
+/**
+ * Whether a return type names no value
+ * @param {string} [type] - JSDoc or TypeScript type text
+ * @returns {boolean} True for void, undefined and never
+ */
+function isVoidType(type) {
+  return ['void', 'undefined', 'never'].includes(
+    (type || '').toLowerCase().trim(),
+  );
 }
 
 /**
@@ -200,9 +225,20 @@ function isParamDocumented(
  * @param {Object} item - Item with params and jsdoc properties
  * @param {Object} [options] - Check options
  * @param {boolean} [options.requireReturns=true] - Whether a @returns tag is required
+ * @param {boolean} [options.acceptTypeScriptReturns=false] - Whether a declared
+ *   TypeScript return type stands in for a @returns tag
+ * @param {boolean} [options.pathParamPrefix=false] - Whether `@param params.id`
+ *   documents the parameter `id`, as Express's `req.params.id` does for routes
  * @returns {Object} Status object with isFullyDocumented, isPartiallyDocumented, missing, existing
  */
-function checkDocumentation(item, { requireReturns = true } = {}) {
+function checkDocumentation(
+  item,
+  {
+    requireReturns = true,
+    acceptTypeScriptReturns = false,
+    pathParamPrefix = false,
+  } = {},
+) {
   const existing = {
     description: null,
     params: [],
@@ -210,14 +246,17 @@ function checkDocumentation(item, { requireReturns = true } = {}) {
   };
 
   const missing = [];
+  const typedReturn = acceptTypeScriptReturns && !!item.returnType;
 
   if (!item.jsdoc) {
     return {
       isFullyDocumented: false,
       isPartiallyDocumented: false,
-      missing: requireReturns
-        ? ['description', 'params', 'returns']
-        : ['description', 'params'],
+      missing: [
+        'description',
+        ...(item.params.length > 0 ? ['params'] : []),
+        ...(requireReturns && !typedReturn ? ['returns'] : []),
+      ],
       existing,
     };
   }
@@ -231,21 +270,21 @@ function checkDocumentation(item, { requireReturns = true } = {}) {
 
   // Check params
   const paramTags = getParamTags(item.jsdoc.tags);
-  const documentedParamNames = paramTags.map((tag) => tag.name);
+  const documentedParamNames = paramTags.map((tag) =>
+    pathParamPrefix && tag.name?.startsWith('params.')
+      ? tag.name.slice('params.'.length)
+      : tag.name,
+  );
   existing.params = documentedParamNames;
 
-  const plainParamNames = item.params.map((p) =>
-    p.startsWith('...') ? p.slice(3) : p,
-  );
-  const topLevelParamTags = paramTags.filter((tag) => !tag.name?.includes('.'));
+  const destructured = destructuredParamTags(item.params, paramTags);
   item.params.forEach((paramName, index) => {
     if (
       !isParamDocumented(
         paramName,
         index,
         documentedParamNames,
-        topLevelParamTags,
-        plainParamNames,
+        destructured,
       ) &&
       !missing.includes('params')
     ) {
@@ -257,14 +296,11 @@ function checkDocumentation(item, { requireReturns = true } = {}) {
   // intentionally documented (the developer chose to declare no return value)
   const returnTags = getReturnTags(item.jsdoc.tags);
   const hasReturnsTag = returnTags.length > 0;
-  const isVoidReturn =
-    hasReturnsTag &&
-    returnTags.some((t) => {
-      const type = (t.type || '').toLowerCase().trim();
-      return type === 'void' || type === 'undefined' || type === 'never';
-    });
+  const isVoidReturn = hasReturnsTag
+    ? returnTags.some((t) => isVoidType(t.type))
+    : typedReturn && isVoidType(item.returnType);
 
-  if (hasReturnsTag) {
+  if (hasReturnsTag || typedReturn) {
     existing.returns = true;
     if (isVoidReturn) {
       existing.voidReturn = true;
@@ -282,10 +318,11 @@ function checkDocumentation(item, { requireReturns = true } = {}) {
 /**
  * Check documentation status of a function
  * @param {Object} func - Function object with name, params, jsdoc
+ * @param {Object} [options] - Options passed on to checkDocumentation
  * @returns {Object} Status object with isFullyDocumented, isPartiallyDocumented, missing, existing
  */
-function checkFunctionDocumentation(func) {
-  return checkDocumentation(func);
+function checkFunctionDocumentation(func, options) {
+  return checkDocumentation(func, options);
 }
 
 /**
@@ -295,7 +332,10 @@ function checkFunctionDocumentation(func) {
  * @returns {Object} Status object with isFullyDocumented, isPartiallyDocumented, missing, existing
  */
 function checkRouteDocumentation(route) {
-  return checkDocumentation(route, { requireReturns: false });
+  return checkDocumentation(route, {
+    requireReturns: false,
+    pathParamPrefix: true,
+  });
 }
 
 export { analyzeCoverage, checkRouteDocumentation };

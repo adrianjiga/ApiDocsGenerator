@@ -63,17 +63,25 @@ If the comment is matched but the item still shows as a gap, look at
 Routes are recognised in three forms:
 
 ```js
-app.get('/users/:id', handler); // also post, put, delete, patch
+app.get('/users/:id', handler); // also post, put, delete, patch, head, options, all
 app.route('/books/:id').get(getBook).put(updateBook);
 fastify.route({ method: ['GET', 'POST'], url: '/items', handler });
 ```
 
-The path must be a string literal starting with `/`. Template literals,
-variables and full URLs are not treated as routes, which is also what keeps
-HTTP-client calls such as `axios.get('https://...')` out. `head`, `options` and
-`all` are not recognised.
+The path must be a string literal, or a template literal without `${}`,
+starting with `/`. Variables, interpolated templates and full URLs are not
+treated as routes, which is also what keeps HTTP-client calls such as
+`axios.get('https://...')` out.
 
-If `routeServers` is set in the config, only calls on those identifiers count:
+Calls on a name the file binds only to a value that cannot be a server are
+ignored: a literal, an object or array literal, a function, or `new` of a
+built-in such as `Map` or `URLSearchParams`. Servers created by a call
+(`express()`, `createApp()`), by `new` of another class, or received as a
+parameter or import are still detected. Calls through HTTP clients such as
+`axios.get('/users')` or supertest's `request(app).get('/users')` are never
+routes.
+
+If `routeServers` is set, only calls on those identifiers count, in every file:
 `routeServers: ['app']` ignores `router.get(...)`.
 
 ## A function is not detected

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { formatters } from './formatters/registry.js';
 import * as parser from './parser.js';
-import { DEFAULT_EXCLUDE_PATTERN } from './utils.js';
+import { DEFAULT_EXCLUDE_PATTERN, normalizeRouteServers } from './utils.js';
 
 /**
  * Default configuration for the documentation generator
@@ -18,6 +18,8 @@ const defaultConfig = {
   // 'router']) to restrict route detection to. Empty array keeps the default
   // broad detection.
   routeServers: [],
+  acceptTypeScriptReturns: false,
+  exportedOnly: false,
 };
 
 /**
@@ -104,7 +106,9 @@ async function loadConfig(configPath) {
     const fileUrl = pathToFileURL(path.resolve(filePath));
     const mod = await import(fileUrl.href);
     const userConfig = mod.default || mod;
-    return { ...defaults, ...userConfig };
+    const config = { ...defaults, ...userConfig };
+    config.routeServers = normalizeRouteServers(config.routeServers);
+    return config;
   } catch (err) {
     const message = String(err?.message ?? err).replace(/\.$/, '');
     console.warn(
@@ -158,6 +162,7 @@ function docFormatNames() {
  * @param {string} sourceDir - Source directory to parse
  * @param {string} outputDir - Output directory for generated docs
  * @param {Array} formats - Array of formats: ['markdown', 'html', 'json']
+ * @param {Object|null} [userConfig] - Resolved configuration; loaded from the config file when omitted
  * @returns {Promise<Object>} Generation result; success is false when nothing was generated or any format failed
  */
 async function generate(

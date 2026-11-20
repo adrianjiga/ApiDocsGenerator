@@ -361,6 +361,7 @@ postRouter.get("/posts", (req, res) => {});
 
   it('handles mixed app and router routes', () => {
     const source = `
+const app = express();
 const router = express.Router();
 app.get("/health", (req, res) => {});
 router.get("/api/data", (req, res) => {});
@@ -371,6 +372,16 @@ router.get("/api/data", (req, res) => {});
     const paths = routes.map((r) => r.path);
     expect(paths).toContain('/health');
     expect(paths).toContain('/api/data');
+  });
+
+  it('keeps routes on identifiers the file does not declare', () => {
+    const source = `
+const router = express.Router();
+app.get("/health", (req, res) => {});
+router.get("/api/data", (req, res) => {});
+    `;
+    const routes = extractFunctions(source).filter((f) => f.type === 'route');
+    expect(routes.map((r) => r.path)).toEqual(['/health', '/api/data']);
   });
 });
 
@@ -412,5 +423,127 @@ client.delete("/files/:id");
     const source = 'client.post("/uploads", cb);';
     const result = extractFunctions(source, []);
     expect(result.filter((f) => f.type === 'route')).toHaveLength(1);
+  });
+});
+
+describe('TypeScript signatures', () => {
+  it('reads parameter types, optionality, defaults and the return type', () => {
+    const source =
+      'function typed(a: string, b?: number, c: Map<string, number> = new Map(), ...rest: string[]): Promise<void> {}';
+    const [fn] = extractFunctions(source);
+    expect(fn.params).toEqual(['a', 'b', 'c', '...rest']);
+    expect(fn.paramDetails).toEqual([
+      { name: 'a', optional: false, type: 'string' },
+      { name: 'b', optional: true, type: 'number' },
+      {
+        name: 'c',
+        optional: true,
+        type: 'Map<string, number>',
+        defaultValue: 'new Map()',
+      },
+      { name: '...rest', optional: false, type: 'string[]' },
+    ]);
+    expect(fn.returnType).toBe('Promise<void>');
+  });
+
+  it('collapses multi-line types onto one line', () => {
+    const source = `const f = (opts: {
+      a: string;
+      b: number;
+    }): void => {};`;
+    const [fn] = extractFunctions(source);
+    expect(fn.paramDetails[0].type).toBe('{ a: string; b: number; }');
+  });
+
+  it('types destructured parameters', () => {
+    const source = 'function f({ x }: { x: number } = { x: 1 }) {}';
+    const [fn] = extractFunctions(source);
+    expect(fn.paramDetails).toEqual([
+      {
+        name: '{x}',
+        optional: true,
+        type: '{ x: number }',
+        defaultValue: '{ x: 1 }',
+      },
+    ]);
+  });
+
+  it('skips the TypeScript this parameter', () => {
+    const source = 'function f(this: Window, a: number) {}';
+    const [fn] = extractFunctions(source);
+    expect(fn.params).toEqual(['a']);
+    expect(fn.paramDetails).toHaveLength(1);
+  });
+
+  it('types class methods and constructor parameter properties', () => {
+    const source = `class A {
+      constructor(private readonly x: number = 2) {}
+      get(id: string): A | undefined { return undefined; }
+    }`;
+    const [ctor, get] = extractFunctions(source);
+    expect(ctor.paramDetails).toEqual([
+      { name: 'x', optional: true, type: 'number', defaultValue: '2' },
+    ]);
+    expect(get.returnType).toBe('A | undefined');
+  });
+
+  it('leaves types out for plain JavaScript', () => {
+    const [fn] = extractFunctions('function f(a, b = 1) {}');
+    expect(fn.paramDetails).toEqual([
+      { name: 'a', optional: false },
+      { name: 'b', optional: true, defaultValue: '1' },
+    ]);
+    expect(fn).not.toHaveProperty('returnType');
+  });
+
+  it('carries types through parseFile', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'apidocs-ts-'));
+    const file = path.join(dir, 'a.ts');
+    fs.writeFileSync(
+      file,
+      'export function f(a: string): number { return 1; }',
+    );
+    try {
+      const api = await parseFile(file);
+      expect(api.functions[0]).toMatchObject({
+        paramDetails: [{ name: 'a', optional: false, type: 'string' }],
+        returnType: 'number',
+      });
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('TypeScript signatures – literal whitespace', () => {
+  it('keeps whitespace inside string defaults as written', () => {
+    const [fn] = extractFunctions(
+      'function pad(s, fill = \'    \', sep = "a  b") {}',
+    );
+    expect(fn.paramDetails.map((d) => d.defaultValue)).toEqual([
+      undefined,
+      "'    '",
+      '"a  b"',
+    ]);
+  });
+
+  it('keeps line breaks inside template literal defaults', () => {
+    const [fn] = extractFunctions('function f(s = `a\n  b`) {}');
+    expect(fn.paramDetails[0].defaultValue).toBe('`a\n  b`');
+  });
+
+  it('keeps escaped quotes inside strings without ending them early', () => {
+    const [fn] = extractFunctions("function f(s = 'it\\'s   ok',  n =  1) {}");
+    expect(fn.paramDetails.map((d) => d.defaultValue)).toEqual([
+      "'it\\'s   ok'",
+      '1',
+    ]);
+  });
+
+  it('still collapses whitespace between tokens of a type', () => {
+    const [fn] = extractFunctions(`function f(o: {
+      label: 'a  b';
+    }) {}`);
+    expect(fn.paramDetails[0].type).toBe("{ label: 'a  b'; }");
   });
 });

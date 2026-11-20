@@ -32,6 +32,7 @@ no build step: `bin/api-docs-generator` runs `src/cli.js` directly.
 | `npm run format`     | Format every file with Biome                                  |
 | `npm run generate`   | Run the CLI against `examples/` and write to `examples/docs/` |
 | `npm run audit`      | Run a coverage audit against `examples/`                      |
+| `npm run audit:self` | Audit `src/` itself; fails below 100% (what CI runs)          |
 | `npm run scan`       | List what the parser finds in `examples/`                     |
 
 `examples/docs/` is gitignored, so the `generate` scripts are safe to run.
@@ -62,14 +63,16 @@ Every change goes through a branch and a pull request against
 3. Before pushing, make sure the checks pass:
 
    ```bash
-   npm run check && npm test
+   npm run check && npm test && npm run audit:self
    ```
 
 4. Push and open a pull request. The PR description has exactly three
    sections: **Summary**, **Why** and **What changed**.
 
-5. CI runs `npm run check` and the tests on Node 22, 24 and 26. All checks
-   must be green before merging.
+5. CI runs `npm run check`, the tests and `npm run audit:self` on Node 22, 24
+   and 26. All checks must be green before merging. Every function in `src/`
+   needs a description, a `@param` per parameter and a `@returns` (`{void}`
+   when it returns nothing).
 
 ## Testing conventions
 

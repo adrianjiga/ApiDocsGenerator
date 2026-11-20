@@ -21,19 +21,21 @@ Returned by `parser.parseFile()` and, as an array, by `parser.parseDirectory()`.
 
 ### FunctionItem
 
-| Field         | Type                 | Notes                                                                                                                                              |
-| ------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`        | `string`             | `'anonymous'` for unnamed declarations; `prefix.key` for methods of a named object literal; `'default'` for an unnamed `module.exports = function` |
-| `params`      | `string[]`           | Destructured params render as `{a, b}` / `[a, b]`; rest params as `...rest`; defaults use the left-hand name                                       |
-| `line`        | `number`             | 1-based start line                                                                                                                                 |
-| `jsdoc`       | `JSDocBlock \| null` | The matched comment, or `null`                                                                                                                     |
-| `description` | `string`             | `jsdoc.description`, or `'No description provided'`                                                                                                |
-| `async`       | `boolean`            |                                                                                                                                                    |
-| `generator`   | `boolean`            |                                                                                                                                                    |
-| `exported`    | `boolean`            | ESM `export`, `export { x }`, `module.exports`/`exports.x`, and exports inside TS namespaces                                                       |
-| `className`   | `string`             | Class and prototype methods only                                                                                                                   |
-| `static`      | `boolean`            | Class and prototype methods only                                                                                                                   |
-| `methodKind`  | `string`             | Class and prototype methods only: `'method'`, `'constructor'`, `'get'` or `'set'`                                                                  |
+| Field          | Type                 | Notes                                                                                                                                                                                    |
+| -------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`         | `string`             | `'anonymous'` for unnamed declarations; `prefix.key` for methods of a named object literal; `'default'` for an unnamed `module.exports = function`                                       |
+| `params`       | `string[]`           | Destructured params render as `{a, b}` / `[a, b]`; rest params as `...rest`; defaults use the left-hand name. A TypeScript `this` parameter is left out                                  |
+| `paramDetails` | `ParamDetail[]`      | One per entry of `params`: `{ name, optional, type?, defaultValue? }`. `type` is the TypeScript annotation as written, whitespace collapsed; `optional` is true for `?` and for defaults |
+| `returnType`   | `string?`            | Declared TypeScript return type; absent when there is none                                                                                                                               |
+| `line`         | `number`             | 1-based start line                                                                                                                                                                       |
+| `jsdoc`        | `JSDocBlock \| null` | The matched comment, or `null`                                                                                                                                                           |
+| `description`  | `string`             | `jsdoc.description`, or `'No description provided'`                                                                                                                                      |
+| `async`        | `boolean`            |                                                                                                                                                                                          |
+| `generator`    | `boolean`            |                                                                                                                                                                                          |
+| `exported`     | `boolean`            | ESM `export`, `export { x }`, `module.exports`/`exports.x`, and exports inside TS namespaces                                                                                             |
+| `className`    | `string`             | Class and prototype methods only                                                                                                                                                         |
+| `static`       | `boolean`            | Class and prototype methods only                                                                                                                                                         |
+| `methodKind`   | `string`             | Class and prototype methods only: `'method'`, `'constructor'`, `'get'` or `'set'`                                                                                                        |
 
 ### RouteItem
 
@@ -62,17 +64,20 @@ Returned by `analyzer.analyzeCoverage(apiData)` and printed by
 
 `summary`:
 
-| Field                   | Type     | Notes                                                                              |
-| ----------------------- | -------- | ---------------------------------------------------------------------------------- |
-| `totalFunctions`        | `number` |                                                                                    |
-| `documentedFunctions`   | `number` | Fully documented                                                                   |
-| `undocumentedFunctions` | `number` | Functions with no JSDoc                                                            |
-| `partiallyDocumented`   | `number` | Functions **and** routes with JSDoc that is incomplete                             |
-| `totalRoutes`           | `number` |                                                                                    |
-| `documentedRoutes`      | `number` | Fully documented                                                                   |
-| `coveragePercentage`    | `number` | Fully documented items / all items × 100, one decimal; `0` when there are no items |
-| `functionCoverage`      | `number` | Same, functions only                                                               |
-| `routeCoverage`         | `number` | Same, routes only                                                                  |
+| Field                          | Type     | Notes                                                                                       |
+| ------------------------------ | -------- | ------------------------------------------------------------------------------------------- |
+| `totalFunctions`               | `number` |                                                                                             |
+| `documentedFunctions`          | `number` | Fully documented                                                                            |
+| `undocumentedFunctions`        | `number` | Functions with no JSDoc                                                                     |
+| `partiallyDocumentedFunctions` | `number` | Functions with JSDoc that is incomplete                                                     |
+| `partiallyDocumented`          | `number` | Functions **and** routes with JSDoc that is incomplete (the sum of the two per-kind counts) |
+| `totalRoutes`                  | `number` |                                                                                             |
+| `documentedRoutes`             | `number` | Fully documented                                                                            |
+| `undocumentedRoutes`           | `number` | Routes with no JSDoc                                                                        |
+| `partiallyDocumentedRoutes`    | `number` | Routes with JSDoc that is incomplete                                                        |
+| `coveragePercentage`           | `number` | Fully documented items / all items × 100, one decimal; `0` when there are no items          |
+| `functionCoverage`             | `number` | Same, functions only                                                                        |
+| `routeCoverage`                | `number` | Same, routes only                                                                           |
 
 `files[]` (files with at least one item): `fileName`, `filePath`,
 `totalItems`, `documentedItems`, `coveragePercentage`, `gaps`.
@@ -97,8 +102,10 @@ Returned by `analyzer.analyzeCoverage(apiData)` and printed by
 - A function is fully documented when its JSDoc has a non-empty description,
   a `@param` whose name matches each entry of `params`, and a `@returns` or
   `@return` tag. `@returns {void}`, `{undefined}` and `{never}` count.
+  With `acceptTypeScriptReturns`, a declared TypeScript return type counts as
+  the `@returns`.
 - A route is fully documented with a description and a `@param` for each path
-  parameter; `@returns` is optional.
+  parameter (`@param id` or `@param params.id`); `@returns` is optional.
 
 ### Generation result
 
@@ -146,10 +153,10 @@ for tests and may change between minor versions.
 
 ### analyzer
 
-| Export                                      | Stability | Description                                                       |
-| ------------------------------------------- | --------- | ----------------------------------------------------------------- |
-| `analyzeCoverage(apiData) → CoverageReport` | stable    | Non-array input returns an empty, zeroed report                   |
-| `checkRouteDocumentation(route) → Status`   | internal  | `{ isFullyDocumented, isPartiallyDocumented, missing, existing }` |
+| Export                                                | Stability | Description                                                                                                                   |
+| ----------------------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `analyzeCoverage(apiData, options?) → CoverageReport` | stable    | Non-array input returns an empty, zeroed report. `options`: `{ acceptTypeScriptReturns, exportedOnly }`, both default `false` |
+| `checkRouteDocumentation(route) → Status`             | internal  | `{ isFullyDocumented, isPartiallyDocumented, missing, existing }`                                                             |
 
 ## Formatter Registry
 
@@ -256,16 +263,21 @@ and continues with the defaults.
 
 The file's values are shallow-merged over the defaults.
 
-| Key              | Type       | Default                                                                                   | Meaning                                                                                                         | CLI override    |
-| ---------------- | ---------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | --------------- |
-| `excludePattern` | `string`   | `node_modules\|dist\|build\|\.cache\|coverage\|\.turbo\|\.nx\|\.next\|\.nuxt\|out\|\.git` | Regex of directory and file names to skip, matched against whole segments of the path relative to the scan root | `--exclude`     |
-| `serverUrl`      | `string`   | `http://localhost:3000`                                                                   | Base URL in curl examples (Markdown, HTML) and OpenAPI `servers`                                                | `--server-url`  |
-| `apiTitle`       | `string`   | `API Documentation`                                                                       | Title of the Markdown, HTML and OpenAPI output                                                                  | `--api-title`   |
-| `apiVersion`     | `string`   | `1.0.0`                                                                                   | `info.version` in OpenAPI and `meta.apiVersion` in JSON                                                         | `--api-version` |
-| `routeServers`   | `string[]` | `[]`                                                                                      | When non-empty, only calls on these identifiers (e.g. `app`, `router`) count as routes                          | none            |
+| Key                       | Type                   | Default                                                                                   | Meaning                                                                                                                                                                                                                                            | CLI override      |
+| ------------------------- | ---------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| `excludePattern`          | `string`               | `node_modules\|dist\|build\|\.cache\|coverage\|\.turbo\|\.nx\|\.next\|\.nuxt\|out\|\.git` | Regex of directory and file names to skip, matched against whole segments of the path relative to the scan root                                                                                                                                    | `--exclude`       |
+| `serverUrl`               | `string`               | `http://localhost:3000`                                                                   | Base URL in curl examples (Markdown, HTML) and OpenAPI `servers`                                                                                                                                                                                   | `--server-url`    |
+| `apiTitle`                | `string`               | `API Documentation`                                                                       | Title of the Markdown, HTML and OpenAPI output                                                                                                                                                                                                     | `--api-title`     |
+| `apiVersion`              | `string`               | `1.0.0`                                                                                   | `info.version` in OpenAPI and `meta.apiVersion` in JSON                                                                                                                                                                                            | `--api-version`   |
+| `routeServers`            | `string[]` or `string` | `[]`                                                                                      | When non-empty, only calls on these identifiers (e.g. `app`, `router`) count as routes. When empty, any object counts except names a file binds only to non-server values such as `new Map()`. A string is split on commas, like `--route-servers` | `--route-servers` |
+| `acceptTypeScriptReturns` | `boolean`              | `false`                                                                                   | In `audit`, count a declared TypeScript return type as a documented `@returns`                                                                                                                                                                     | none              |
+| `exportedOnly`            | `boolean`              | `false`                                                                                   | In `audit`, count only exported functions; routes always count                                                                                                                                                                                     | `--exported-only` |
 
-`audit` and `scan` accept `--exclude` but not the three metadata flags, which
-only affect `generate` output.
+`audit` and `scan` accept `--exclude` and `--route-servers` but not the three
+metadata flags, which only affect `generate` output.
+`--exported-only` applies to `audit` only. When no function or route is in
+scope, `audit` prints `Nothing to audit` and exits `0` instead of failing at
+0% coverage.
 
 ## Extensibility Guide
 
@@ -286,13 +298,14 @@ only affect `generate` output.
 
 ### Adding a route form
 
-1. In `src/parser.js`, route calls reach `handleRouteExpression(node, functions, routeServers)`
+1. In `src/parser/routes.js`, route calls reach `handleRouteExpression(node, functions, routeServers)`
    from the `CallExpression` case of `collectItems`. Add the new shape there
    (or a helper next to `handleRouteObject` and `findRouteChainRoot`).
 2. Emit routes only through `pushRoute(functions, method, path, line, group?, docLines?)`:
    pass a `group` when one call declares several routes, and `docLines` when a
    comment above the call should document them.
-3. Respect `isAllowedServer(serverNode, routeServers)`. New HTTP verbs go in
+3. Check the server object with the `isServer(node)` callback that
+   `collectItems` builds with `routeServerFilter(ast, routeServers)`. New HTTP verbs go in
    `HTTP_METHODS`; check `METHOD_SUCCESS_CODE` in `src/formatters/openapi.js`.
 4. Add cases to the `additional route forms` block of
    `tests/parser-regressions.test.js`, including one `parseFile` test for JSDoc
@@ -300,9 +313,9 @@ only affect `generate` output.
 
 ### Adding a detected function form
 
-1. Add a `case` to the switch in `collectItems` (`src/parser.js`), or extend
-   `handleAssignment`, `handleObjectMethods` or `handleClassDeclaration`.
-2. Emit items through `pushFunction(functions, fnNode, { name, line, exported, docLines?, className?, static?, methodKind? })`.
+1. Add a `case` to the switch in `collectItems` (`src/parser/items.js`), or
+   extend `handleAssignment`, `handleObjectMethods` or `handleClassDeclaration`.
+2. Emit items through `pushFunction(functions, fnNode, { name, line, exported, docLines?, className?, static?, methodKind? }, source)`.
 3. Decide scope: module-level-only forms should check
    `exports.moduleLevel.has(node)` (built by `collectExports`), and exported
    detection should go through `isExported(node, name)`.

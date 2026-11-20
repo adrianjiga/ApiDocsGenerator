@@ -40,3 +40,6 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+      - name: Audit documentation coverage of src
+        run: npm run audit:self

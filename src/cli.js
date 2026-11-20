@@ -32,6 +32,13 @@ async function resolveConfig(options) {
   if (options.apiTitle) config.apiTitle = options.apiTitle;
   if (options.apiVersion) config.apiVersion = options.apiVersion;
   if (options.exclude) config.excludePattern = options.exclude;
+  if (options.exportedOnly) config.exportedOnly = true;
+  if (options.routeServers) {
+    config.routeServers = options.routeServers
+      .split(',')
+      .map((name) => name.trim())
+      .filter(Boolean);
+  }
 
   return config;
 }
@@ -56,6 +63,10 @@ program
   .option('--api-title <title>', 'API title for documentation')
   .option('--api-version <version>', 'API version string')
   .option('--exclude <pattern>', 'Directory exclude regex pattern')
+  .option(
+    '--route-servers <names>',
+    'Comma-separated identifiers whose calls count as routes, e.g. app,router',
+  )
   .action(async (options) => {
     const sourceDir = path.resolve(options.dir);
     const outputDir = path.resolve(options.output);
@@ -79,6 +90,10 @@ program
   .description('Scan directory and show found APIs')
   .option('-c, --config <path>', 'Path to apidocs.config.js')
   .option('--exclude <pattern>', 'Directory exclude regex pattern')
+  .option(
+    '--route-servers <names>',
+    'Comma-separated identifiers whose calls count as routes, e.g. app,router',
+  )
   .action(async (directory, options) => {
     const dir = path.resolve(directory || '.');
     const config = await resolveConfig(options);
@@ -138,8 +153,16 @@ program
     '-o, --output <file>',
     'Output file for dashboard format (default: coverage-dashboard.html)',
   )
+  .option(
+    '--exported-only',
+    'Count only exported functions (and all routes) towards coverage',
+  )
   .option('-c, --config <path>', 'Path to apidocs.config.js')
   .option('--exclude <pattern>', 'Directory exclude regex pattern')
+  .option(
+    '--route-servers <names>',
+    'Comma-separated identifiers whose calls count as routes, e.g. app,router',
+  )
   .action(async (options) => {
     const sourceDir = path.resolve(options.dir);
     const threshold = parseInt(options.threshold, 10);
@@ -159,7 +182,10 @@ program
       process.exit(1);
     }
 
-    const result = analyzeCoverage(apiData);
+    const result = analyzeCoverage(apiData, {
+      acceptTypeScriptReturns: config.acceptTypeScriptReturns,
+      exportedOnly: config.exportedOnly,
+    });
 
     if (format === 'json') {
       const json = JSON.stringify(result, null, 2);
@@ -192,9 +218,16 @@ program
       process.exit(1);
     }
 
-    const coverage = result.summary.coveragePercentage;
+    const { totalFunctions, totalRoutes, coveragePercentage } = result.summary;
 
-    if (coverage < threshold) {
+    if (totalFunctions === 0 && totalRoutes === 0) {
+      console.error(
+        `Nothing to audit: no functions or routes in scope${config.exportedOnly ? ' (--exported-only counts exported functions and routes only)' : ''}.\n`,
+      );
+      return;
+    }
+
+    if (coveragePercentage < threshold) {
       process.exit(1);
     }
   });
@@ -210,6 +243,7 @@ program.action(() => {
  * Parse command-line arguments. Called by the bin entrypoint so the CLI runs
  * regardless of how it is invoked (installed globally, via npm exec, or by
  * running bin/api-docs-generator directly).
+ * @returns {Promise<void>}
  */
 async function run() {
   try {

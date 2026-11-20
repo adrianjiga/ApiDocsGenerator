@@ -1,13 +1,19 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   calcPercentage,
   cleanTagDescription,
   coverageLevel,
+  curlCommand,
+  describeExtras,
+  describeParams,
+  describeReturns,
   escapeHtml,
   getParamName,
   getParamTags,
   getReturnTags,
   githubSlug,
+  inlineLinks,
+  normalizeRouteServers,
   sanitizeHtmlId,
   stripControlChars,
   uniqueFileLabels,
@@ -322,5 +328,269 @@ describe('coverageLevel', () => {
   it('defaults to a threshold of 80', () => {
     expect(coverageLevel(80)).toBe('good');
     expect(coverageLevel(60)).toBe('warning');
+  });
+});
+
+describe('describeParams', () => {
+  const tag = (name, type, extra = {}) => ({
+    tag: 'param',
+    name,
+    type,
+    description: `- the ${name}`,
+    ...extra,
+  });
+
+  it('lists TypeScript parameters when there is no JSDoc', () => {
+    const item = {
+      jsdoc: null,
+      paramDetails: [{ name: 'a', optional: true, type: 'number' }],
+    };
+    expect(describeParams(item)).toEqual([
+      { name: 'a', optional: true, type: 'number', description: '' },
+    ]);
+  });
+
+  it('prefers the JSDoc type and falls back to the TypeScript type', () => {
+    const item = {
+      jsdoc: { tags: [tag('a', 'Foo'), tag('b', '')] },
+      paramDetails: [
+        { name: 'a', optional: false, type: 'string' },
+        { name: 'b', optional: false, type: 'number', defaultValue: '1' },
+      ],
+    };
+    expect(describeParams(item)).toEqual([
+      { name: 'a', type: 'Foo', description: 'the a', optional: false },
+      {
+        name: 'b',
+        type: 'number',
+        description: 'the b',
+        optional: false,
+        defaultValue: '1',
+      },
+    ]);
+  });
+
+  it('keeps nested tags and appends parameters no tag covers', () => {
+    const item = {
+      jsdoc: { tags: [tag('opts', 'Object'), tag('opts.limit', 'number')] },
+      paramDetails: [
+        { name: '{limit}', optional: false, type: '{ limit: number }' },
+        { name: 'cb', optional: true, type: '() => void' },
+      ],
+    };
+    expect(describeParams(item).map((p) => [p.name, p.type])).toEqual([
+      ['opts', 'Object'],
+      ['opts.limit', 'number'],
+      ['cb', '() => void'],
+    ]);
+  });
+
+  it('matches rest parameters by name without the dots', () => {
+    const item = {
+      jsdoc: { tags: [tag('args', '')] },
+      paramDetails: [{ name: '...args', optional: false, type: 'string[]' }],
+    };
+    expect(describeParams(item)).toHaveLength(1);
+    expect(describeParams(item)[0].type).toBe('string[]');
+  });
+});
+
+describe('describeParams – destructured parameters', () => {
+  it('does not repeat a destructured parameter after an untagged one', () => {
+    const tag = (name, type) => ({ tag: 'param', name, type, description: '' });
+    const item = {
+      jsdoc: {
+        tags: [
+          tag('name', 'string'),
+          tag('opts', 'Object'),
+          tag('opts.a', 'number'),
+        ],
+      },
+      paramDetails: [
+        { name: 'id', optional: false, type: 'number' },
+        { name: 'name', optional: false, type: 'string' },
+        { name: '{a}', optional: false, type: 'Opts' },
+      ],
+    };
+    expect(describeParams(item).map((p) => p.name)).toEqual([
+      'name',
+      'opts',
+      'opts.a',
+      'id',
+    ]);
+  });
+});
+
+describe('describeParams – malformed tags', () => {
+  it('skips @param tags without a usable name', () => {
+    const item = {
+      jsdoc: {
+        tags: [
+          { tag: 'param', name: '-', type: 'string', description: 'x' },
+          { tag: 'param', name: '', type: 'string', description: '' },
+          { tag: 'param', name: 'a', type: 'number', description: 'A' },
+        ],
+      },
+      paramDetails: [{ name: 'a', optional: false }],
+    };
+    expect(describeParams(item).map((p) => p.name)).toEqual(['a']);
+  });
+});
+
+describe('describeReturns', () => {
+  it('uses the TypeScript return type when there is no @returns', () => {
+    expect(describeReturns({ jsdoc: null, returnType: 'number' })).toEqual([
+      { type: 'number', description: '' },
+    ]);
+  });
+
+  it('fills a typeless @returns from the TypeScript return type', () => {
+    const item = {
+      jsdoc: { tags: [{ tag: 'returns', type: '', description: 'The sum' }] },
+      returnType: 'number',
+    };
+    expect(describeReturns(item)).toEqual([
+      { type: 'number', description: 'The sum' },
+    ]);
+  });
+
+  it('returns nothing without a tag or a type', () => {
+    expect(describeReturns({ jsdoc: null })).toEqual([]);
+  });
+});
+
+describe('curlCommand', () => {
+  it('passes the method with -X', () => {
+    expect(curlCommand('POST', 'http://h/a')).toBe("curl -X POST 'http://h/a'");
+  });
+
+  it('uses -I for HEAD, which has no response body', () => {
+    expect(curlCommand('HEAD', 'http://h/a')).toBe("curl -I 'http://h/a'");
+  });
+
+  it('sends a plain request for ALL', () => {
+    expect(curlCommand('ALL', 'http://h/a')).toBe("curl 'http://h/a'");
+  });
+
+  it('quotes the URL so shells leave ? and * alone', () => {
+    expect(curlCommand('GET', 'http://h/users/:id?')).toBe(
+      "curl -X GET 'http://h/users/:id?'",
+    );
+  });
+
+  it('escapes single quotes inside the URL', () => {
+    expect(curlCommand('GET', "http://h/it's")).toBe(
+      "curl -X GET 'http://h/it'\\''s'",
+    );
+  });
+});
+
+describe('describeExtras', () => {
+  const withTags = (tags) => ({ jsdoc: { description: 'x', tags } });
+
+  it('returns empty lists and no deprecation without tags', () => {
+    expect(describeExtras({ jsdoc: null })).toEqual({
+      throws: [],
+      see: [],
+      examples: [],
+    });
+  });
+
+  it('reports a deprecation with or without a message', () => {
+    const tag = (description) => ({ tag: 'deprecated', description });
+    expect(describeExtras(withTags([tag('Use b')])).deprecated).toBe('Use b');
+    expect(describeExtras(withTags([tag('')])).deprecated).toBe('');
+  });
+
+  it('collects @throws and @exception with optional types', () => {
+    const extras = describeExtras(
+      withTags([
+        { tag: 'throws', type: 'RangeError', description: '- When negative' },
+        { tag: 'exception', type: '', description: 'On failure' },
+      ]),
+    );
+    expect(extras.throws).toEqual([
+      { type: 'RangeError', description: 'When negative' },
+      { description: 'On failure' },
+    ]);
+  });
+
+  it('collects @see text and skips empty ones', () => {
+    const extras = describeExtras(
+      withTags([
+        { tag: 'see', description: 'sum' },
+        { tag: 'see', description: '' },
+      ]),
+    );
+    expect(extras.see).toEqual(['sum']);
+  });
+
+  it('splits an example caption from its code', () => {
+    const extras = describeExtras(
+      withTags([
+        { tag: 'example', description: '<caption>Basic</caption>\nrun();' },
+        { tag: 'example', description: 'other();' },
+        { tag: 'example', description: '<caption>Empty</caption>' },
+      ]),
+    );
+    expect(extras.examples).toEqual([
+      { caption: 'Basic', code: 'run();' },
+      { code: 'other();' },
+    ]);
+  });
+});
+
+describe('inlineLinks', () => {
+  it('splits {@link url|label} into a URL segment', () => {
+    expect(inlineLinks('{@link https://a.io|Docs} more')).toEqual([
+      { target: 'https://a.io', label: 'Docs', url: true },
+      { text: ' more' },
+    ]);
+  });
+
+  it('reads {@link target label} and bare {@link target}', () => {
+    expect(
+      inlineLinks('See {@link Foo#bar the bar} or {@linkcode sum}.'),
+    ).toEqual([
+      { text: 'See ' },
+      { target: 'Foo#bar', label: 'the bar', url: false },
+      { text: ' or ' },
+      { target: 'sum', label: 'sum', url: false },
+      { text: '.' },
+    ]);
+  });
+
+  it('does not treat other schemes as URLs', () => {
+    expect(inlineLinks('{@link javascript:alert(1)}')[0].url).toBe(false);
+  });
+
+  it('returns plain text as a single segment', () => {
+    expect(inlineLinks('plain')).toEqual([{ text: 'plain' }]);
+  });
+});
+
+describe('normalizeRouteServers', () => {
+  it('splits a comma-separated string like --route-servers', () => {
+    expect(normalizeRouteServers(' app, router,,')).toEqual(['app', 'router']);
+  });
+
+  it('trims array entries and drops non-strings', () => {
+    expect(normalizeRouteServers([' app ', 3, '', 'api'])).toEqual([
+      'app',
+      'api',
+    ]);
+  });
+
+  it('treats a missing value as no restriction', () => {
+    expect(normalizeRouteServers(undefined)).toEqual([]);
+  });
+
+  it('warns about and ignores other types', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(normalizeRouteServers({ app: true })).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('routeServers must be an array'),
+    );
+    warn.mockRestore();
   });
 });

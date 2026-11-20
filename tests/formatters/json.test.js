@@ -155,4 +155,29 @@ describe('generateJSON', () => {
     expect(parsed.files[0].fileName).toBe('app.js');
     expect(parsed.files[1].fileName).toBe('utils.js');
   });
+
+  it('includes TypeScript parameter details and return type', () => {
+    const data = [
+      {
+        file: '/src/a.ts',
+        fileName: 'a.ts',
+        functions: [
+          {
+            name: 'f',
+            params: ['a'],
+            paramDetails: [{ name: 'a', optional: false, type: 'string' }],
+            returnType: 'number',
+            line: 1,
+            jsdoc: null,
+          },
+        ],
+        routes: [],
+      },
+    ];
+    const [fn] = JSON.parse(generateJSON(data)).files[0].functions;
+    expect(fn.paramDetails).toEqual([
+      { name: 'a', optional: false, type: 'string' },
+    ]);
+    expect(fn.returnType).toBe('number');
+  });
 });

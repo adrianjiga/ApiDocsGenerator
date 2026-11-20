@@ -1,6 +1,62 @@
 import { describe, expect, it } from 'vitest';
 import { generateHTML } from '../../src/formatters/html.js';
-import { mockApiData } from '../fixtures.js';
+import { makeRoute, mockApiData } from '../fixtures.js';
+
+const typedApiData = [
+  {
+    file: '/src/a.ts',
+    fileName: 'a.ts',
+    functions: [
+      {
+        name: 'typed',
+        params: ['a', 'b'],
+        paramDetails: [
+          { name: 'a', optional: false, type: 'string' },
+          { name: 'b', optional: true, type: 'number', defaultValue: '1' },
+        ],
+        returnType: 'Promise<void>',
+        description: 'No description provided',
+        line: 1,
+        jsdoc: null,
+      },
+    ],
+    routes: [],
+  },
+];
+
+const taggedFn = (tags) => [
+  {
+    file: '/src/a.js',
+    fileName: 'a.js',
+    functions: [
+      {
+        name: 'divide',
+        params: ['a', 'b'],
+        description: 'Divide',
+        line: 1,
+        jsdoc: { description: 'Divide', tags },
+      },
+    ],
+    routes: [],
+  },
+];
+
+const taggedRoute = (tags) => [
+  {
+    file: '/src/a.js',
+    fileName: 'a.js',
+    functions: [],
+    routes: [
+      {
+        method: 'GET',
+        path: '/health',
+        params: [],
+        line: 1,
+        jsdoc: { description: 'Health', tags },
+      },
+    ],
+  },
+];
 
 describe('generateHTML', () => {
   it('returns valid HTML document', () => {
@@ -58,7 +114,9 @@ describe('generateHTML', () => {
 
   it('includes curl example for routes', () => {
     const html = generateHTML(mockApiData);
-    expect(html).toContain('curl -X GET http://localhost:3000/users/:id');
+    expect(html).toContain(
+      'curl -X GET &#039;http://localhost:3000/users/:id&#039;',
+    );
   });
 
   it('includes footer with generator name', () => {
@@ -246,7 +304,9 @@ describe('generateHTML', () => {
     const html = generateHTML(mockApiData, {
       serverUrl: 'https://api.example.com',
     });
-    expect(html).toContain('curl -X GET https://api.example.com/users/:id');
+    expect(html).toContain(
+      'curl -X GET &#039;https://api.example.com/users/:id&#039;',
+    );
     expect(html).not.toContain('http://localhost:3000');
   });
 
@@ -334,5 +394,110 @@ describe('generateHTML', () => {
     expect(html).toContain('id="a-b-js"');
     expect(html).toContain('id="a-b-js-2"');
     expect(html).toContain('href="#a-b-js-2"');
+  });
+
+  it('shows TypeScript types when there is no JSDoc', () => {
+    const out = generateHTML(typedApiData);
+    expect(out).toContain('<code>string</code>');
+    expect(out).toContain(
+      '<code>number</code> <span class="param-flag">optional</span>',
+    );
+    expect(out).toContain('<code>Promise&lt;void&gt;</code>');
+  });
+
+  it('writes a plain curl example for ALL routes', () => {
+    const html = generateHTML([
+      {
+        file: '/src/app.js',
+        fileName: 'app.js',
+        functions: [],
+        routes: [makeRoute('ALL', '/any', [])],
+      },
+    ]);
+    expect(html).toContain(
+      '<div class="code-block">curl &#039;http://localhost:3000/any&#039;</div>',
+    );
+  });
+
+  it('shows a deprecation notice', () => {
+    const html = generateHTML(
+      taggedFn([{ tag: 'deprecated', description: 'Use b' }]),
+    );
+    expect(html).toContain(
+      '<div class="deprecated"><strong>Deprecated</strong> Use b</div>',
+    );
+  });
+
+  it('links only http(s) targets and escapes the rest', () => {
+    const html = generateHTML(
+      taggedFn([
+        { tag: 'see', description: '{@link https://mdn.io?a=1&b=2|MDN}' },
+        { tag: 'see', description: '{@link javascript:alert(1) click}' },
+        { tag: 'see', description: '<b>raw</b>' },
+      ]),
+    );
+    expect(html).toContain('<a href="https://mdn.io?a=1&amp;b=2">MDN</a>');
+    expect(html).toContain('<code>click</code>');
+    expect(html).not.toContain('href="javascript:');
+    expect(html).toContain('&lt;b&gt;raw&lt;/b&gt;');
+  });
+
+  it('lists @throws with their types', () => {
+    const html = generateHTML(
+      taggedFn([
+        { tag: 'throws', type: 'RangeError', description: 'When b is 0' },
+      ]),
+    );
+    expect(html).toContain('<code>RangeError</code> — When b is 0');
+  });
+
+  it('uses an escaped @example in place of the usage example', () => {
+    const html = generateHTML(
+      taggedFn([
+        {
+          tag: 'example',
+          description: '<caption>Basic</caption>\nif (a < b) {\n  go();\n}',
+        },
+      ]),
+    );
+    expect(html).toContain('<div class="example-caption">Basic</div>');
+    expect(html).toContain(
+      '<div class="code-block">if (a &lt; b) {\n  go();\n}</div>',
+    );
+    expect(html).not.toContain('Usage Example');
+  });
+
+  it('uses a route @example in place of the example request', () => {
+    const html = generateHTML(
+      taggedRoute([{ tag: 'example', description: 'curl /health' }]),
+    );
+    expect(html).toContain('<div class="code-block">curl /health</div>');
+    expect(html).not.toContain('Example Request');
+  });
+
+  it('shows the path relative to the scanned directory', () => {
+    const out = generateHTML([
+      {
+        ...mockApiData[0],
+        file: '/abs/src/routes/users.js',
+        fileName: 'users.js',
+        relativePath: 'routes/users.js',
+      },
+    ]);
+    expect(out).toContain('<div class="file-path">📁 routes/users.js</div>');
+  });
+
+  it('defines a dark theme by default and a light one for light-mode readers', () => {
+    const html = generateHTML(mockApiData);
+    expect(html).toMatch(/:root \{\s*color-scheme: dark;/);
+    expect(html).toMatch(
+      /@media \(prefers-color-scheme: light\) \{\s*:root \{\s*color-scheme: light;/,
+    );
+  });
+
+  it('takes the page colours from the theme variables', () => {
+    const html = generateHTML(mockApiData);
+    expect(html).toContain('color: var(--text, #f8fafc);');
+    expect(html).toContain('background: var(--page-bg,');
   });
 });

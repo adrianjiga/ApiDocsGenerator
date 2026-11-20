@@ -372,11 +372,16 @@ describe('parameter matching', () => {
 
 describe('checkRouteDocumentation', () => {
   it('returns all missing when jsdoc is null', () => {
-    const route = makeRoute('GET', '/users', []);
+    const route = makeRoute('GET', '/users/:id', ['id']);
     const result = checkRouteDocumentation(route);
     expect(result.isFullyDocumented).toBe(false);
     expect(result.isPartiallyDocumented).toBe(false);
     expect(result.missing).toEqual(['description', 'params']);
+  });
+
+  it('does not list params as missing for an undocumented route without path params', () => {
+    const result = checkRouteDocumentation(makeRoute('GET', '/users', []));
+    expect(result.missing).toEqual(['description']);
   });
 
   it('detects missing @param for path param as partially documented', () => {
@@ -510,5 +515,232 @@ describe('analyzeCoverage – error scenarios', () => {
     expect(result.summary.coveragePercentage).toBe(0);
     expect(result.files).toEqual([]);
     expect(result.gaps).toEqual([]);
+  });
+});
+
+describe('acceptTypeScriptReturns', () => {
+  const typedFn = (jsdoc) => ({
+    ...makeFunction('f', ['a'], jsdoc),
+    returnType: 'number',
+  });
+  const describedJsdoc = {
+    description: 'Does f',
+    tags: [{ tag: 'param', name: 'a', type: 'string', description: 'The a' }],
+  };
+  const file = (fn) => [
+    { file: 'a.ts', fileName: 'a.ts', functions: [fn], routes: [] },
+  ];
+
+  it('requires @returns by default even with a TypeScript return type', () => {
+    const report = analyzeCoverage(file(typedFn(describedJsdoc)));
+    expect(report.gaps[0].missing).toEqual(['returns']);
+  });
+
+  it('counts a TypeScript return type as @returns when enabled', () => {
+    const report = analyzeCoverage(file(typedFn(describedJsdoc)), {
+      acceptTypeScriptReturns: true,
+    });
+    expect(report.summary.documentedFunctions).toBe(1);
+  });
+
+  it('drops returns from the gaps of an undocumented typed function', () => {
+    const report = analyzeCoverage(file(typedFn(null)), {
+      acceptTypeScriptReturns: true,
+    });
+    expect(report.gaps[0].missing).toEqual(['description', 'params']);
+  });
+
+  it('still requires @returns for an untyped function when enabled', () => {
+    const report = analyzeCoverage(
+      file(makeFunction('f', ['a'], describedJsdoc)),
+      { acceptTypeScriptReturns: true },
+    );
+    expect(report.gaps[0].missing).toEqual(['returns']);
+  });
+});
+
+describe('exportedOnly', () => {
+  const fn = (name, exported, jsdoc = null) => ({
+    ...makeFunction(name, [], jsdoc),
+    exported,
+  });
+  const data = [
+    {
+      file: 'a.js',
+      fileName: 'a.js',
+      functions: [
+        fn('publicFn', true, fullyDocumentedJsdoc([])),
+        fn('helper', false),
+      ],
+      routes: [makeRoute('GET', '/users', [])],
+    },
+    {
+      file: 'internal.js',
+      fileName: 'internal.js',
+      functions: [fn('onlyInternal', false)],
+      routes: [],
+    },
+  ];
+
+  it('counts every function by default', () => {
+    const report = analyzeCoverage(data);
+    expect(report.summary.totalFunctions).toBe(3);
+  });
+
+  it('leaves out functions that are not exported', () => {
+    const report = analyzeCoverage(data, { exportedOnly: true });
+    expect(report.summary.totalFunctions).toBe(1);
+    expect(report.summary.documentedFunctions).toBe(1);
+    expect(report.gaps.map((g) => g.name)).toEqual(['GET /users']);
+  });
+
+  it('still counts routes', () => {
+    const report = analyzeCoverage(data, { exportedOnly: true });
+    expect(report.summary.totalRoutes).toBe(1);
+  });
+
+  it('drops files left with no counted items', () => {
+    const report = analyzeCoverage(data, { exportedOnly: true });
+    expect(report.files.map((f) => f.fileName)).toEqual(['a.js']);
+  });
+});
+
+describe('per-kind summary counts', () => {
+  const partialJsdoc = { description: 'Has a description', tags: [] };
+  const data = [
+    {
+      file: 'a.js',
+      fileName: 'a.js',
+      functions: [
+        makeFunction('full', ['a'], fullyDocumentedJsdoc(['a'])),
+        makeFunction('partial', ['a'], partialJsdoc),
+        makeFunction('none', ['a'], null),
+      ],
+      routes: [
+        makeRoute('GET', '/a/:id', ['id'], partialJsdoc),
+        makeRoute('GET', '/b', [], null),
+        makeRoute('GET', '/c', [], null),
+      ],
+    },
+  ];
+
+  it('splits partial and undocumented counts by kind', () => {
+    const { summary } = analyzeCoverage(data);
+    expect(summary).toMatchObject({
+      documentedFunctions: 1,
+      partiallyDocumentedFunctions: 1,
+      undocumentedFunctions: 1,
+      documentedRoutes: 0,
+      partiallyDocumentedRoutes: 1,
+      undocumentedRoutes: 2,
+    });
+  });
+
+  it('keeps partiallyDocumented as the total of both kinds', () => {
+    expect(analyzeCoverage(data).summary.partiallyDocumented).toBe(2);
+  });
+
+  it('zeroes the per-kind counts for non-array input', () => {
+    expect(analyzeCoverage(null).summary).toMatchObject({
+      partiallyDocumentedFunctions: 0,
+      partiallyDocumentedRoutes: 0,
+      undocumentedRoutes: 0,
+    });
+  });
+});
+
+describe('undocumented items without parameters', () => {
+  it('lists only description and returns for a parameterless function', () => {
+    const report = analyzeCoverage([
+      {
+        file: 'a.js',
+        fileName: 'a.js',
+        functions: [makeFunction('init', [], null)],
+        routes: [],
+      },
+    ]);
+    expect(report.gaps[0].missing).toEqual(['description', 'returns']);
+  });
+
+  it('still lists params for an undocumented function that has some', () => {
+    const report = analyzeCoverage([
+      {
+        file: 'a.js',
+        fileName: 'a.js',
+        functions: [makeFunction('init', ['opts'], null)],
+        routes: [],
+      },
+    ]);
+    expect(report.gaps[0].missing).toEqual([
+      'description',
+      'params',
+      'returns',
+    ]);
+  });
+});
+
+describe('destructured parameters after undocumented ones', () => {
+  const tag = (name) => ({ tag: 'param', name, type: 'x', description: 'd' });
+  const fn = (params, names) =>
+    makeFunction('f', params, {
+      description: 'Does f',
+      tags: [
+        ...names.map(tag),
+        { tag: 'returns', type: 'x', description: 'r' },
+      ],
+    });
+  const gaps = (item) =>
+    analyzeCoverage([
+      { file: 'a.js', fileName: 'a.js', functions: [item], routes: [] },
+    ]).gaps;
+
+  it('pairs the options tag with the destructured parameter it follows', () => {
+    const item = fn(['id', 'name', '{a}'], ['name', 'opts', 'opts.a']);
+    expect(gaps(item)[0].missing).toEqual(['params']);
+  });
+
+  it('counts it documented once every named parameter has a tag', () => {
+    const item = fn(['id', 'name', '{a}'], ['id', 'name', 'opts', 'opts.a']);
+    expect(gaps(item)).toEqual([]);
+  });
+});
+
+describe('route path params documented as params.<name>', () => {
+  const routeWith = (names) =>
+    makeRoute('GET', '/users/:id', ['id'], {
+      description: 'Get a user',
+      tags: names.map((name) => ({
+        tag: 'param',
+        name,
+        type: 'string',
+        description: 'User id',
+      })),
+    });
+
+  it('accepts @param params.id for the path parameter id', () => {
+    expect(checkRouteDocumentation(routeWith(['params.id']))).toMatchObject({
+      isFullyDocumented: true,
+      missing: [],
+    });
+  });
+
+  it('still accepts the plain @param id', () => {
+    expect(checkRouteDocumentation(routeWith(['id'])).isFullyDocumented).toBe(
+      true,
+    );
+  });
+
+  it('does not accept params.<name> for function parameters', () => {
+    const fn = makeFunction('f', ['id'], {
+      description: 'Does f',
+      tags: [
+        { tag: 'param', name: 'params.id', type: 'string', description: 'x' },
+        { tag: 'returns', type: 'void', description: '' },
+      ],
+    });
+    const report = analyzeCoverage([
+      { file: 'a.js', fileName: 'a.js', functions: [fn], routes: [] },
+    ]);
+    expect(report.gaps[0].missing).toEqual(['params']);
   });
 });

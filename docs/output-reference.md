@@ -81,16 +81,34 @@ Get a single user by their ID
 **Example Request:**
 
 ```bash
-curl -X GET http://localhost:3000/users/:id
+curl -X GET 'http://localhost:3000/users/:id'
 ```
 ````
 
+- The `**File:**` line (and the 📁 line in `index.html`) is the path relative
+  to the scanned directory, e.g. `routes/users.js`.
 - A function without a JSDoc block gets `**Description:** No description
-  provided` and a `**Parameters:**` line listing its parameter names instead of
-  the description, parameter and returns blocks.
+  provided`. Its parameters and TypeScript return type are still listed, or
+  `**Parameters:** none` when it has no parameters.
+- A parameter's type comes from its `@param` tag, falling back to the
+  TypeScript annotation and then `any`. Parameters no `@param` covers are
+  listed after the tagged ones. Optional parameters and defaults are marked,
+  e.g. ``- `b` (`number`, optional, default `1`)``.
+- `@deprecated` adds a `> **Deprecated:** <message>` line under the line
+  number. `@throws` (or `@exception`) and `@see` get **Throws:** and **See:**
+  lists after **Returns:**.
+- An inline `{@link https://…|label}` becomes a Markdown link. A link to
+  anything other than an `http(s)` URL, such as `{@link sum}`, is shown as
+  code.
+- A function's or route's own `@example` blocks replace the generated
+  **Usage Example** or **Example Request**, under **Example:** (or
+  **Examples:**). Line breaks and indentation are kept, and a leading
+  `<caption>…</caption>` is shown in italics above the code. Function examples
+  are fenced as `javascript`; route examples have no language.
 - The `curl` example uses `serverUrl` from the config (default
   `http://localhost:3000`) and the route path as written, with `:param`
-  placeholders left in.
+  placeholders left in, in single quotes so shells such as zsh do not treat
+  `?` or `*` in the path as a glob. `HEAD` routes use `curl -I`.
 - TOC anchors follow GitHub's heading rules, including the `-1`, `-2` suffixes
   GitHub adds to repeated headings.
 
@@ -137,6 +155,11 @@ Section ids are the file label with non-word characters turned into `-`
 (`sample-app.js` becomes `sample-app-js`); repeated ids get `-2`, `-3`. All text
 taken from source code is HTML-escaped.
 
+The page follows the reader's `prefers-color-scheme`: dark by default, light
+when the system or browser asks for it. Colours are CSS variables on `:root`
+(`--text`, `--surface-1`, `--accent`, `--link`…), so a stylesheet injected
+after generation can retheme the page. The coverage dashboard stays dark.
+
 ## api.json
 
 A `meta` block and one entry per scanned file, including files with no
@@ -147,7 +170,7 @@ functions or routes.
   "meta": {
     "generated": "<timestamp>",
     "tool": "api-docs-generator",
-    "toolVersion": "0.1.0",
+    "toolVersion": "0.2.0",
     "apiVersion": "1.0.0"
   },
   "files": [
@@ -158,6 +181,10 @@ functions or routes.
         {
           "name": "sum",
           "params": ["a", "b"],
+          "paramDetails": [
+            { "name": "a", "optional": false },
+            { "name": "b", "optional": false }
+          ],
           "description": "Calculate the sum of two numbers",
           "line": 11,
           "async": false,
@@ -208,7 +235,9 @@ functions or routes.
 | `jsdoc.tags`                          | `comment-parser` tag objects as-is, including `source` and `problems`                                             |
 
 `@param` descriptions keep the leading `- ` from the source; the Markdown and
-HTML output strip it.
+HTML output strip it. The text of `@example`, `@deprecated` and `@see` tags is
+kept whole in `description`, with `type` and `name` empty. `@example`
+descriptions keep their line breaks and indentation.
 
 ## openapi.yaml
 
@@ -235,33 +264,53 @@ paths:
       operationId: get-users-id
       tags:
         - sample-app.js
-      responses:
-        "200":
-          description: Successful response
       parameters:
         - name: id
           in: path
           required: true
+          description: The user ID from the URL path
           schema:
             type: string
-    delete:
-      summary: Delete a user by ID
-      operationId: delete-users-id
-      tags:
-        - sample-app.js
       responses:
-        "204":
-          description: No content
+        "200":
+          description: User object containing id and name
 ```
 
 - `info.title` and `info.version` come from `apiTitle` and `apiVersion`;
   `servers[0].url` from `serverUrl`.
-- `:id` in Express paths becomes `{id}`.
+- `:id` in Express paths becomes `{id}`; a regex constraint such as
+  `:id(\d+)` is dropped. OpenAPI has no optional path segments, so an
+  optional parameter (`/users/:id?`, or `/users{/:id}` in Express 5) produces
+  one path without it and one with it.
+- Paths that differ only in parameter names, such as `/users/:id` and
+  `/users/:userId`, are the same path to OpenAPI. They are merged under the
+  first spelling, and each route's `@param` docs still apply to its own
+  parameter. From several optional parameters, the path with one of them uses
+  the first, as Express does: `/a/:x?/:y?` gives `/a`, `/a/{x}` and
+  `/a/{x}/{y}`.
 - `summary` is the route's JSDoc description, or `GET /users/{id}` without one.
-- Success responses: `201 Resource created` for `post`, `204 No content` for
-  `delete`, `200 Successful response` otherwise. No request bodies or response
-  schemas are generated.
-- There is one tag per source file name. If the same path and method are
+- A path parameter's `description` and `schema` type come from its `@param`
+  tag (`id` or `params.id`); the type defaults to `string`.
+- `@param` tags named `query.<name>` become query parameters, required unless
+  written in brackets: `@param {number} [query.limit=10] - Max results`.
+- `@param body` and `@param body.<field>` tags become a JSON `requestBody` on
+  `post`, `put` and `patch` operations; OpenAPI 3.0 does not define one for
+  `get`, `head`, `delete` or `options`.
+  Fields become object properties; the ones not in brackets are `required`.
+- JSDoc types map to schemas: `string`, `number`, `integer`, `boolean`,
+  `object` and arrays of them (`string[]`, `Array<number>`). Other types, such
+  as `User`, give an empty schema that accepts any value.
+- Success responses: `201` for `post`, `204` for `delete`, `200` otherwise.
+  A `delete` route whose `@returns` has a non-void type gets `200`. The
+  response `description` is the `@returns` description, or `Resource created`,
+  `No content` or `Successful response`. No response schemas are generated.
+- `@deprecated` sets `deprecated: true`.
+- An `all` route (`app.all('/proxy')`) becomes one operation per method:
+  `get`, `post`, `put`, `patch`, `delete`, `head` and `options`. An explicit
+  route for the same path and method takes precedence, wherever it appears.
+- There is one tag per source file, named like the file's Markdown heading:
+  the file name, with its directory added when two files share a name
+  (`users/index.js`, `orders/index.js`). If the same path and method are
   declared twice, only the first one is kept.
 
 ## GENERATION_REPORT.md
@@ -344,8 +393,11 @@ file with no gaps shows `All items documented`; a run with no gaps ends with
     "documentedFunctions": 1,
     "undocumentedFunctions": 1,
     "partiallyDocumented": 1,
+    "partiallyDocumentedFunctions": 1,
     "totalRoutes": 2,
     "documentedRoutes": 1,
+    "undocumentedRoutes": 1,
+    "partiallyDocumentedRoutes": 0,
     "coveragePercentage": 40,
     "functionCoverage": 33.3,
     "routeCoverage": 50
@@ -380,16 +432,17 @@ file with no gaps shows `All items documented`; a run with no gaps ends with
 }
 ```
 
-| Field                           | Meaning                                                                                                        |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `summary.coveragePercentage`    | Fully documented items / all items, one decimal; the value `--threshold` is compared with                      |
-| `summary.partiallyDocumented`   | Functions and routes that have a JSDoc block but are missing something                                         |
-| `summary.undocumentedFunctions` | Functions with no JSDoc block (routes are not counted here)                                                    |
-| `files[]`                       | One entry per file that has at least one item, with that file's gaps                                           |
-| `gaps[].type`                   | `function` or `route`; for a route, `name` is `METHOD /path`                                                   |
-| `gaps[].missing`                | Any of `description`, `params`, `returns` (`returns` never for routes)                                         |
-| `gaps[].existing`               | What the JSDoc block does have; `existing.voidReturn` is set for `@returns {void}`, `{undefined}` or `{never}` |
-| `filePath`                      | Path relative to the scanned directory                                                                         |
+| Field                                                                       | Meaning                                                                                                        |
+| --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `summary.coveragePercentage`                                                | Fully documented items / all items, one decimal; the value `--threshold` is compared with                      |
+| `summary.partiallyDocumented`                                               | Functions and routes that have a JSDoc block but are missing something                                         |
+| `summary.partiallyDocumentedFunctions`, `summary.partiallyDocumentedRoutes` | The same, per kind                                                                                             |
+| `summary.undocumentedFunctions`, `summary.undocumentedRoutes`               | Functions or routes with no JSDoc block                                                                        |
+| `files[]`                                                                   | One entry per file that has at least one item, with that file's gaps                                           |
+| `gaps[].type`                                                               | `function` or `route`; for a route, `name` is `METHOD /path`                                                   |
+| `gaps[].missing`                                                            | Any of `description`, `params`, `returns` (`returns` never for routes)                                         |
+| `gaps[].existing`                                                           | What the JSDoc block does have; `existing.voidReturn` is set for `@returns {void}`, `{undefined}` or `{never}` |
+| `filePath`                                                                  | Path relative to the scanned directory                                                                         |
 
 Without `--output`, the JSON is printed to stdout with nothing else around it,
 so it can be piped or redirected. With `--output <file>` it is written to that
