@@ -1,12 +1,25 @@
 import {
-  cleanTagDescription,
+  describeParams,
+  describeReturns,
   escapeHtml,
-  getParamTags,
-  getReturnTags,
   sanitizeHtmlId,
   uniqueFileLabels,
 } from '../utils.js';
 import { BASE_CSS } from './shared-styles.js';
+
+/**
+ * Type, optionality and default of a parameter, as shown after its name
+ * @param {Object} param - Parameter from describeParams
+ * @returns {string} HTML fragment
+ */
+function paramMeta(param) {
+  let meta = `<code>${escapeHtml(param.type || 'any')}</code>`;
+  if (param.optional) meta += ' <span class="param-flag">optional</span>';
+  if (param.defaultValue !== undefined) {
+    meta += ` <span class="param-flag">default</span> <code>${escapeHtml(param.defaultValue)}</code>`;
+  }
+  return meta;
+}
 
 /**
  * Assign a unique HTML id to each file section, suffixing repeats with -2, -3…
@@ -227,6 +240,13 @@ function generateHTML(apiData, config = {}) {
       font-family: 'Courier New', monospace;
     }
 
+    .param-flag {
+      color: #94a3b8;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
     .method-badge {
       display: inline-block;
       padding: 0.375rem 0.75rem;
@@ -318,32 +338,26 @@ function generateHTML(apiData, config = {}) {
           <h4>${escapeHtml(fn.name)}(${fn.params.map((p) => escapeHtml(p)).join(', ')})</h4>
           <div class="meta">📍 Line ${fn.line}</div>`;
 
-        if (fn.jsdoc) {
-          html += `<div class="description">${escapeHtml(fn.jsdoc.description)}</div>`;
+        html += `<div class="description">${escapeHtml(fn.jsdoc ? fn.jsdoc.description : fn.description)}</div>`;
 
-          if (fn.jsdoc.tags && fn.jsdoc.tags.length > 0) {
-            const params = getParamTags(fn.jsdoc.tags);
-            if (params.length > 0) {
-              html += `<div class="params">
+        const params = describeParams(fn);
+        if (params.length > 0) {
+          html += `<div class="params">
                 <h5>📥 Parameters</h5>`;
-              params.forEach((param) => {
-                html += `<div class="param-item"><span class="param-name">${escapeHtml(param.name)}</span> <code>${escapeHtml(param.type || 'any')}</code> — ${escapeHtml(cleanTagDescription(param.description))}</div>`;
-              });
-              html += `</div>`;
-            }
+          params.forEach((param) => {
+            html += `<div class="param-item"><span class="param-name">${escapeHtml(param.name)}</span> ${paramMeta(param)}${param.description ? ` — ${escapeHtml(param.description)}` : ''}</div>`;
+          });
+          html += `</div>`;
+        }
 
-            const returns = getReturnTags(fn.jsdoc.tags);
-            if (returns.length > 0) {
-              html += `<div class="returns">
+        const returns = describeReturns(fn);
+        if (returns.length > 0) {
+          html += `<div class="returns">
                 <h5>📤 Returns</h5>`;
-              returns.forEach((ret) => {
-                html += `<div class="param-item"><code>${escapeHtml(ret.type || 'any')}</code> — ${escapeHtml(cleanTagDescription(ret.description))}</div>`;
-              });
-              html += `</div>`;
-            }
-          }
-        } else {
-          html += `<div class="description">${escapeHtml(fn.description)}</div>`;
+          returns.forEach((ret) => {
+            html += `<div class="param-item"><code>${escapeHtml(ret.type || 'any')}</code>${ret.description ? ` — ${escapeHtml(ret.description)}` : ''}</div>`;
+          });
+          html += `</div>`;
         }
 
         html += `

@@ -22,6 +22,8 @@ function generateJSON(apiData, config = {}) {
       functions: file.functions.map((fn) => ({
         name: fn.name,
         params: fn.params,
+        paramDetails: fn.paramDetails ?? [],
+        ...(fn.returnType && { returnType: fn.returnType }),
         description: fn.description,
         line: fn.line,
         async: fn.async || false,

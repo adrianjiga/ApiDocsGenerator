@@ -2,6 +2,28 @@ import { describe, expect, it } from 'vitest';
 import { generateHTML } from '../../src/formatters/html.js';
 import { mockApiData } from '../fixtures.js';
 
+const typedApiData = [
+  {
+    file: '/src/a.ts',
+    fileName: 'a.ts',
+    functions: [
+      {
+        name: 'typed',
+        params: ['a', 'b'],
+        paramDetails: [
+          { name: 'a', optional: false, type: 'string' },
+          { name: 'b', optional: true, type: 'number', defaultValue: '1' },
+        ],
+        returnType: 'Promise<void>',
+        description: 'No description provided',
+        line: 1,
+        jsdoc: null,
+      },
+    ],
+    routes: [],
+  },
+];
+
 describe('generateHTML', () => {
   it('returns valid HTML document', () => {
     const html = generateHTML(mockApiData);
@@ -334,5 +356,14 @@ describe('generateHTML', () => {
     expect(html).toContain('id="a-b-js"');
     expect(html).toContain('id="a-b-js-2"');
     expect(html).toContain('href="#a-b-js-2"');
+  });
+
+  it('shows TypeScript types when there is no JSDoc', () => {
+    const out = generateHTML(typedApiData);
+    expect(out).toContain('<code>string</code>');
+    expect(out).toContain(
+      '<code>number</code> <span class="param-flag">optional</span>',
+    );
+    expect(out).toContain('<code>Promise&lt;void&gt;</code>');
   });
 });

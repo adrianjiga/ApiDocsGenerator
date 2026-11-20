@@ -119,6 +119,64 @@ function isThisParam(param) {
 }
 
 /**
+ * Parameters to document for an item: its JSDoc @param tags, with the type,
+ * optionality and default filled in from the TypeScript signature where the
+ * tag leaves them out, followed by signature parameters no tag covers
+ * @param {Object} item - Function or route with jsdoc and optional paramDetails
+ * @returns {Array<{name: string, type?: string, description: string, optional: boolean, defaultValue?: string}>} Parameters in display order
+ */
+function describeParams(item) {
+  const tags = getParamTags(item.jsdoc?.tags);
+  const details = item.paramDetails ?? [];
+  const plain = (name) => (name.startsWith('...') ? name.slice(3) : name);
+  const byName = new Map(details.map((d) => [plain(d.name), d]));
+  const topLevelTags = tags.filter((tag) => !tag.name?.includes('.'));
+  const used = new Set();
+
+  const described = tags.map((tag) => {
+    const detail = !tag.name?.includes('.')
+      ? (byName.get(tag.name) ??
+        details.find((d, i) => /^[{[]/.test(d.name) && topLevelTags[i] === tag))
+      : undefined;
+    if (detail) used.add(detail);
+    const defaultValue = tag.default ?? detail?.defaultValue;
+    return {
+      name: tag.name,
+      ...((tag.type || detail?.type) && { type: tag.type || detail.type }),
+      description: cleanTagDescription(tag.description),
+      optional: !!tag.optional || !!detail?.optional,
+      ...(defaultValue !== undefined && { defaultValue }),
+    };
+  });
+
+  for (const detail of details) {
+    if (used.has(detail)) continue;
+    described.push({ ...detail, description: '' });
+  }
+  return described;
+}
+
+/**
+ * Return values to document for an item: its JSDoc @returns tags, with the
+ * type filled in from the TypeScript return type where a tag leaves it out,
+ * or the TypeScript return type alone when there is no tag
+ * @param {Object} item - Function with jsdoc and optional returnType
+ * @returns {Array<{type?: string, description: string}>} Return values
+ */
+function describeReturns(item) {
+  const tags = getReturnTags(item.jsdoc?.tags);
+  if (tags.length === 0) {
+    return item.returnType ? [{ type: item.returnType, description: '' }] : [];
+  }
+  return tags.map((tag) => ({
+    ...((tag.type || item.returnType) && {
+      type: tag.type || item.returnType,
+    }),
+    description: cleanTagDescription(tag.description),
+  }));
+}
+
+/**
  * Escape HTML special characters
  * @param {string} text - Text to escape
  * @returns {string} Escaped text
@@ -268,6 +326,8 @@ export {
   coverageLevel,
   DEFAULT_COVERAGE_THRESHOLD,
   DEFAULT_EXCLUDE_PATTERN,
+  describeParams,
+  describeReturns,
   escapeHtml,
   getParamDetails,
   getParamName,

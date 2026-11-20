@@ -1,10 +1,23 @@
 import {
-  cleanTagDescription,
-  getParamTags,
-  getReturnTags,
+  describeParams,
+  describeReturns,
   githubSlug,
   uniqueFileLabels,
 } from '../utils.js';
+
+/**
+ * Type, optionality and default of a parameter, as shown after its name
+ * @param {Object} param - Parameter from describeParams
+ * @returns {string} e.g. "`number`, optional, default `1`"
+ */
+function paramMeta(param) {
+  const parts = [`\`${param.type || 'any'}\``];
+  if (param.optional) parts.push('optional');
+  if (param.defaultValue !== undefined) {
+    parts.push(`default \`${param.defaultValue}\``);
+  }
+  return parts.join(', ');
+}
 
 /**
  * Compute the anchors GitHub gives a document's headings, in order. Repeated
@@ -58,31 +71,30 @@ function generateMarkdown(apiData, config = {}) {
 
         if (fn.jsdoc) {
           md += `${fn.jsdoc.description}\n\n`;
-
-          // Parameters
-          if (fn.jsdoc.tags && fn.jsdoc.tags.length > 0) {
-            const params = getParamTags(fn.jsdoc.tags);
-            if (params.length > 0) {
-              md += '**Parameters:**\n\n';
-              params.forEach((param) => {
-                md += `- \`${param.name}\` (\`${param.type || 'any'}\`): ${cleanTagDescription(param.description)}\n`;
-              });
-              md += '\n';
-            }
-
-            // Returns
-            const returns = getReturnTags(fn.jsdoc.tags);
-            if (returns.length > 0) {
-              md += '**Returns:**\n\n';
-              returns.forEach((ret) => {
-                md += `- \`${ret.type || 'any'}\`: ${cleanTagDescription(ret.description)}\n`;
-              });
-              md += '\n';
-            }
-          }
         } else {
           md += `**Description:** ${fn.description}\n\n`;
-          md += `**Parameters:** ${fn.params.join(', ') || 'none'}\n\n`;
+        }
+
+        const params = describeParams(fn);
+        if (params.length > 0) {
+          md += '**Parameters:**\n\n';
+          params.forEach((param) => {
+            md += `- \`${param.name}\` (${paramMeta(param)})`;
+            md += param.description ? `: ${param.description}\n` : '\n';
+          });
+          md += '\n';
+        } else if (!fn.jsdoc) {
+          md += '**Parameters:** none\n\n';
+        }
+
+        const returns = describeReturns(fn);
+        if (returns.length > 0) {
+          md += '**Returns:**\n\n';
+          returns.forEach((ret) => {
+            md += `- \`${ret.type || 'any'}\``;
+            md += ret.description ? `: ${ret.description}\n` : '\n';
+          });
+          md += '\n';
         }
 
         md += '**Usage Example:**\n\n';

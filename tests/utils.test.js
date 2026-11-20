@@ -3,6 +3,8 @@ import {
   calcPercentage,
   cleanTagDescription,
   coverageLevel,
+  describeParams,
+  describeReturns,
   escapeHtml,
   getParamName,
   getParamTags,
@@ -322,5 +324,91 @@ describe('coverageLevel', () => {
   it('defaults to a threshold of 80', () => {
     expect(coverageLevel(80)).toBe('good');
     expect(coverageLevel(60)).toBe('warning');
+  });
+});
+
+describe('describeParams', () => {
+  const tag = (name, type, extra = {}) => ({
+    tag: 'param',
+    name,
+    type,
+    description: `- the ${name}`,
+    ...extra,
+  });
+
+  it('lists TypeScript parameters when there is no JSDoc', () => {
+    const item = {
+      jsdoc: null,
+      paramDetails: [{ name: 'a', optional: true, type: 'number' }],
+    };
+    expect(describeParams(item)).toEqual([
+      { name: 'a', optional: true, type: 'number', description: '' },
+    ]);
+  });
+
+  it('prefers the JSDoc type and falls back to the TypeScript type', () => {
+    const item = {
+      jsdoc: { tags: [tag('a', 'Foo'), tag('b', '')] },
+      paramDetails: [
+        { name: 'a', optional: false, type: 'string' },
+        { name: 'b', optional: false, type: 'number', defaultValue: '1' },
+      ],
+    };
+    expect(describeParams(item)).toEqual([
+      { name: 'a', type: 'Foo', description: 'the a', optional: false },
+      {
+        name: 'b',
+        type: 'number',
+        description: 'the b',
+        optional: false,
+        defaultValue: '1',
+      },
+    ]);
+  });
+
+  it('keeps nested tags and appends parameters no tag covers', () => {
+    const item = {
+      jsdoc: { tags: [tag('opts', 'Object'), tag('opts.limit', 'number')] },
+      paramDetails: [
+        { name: '{limit}', optional: false, type: '{ limit: number }' },
+        { name: 'cb', optional: true, type: '() => void' },
+      ],
+    };
+    expect(describeParams(item).map((p) => [p.name, p.type])).toEqual([
+      ['opts', 'Object'],
+      ['opts.limit', 'number'],
+      ['cb', '() => void'],
+    ]);
+  });
+
+  it('matches rest parameters by name without the dots', () => {
+    const item = {
+      jsdoc: { tags: [tag('args', '')] },
+      paramDetails: [{ name: '...args', optional: false, type: 'string[]' }],
+    };
+    expect(describeParams(item)).toHaveLength(1);
+    expect(describeParams(item)[0].type).toBe('string[]');
+  });
+});
+
+describe('describeReturns', () => {
+  it('uses the TypeScript return type when there is no @returns', () => {
+    expect(describeReturns({ jsdoc: null, returnType: 'number' })).toEqual([
+      { type: 'number', description: '' },
+    ]);
+  });
+
+  it('fills a typeless @returns from the TypeScript return type', () => {
+    const item = {
+      jsdoc: { tags: [{ tag: 'returns', type: '', description: 'The sum' }] },
+      returnType: 'number',
+    };
+    expect(describeReturns(item)).toEqual([
+      { type: 'number', description: 'The sum' },
+    ]);
+  });
+
+  it('returns nothing without a tag or a type', () => {
+    expect(describeReturns({ jsdoc: null })).toEqual([]);
   });
 });

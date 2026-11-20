@@ -2,6 +2,28 @@ import { describe, expect, it } from 'vitest';
 import { generateMarkdown } from '../../src/formatters/markdown.js';
 import { mockApiData } from '../fixtures.js';
 
+const typedApiData = [
+  {
+    file: '/src/a.ts',
+    fileName: 'a.ts',
+    functions: [
+      {
+        name: 'typed',
+        params: ['a', 'b'],
+        paramDetails: [
+          { name: 'a', optional: false, type: 'string' },
+          { name: 'b', optional: true, type: 'number', defaultValue: '1' },
+        ],
+        returnType: 'Promise<void>',
+        description: 'No description provided',
+        line: 1,
+        jsdoc: null,
+      },
+    ],
+    routes: [],
+  },
+];
+
 describe('generateMarkdown', () => {
   it('includes a title header', () => {
     const md = generateMarkdown(mockApiData);
@@ -286,5 +308,12 @@ describe('generateMarkdown', () => {
     const md = generateMarkdown(data);
     expect(md).toContain('[ab.js](#abjs)');
     expect(md).toContain('[a.b.js](#abjs-1)');
+  });
+
+  it('shows TypeScript types when there is no JSDoc', () => {
+    const out = generateMarkdown(typedApiData);
+    expect(out).toContain('- `a` (`string`)\n');
+    expect(out).toContain('- `b` (`number`, optional, default `1`)\n');
+    expect(out).toContain('- `Promise<void>`\n');
   });
 });
