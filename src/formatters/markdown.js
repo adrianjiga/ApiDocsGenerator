@@ -1,10 +1,97 @@
 import {
   curlCommand,
+  describeExtras,
   describeParams,
   describeReturns,
   githubSlug,
+  inlineLinks,
   uniqueFileLabels,
 } from '../utils.js';
+
+/**
+ * Render tag text with its inline {@link} references as Markdown links, or
+ * as code when the target is not a URL
+ * @param {string} text - Tag text
+ * @returns {string} Markdown text
+ */
+function linkText(text) {
+  return inlineLinks(text)
+    .map((segment) => {
+      if ('text' in segment) return segment.text;
+      return segment.url
+        ? `[${segment.label}](${segment.target})`
+        : `\`${segment.label}\``;
+    })
+    .join('');
+}
+
+/**
+ * Fenced code block whose fence is longer than any backtick run in the code
+ * @param {string} code - Code to fence
+ * @param {string} language - Info string after the opening fence
+ * @returns {string} Markdown code block
+ */
+function codeBlock(code, language) {
+  const longestRun = Math.max(
+    0,
+    ...Array.from(code.matchAll(/`+/g), (m) => m[0].length),
+  );
+  const fence = '`'.repeat(Math.max(3, longestRun + 1));
+  return `${fence}${language}\n${code}\n${fence}\n\n`;
+}
+
+/**
+ * Deprecation notice for an item, or nothing when it is not deprecated
+ * @param {Object} extras - Result of describeExtras
+ * @returns {string} Markdown blockquote
+ */
+function deprecatedNotice(extras) {
+  if (extras.deprecated === undefined) return '';
+  return extras.deprecated
+    ? `> **Deprecated:** ${linkText(extras.deprecated)}\n\n`
+    : '> **Deprecated**\n\n';
+}
+
+/**
+ * Throws and See also sections of an item
+ * @param {Object} extras - Result of describeExtras
+ * @returns {string} Markdown sections, empty when there is nothing to show
+ */
+function throwsAndSee(extras) {
+  let md = '';
+  if (extras.throws.length > 0) {
+    md += '**Throws:**\n\n';
+    for (const t of extras.throws) {
+      const type = t.type ? `\`${t.type}\`` : '';
+      const separator = type && t.description ? ': ' : '';
+      md += `- ${type}${separator}${linkText(t.description)}\n`;
+    }
+    md += '\n';
+  }
+  if (extras.see.length > 0) {
+    md += '**See:**\n\n';
+    for (const see of extras.see) md += `- ${linkText(see)}\n`;
+    md += '\n';
+  }
+  return md;
+}
+
+/**
+ * The item's own @example blocks
+ * @param {Object} extras - Result of describeExtras
+ * @param {string} language - Info string for the code fences
+ * @returns {string} Markdown section, empty when there are no examples
+ */
+function examplesSection(extras, language) {
+  if (extras.examples.length === 0) return '';
+  let md =
+    extras.examples.length > 1 ? '**Examples:**\n\n' : '**Example:**\n\n';
+  for (const example of extras.examples) {
+    if (example.caption) md += `_${example.caption}_\n\n`;
+    md += codeBlock(example.code, language);
+  }
+  return md;
+}
 
 /**
  * Type, optionality and default of a parameter, as shown after its name
@@ -71,6 +158,9 @@ function generateMarkdown(apiData, config = {}) {
         md += heading(4, `\`${fn.name}(${fn.params.join(', ')})\``);
         md += `**Line:** ${fn.line}\n\n`;
 
+        const extras = describeExtras(fn);
+        md += deprecatedNotice(extras);
+
         if (fn.jsdoc) {
           md += `${fn.jsdoc.description}\n\n`;
         } else {
@@ -99,10 +189,15 @@ function generateMarkdown(apiData, config = {}) {
           md += '\n';
         }
 
-        md += '**Usage Example:**\n\n';
-        md += '```javascript\n';
-        md += `${fn.name}(${fn.params.join(', ')});\n`;
-        md += '```\n\n';
+        md += throwsAndSee(extras);
+
+        const examples = examplesSection(extras, 'javascript');
+        if (examples) {
+          md += examples;
+        } else {
+          md += '**Usage Example:**\n\n';
+          md += codeBlock(`${fn.name}(${fn.params.join(', ')});`, 'javascript');
+        }
       });
     }
 
@@ -114,6 +209,9 @@ function generateMarkdown(apiData, config = {}) {
         md += heading(4, `\`${route.method} ${route.path}\``);
         md += `**Line:** ${route.line}\n\n`;
 
+        const extras = describeExtras(route);
+        md += deprecatedNotice(extras);
+
         if (route.jsdoc?.description) {
           md += `${route.jsdoc.description}\n\n`;
         }
@@ -122,10 +220,21 @@ function generateMarkdown(apiData, config = {}) {
           md += `**Route Parameters:** ${route.params.join(', ')}\n\n`;
         }
 
-        md += '**Example Request:**\n\n';
-        md += '```bash\n';
-        md += `${curlCommand(route.method, `${config.serverUrl || 'http://localhost:3000'}${route.path}`)}\n`;
-        md += '```\n\n';
+        md += throwsAndSee(extras);
+
+        const examples = examplesSection(extras, '');
+        if (examples) {
+          md += examples;
+        } else {
+          md += '**Example Request:**\n\n';
+          md += codeBlock(
+            curlCommand(
+              route.method,
+              `${config.serverUrl || 'http://localhost:3000'}${route.path}`,
+            ),
+            'bash',
+          );
+        }
       });
     }
   });

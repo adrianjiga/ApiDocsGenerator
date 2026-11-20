@@ -24,6 +24,40 @@ const typedApiData = [
   },
 ];
 
+const taggedFn = (tags) => [
+  {
+    file: '/src/a.js',
+    fileName: 'a.js',
+    functions: [
+      {
+        name: 'divide',
+        params: ['a', 'b'],
+        description: 'Divide',
+        line: 1,
+        jsdoc: { description: 'Divide', tags },
+      },
+    ],
+    routes: [],
+  },
+];
+
+const taggedRoute = (tags) => [
+  {
+    file: '/src/a.js',
+    fileName: 'a.js',
+    functions: [],
+    routes: [
+      {
+        method: 'GET',
+        path: '/health',
+        params: [],
+        line: 1,
+        jsdoc: { description: 'Health', tags },
+      },
+    ],
+  },
+];
+
 describe('generateMarkdown', () => {
   it('includes a title header', () => {
     const md = generateMarkdown(mockApiData);
@@ -327,5 +361,73 @@ describe('generateMarkdown', () => {
       },
     ]);
     expect(md).toContain('curl -I http://localhost:3000/ping');
+  });
+
+  it('shows a deprecation notice with the message', () => {
+    const md = generateMarkdown(
+      taggedFn([{ tag: 'deprecated', description: 'Use {@link safeDivide}' }]),
+    );
+    expect(md).toContain('> **Deprecated:** Use `safeDivide`\n');
+  });
+
+  it('shows a bare deprecation notice without a message', () => {
+    const md = generateMarkdown(
+      taggedFn([{ tag: 'deprecated', description: '' }]),
+    );
+    expect(md).toContain('> **Deprecated**\n');
+  });
+
+  it('lists @throws and @see, linking URLs', () => {
+    const md = generateMarkdown(
+      taggedFn([
+        { tag: 'throws', type: 'RangeError', description: 'When b is 0' },
+        { tag: 'throws', type: '', description: 'On overflow' },
+        { tag: 'see', description: '{@link https://mdn.io|MDN} for numbers' },
+      ]),
+    );
+    expect(md).toContain(
+      '**Throws:**\n\n- `RangeError`: When b is 0\n- On overflow\n',
+    );
+    expect(md).toContain('**See:**\n\n- [MDN](https://mdn.io) for numbers\n');
+  });
+
+  it('uses @example in place of the generated usage example', () => {
+    const md = generateMarkdown(
+      taggedFn([
+        {
+          tag: 'example',
+          description: '<caption>Basic</caption>\ndivide(6, 3);\n// => 2',
+        },
+      ]),
+    );
+    expect(md).toContain(
+      '**Example:**\n\n_Basic_\n\n```javascript\ndivide(6, 3);\n// => 2\n```\n',
+    );
+    expect(md).not.toContain('**Usage Example:**');
+  });
+
+  it('labels several examples as Examples', () => {
+    const md = generateMarkdown(
+      taggedFn([
+        { tag: 'example', description: 'a();' },
+        { tag: 'example', description: 'b();' },
+      ]),
+    );
+    expect(md).toContain('**Examples:**');
+  });
+
+  it('lengthens the fence when the example contains backticks', () => {
+    const md = generateMarkdown(
+      taggedFn([{ tag: 'example', description: 'const s = ```x```;' }]),
+    );
+    expect(md).toContain('````javascript\nconst s = ```x```;\n````\n');
+  });
+
+  it('uses a route @example in place of the generated curl request', () => {
+    const md = generateMarkdown(
+      taggedRoute([{ tag: 'example', description: 'curl /health' }]),
+    );
+    expect(md).toContain('**Example:**\n\n```\ncurl /health\n```\n');
+    expect(md).not.toContain('**Example Request:**');
   });
 });

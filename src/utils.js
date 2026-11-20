@@ -177,6 +177,75 @@ function describeReturns(item) {
 }
 
 /**
+ * Tags of an item's JSDoc beyond its description, parameters and return
+ * value: whether it is deprecated, what it throws, what it refers to and its
+ * examples
+ * @param {Object} item - Function or route with jsdoc
+ * @returns {{deprecated?: string, throws: Array<{type?: string, description: string}>, see: string[], examples: Array<{caption?: string, code: string}>}}
+ *   `deprecated` is the deprecation message, empty when none is given, and
+ *   absent when the item is not deprecated
+ */
+function describeExtras(item) {
+  const tags = item.jsdoc?.tags ?? [];
+  const deprecatedTag = tags.find((t) => t.tag === 'deprecated');
+  return {
+    ...(deprecatedTag && { deprecated: deprecatedTag.description || '' }),
+    throws: tags
+      .filter((t) => t.tag === 'throws' || t.tag === 'exception')
+      .map((t) => ({
+        ...(t.type && { type: t.type }),
+        description: cleanTagDescription(t.description),
+      })),
+    see: tags
+      .filter((t) => t.tag === 'see' && t.description)
+      .map((t) => t.description),
+    examples: tags
+      .filter((t) => t.tag === 'example' && t.description)
+      .map((t) => {
+        const caption = t.description.match(
+          /^<caption>([\s\S]*?)<\/caption>\s*/,
+        );
+        return caption
+          ? {
+              caption: caption[1].trim(),
+              code: t.description.slice(caption[0].length),
+            }
+          : { code: t.description };
+      })
+      .filter((example) => example.code),
+  };
+}
+
+const INLINE_LINK_REGEX =
+  /\{@link(?:code|plain)?\s+([^}\s|]+)(?:\s*\|\s*|\s+)?([^}]*)\}/g;
+
+/**
+ * Split text into plain runs and inline `{@link target}` /
+ * `{@link target|label}` / `{@link target label}` references
+ * @param {string} text - Tag text
+ * @returns {Array<{text: string}|{target: string, label: string, url: boolean}>}
+ *   Segments in order; `url` is true when the target is an http(s) URL
+ */
+function inlineLinks(text) {
+  const segments = [];
+  let last = 0;
+  for (const match of text.matchAll(INLINE_LINK_REGEX)) {
+    if (match.index > last) {
+      segments.push({ text: text.slice(last, match.index) });
+    }
+    const target = match[1];
+    segments.push({
+      target,
+      label: match[2].trim() || target,
+      url: /^https?:\/\//.test(target),
+    });
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) segments.push({ text: text.slice(last) });
+  return segments;
+}
+
+/**
  * curl command that sends a request with a route's method
  * @param {string} method - Uppercase HTTP method, or ALL
  * @param {string} url - Request URL
@@ -339,6 +408,7 @@ export {
   curlCommand,
   DEFAULT_COVERAGE_THRESHOLD,
   DEFAULT_EXCLUDE_PATTERN,
+  describeExtras,
   describeParams,
   describeReturns,
   escapeHtml,
@@ -347,6 +417,7 @@ export {
   getParamTags,
   getReturnTags,
   githubSlug,
+  inlineLinks,
   isThisParam,
   nodeText,
   sanitizeHtmlId,

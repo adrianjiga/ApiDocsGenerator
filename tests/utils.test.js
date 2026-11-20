@@ -4,6 +4,7 @@ import {
   cleanTagDescription,
   coverageLevel,
   curlCommand,
+  describeExtras,
   describeParams,
   describeReturns,
   escapeHtml,
@@ -11,6 +12,7 @@ import {
   getParamTags,
   getReturnTags,
   githubSlug,
+  inlineLinks,
   sanitizeHtmlId,
   stripControlChars,
   uniqueFileLabels,
@@ -425,5 +427,89 @@ describe('curlCommand', () => {
 
   it('sends a plain request for ALL', () => {
     expect(curlCommand('ALL', 'http://h/a')).toBe('curl http://h/a');
+  });
+});
+
+describe('describeExtras', () => {
+  const withTags = (tags) => ({ jsdoc: { description: 'x', tags } });
+
+  it('returns empty lists and no deprecation without tags', () => {
+    expect(describeExtras({ jsdoc: null })).toEqual({
+      throws: [],
+      see: [],
+      examples: [],
+    });
+  });
+
+  it('reports a deprecation with or without a message', () => {
+    const tag = (description) => ({ tag: 'deprecated', description });
+    expect(describeExtras(withTags([tag('Use b')])).deprecated).toBe('Use b');
+    expect(describeExtras(withTags([tag('')])).deprecated).toBe('');
+  });
+
+  it('collects @throws and @exception with optional types', () => {
+    const extras = describeExtras(
+      withTags([
+        { tag: 'throws', type: 'RangeError', description: '- When negative' },
+        { tag: 'exception', type: '', description: 'On failure' },
+      ]),
+    );
+    expect(extras.throws).toEqual([
+      { type: 'RangeError', description: 'When negative' },
+      { description: 'On failure' },
+    ]);
+  });
+
+  it('collects @see text and skips empty ones', () => {
+    const extras = describeExtras(
+      withTags([
+        { tag: 'see', description: 'sum' },
+        { tag: 'see', description: '' },
+      ]),
+    );
+    expect(extras.see).toEqual(['sum']);
+  });
+
+  it('splits an example caption from its code', () => {
+    const extras = describeExtras(
+      withTags([
+        { tag: 'example', description: '<caption>Basic</caption>\nrun();' },
+        { tag: 'example', description: 'other();' },
+        { tag: 'example', description: '<caption>Empty</caption>' },
+      ]),
+    );
+    expect(extras.examples).toEqual([
+      { caption: 'Basic', code: 'run();' },
+      { code: 'other();' },
+    ]);
+  });
+});
+
+describe('inlineLinks', () => {
+  it('splits {@link url|label} into a URL segment', () => {
+    expect(inlineLinks('{@link https://a.io|Docs} more')).toEqual([
+      { target: 'https://a.io', label: 'Docs', url: true },
+      { text: ' more' },
+    ]);
+  });
+
+  it('reads {@link target label} and bare {@link target}', () => {
+    expect(
+      inlineLinks('See {@link Foo#bar the bar} or {@linkcode sum}.'),
+    ).toEqual([
+      { text: 'See ' },
+      { target: 'Foo#bar', label: 'the bar', url: false },
+      { text: ' or ' },
+      { target: 'sum', label: 'sum', url: false },
+      { text: '.' },
+    ]);
+  });
+
+  it('does not treat other schemes as URLs', () => {
+    expect(inlineLinks('{@link javascript:alert(1)}')[0].url).toBe(false);
+  });
+
+  it('returns plain text as a single segment', () => {
+    expect(inlineLinks('plain')).toEqual([{ text: 'plain' }]);
   });
 });
