@@ -32,6 +32,12 @@ async function resolveConfig(options) {
   if (options.apiTitle) config.apiTitle = options.apiTitle;
   if (options.apiVersion) config.apiVersion = options.apiVersion;
   if (options.exclude) config.excludePattern = options.exclude;
+  if (options.routeServers) {
+    config.routeServers = options.routeServers
+      .split(',')
+      .map((name) => name.trim())
+      .filter(Boolean);
+  }
 
   return config;
 }
@@ -56,6 +62,10 @@ program
   .option('--api-title <title>', 'API title for documentation')
   .option('--api-version <version>', 'API version string')
   .option('--exclude <pattern>', 'Directory exclude regex pattern')
+  .option(
+    '--route-servers <names>',
+    'Comma-separated identifiers whose calls count as routes, e.g. app,router',
+  )
   .action(async (options) => {
     const sourceDir = path.resolve(options.dir);
     const outputDir = path.resolve(options.output);
@@ -79,6 +89,10 @@ program
   .description('Scan directory and show found APIs')
   .option('-c, --config <path>', 'Path to apidocs.config.js')
   .option('--exclude <pattern>', 'Directory exclude regex pattern')
+  .option(
+    '--route-servers <names>',
+    'Comma-separated identifiers whose calls count as routes, e.g. app,router',
+  )
   .action(async (directory, options) => {
     const dir = path.resolve(directory || '.');
     const config = await resolveConfig(options);
@@ -140,6 +154,10 @@ program
   )
   .option('-c, --config <path>', 'Path to apidocs.config.js')
   .option('--exclude <pattern>', 'Directory exclude regex pattern')
+  .option(
+    '--route-servers <names>',
+    'Comma-separated identifiers whose calls count as routes, e.g. app,router',
+  )
   .action(async (options) => {
     const sourceDir = path.resolve(options.dir);
     const threshold = parseInt(options.threshold, 10);
