@@ -1,4 +1,5 @@
 import yaml from 'js-yaml';
+import { cleanTagDescription, getParamTags, getReturnTags } from '../utils.js';
 
 /**
  * Default success response code per HTTP method.
@@ -68,6 +69,176 @@ function extractParams(openApiPath) {
   return Array.from(openApiPath.matchAll(/\{(\w+)}/g), (match) => match[1]);
 }
 
+const PRIMITIVE_SCHEMAS = {
+  string: 'string',
+  number: 'number',
+  integer: 'integer',
+  int: 'integer',
+  boolean: 'boolean',
+  bool: 'boolean',
+  object: 'object',
+};
+
+/**
+ * Map a JSDoc type to an OpenAPI schema
+ * @param {string} [type] - JSDoc type, e.g. `number` or `string[]`
+ * @param {Object} [fallback] - Schema to use when there is no type
+ * @returns {Object} OpenAPI schema; `{}` (any value) for types it cannot map
+ */
+function schemaFor(type, fallback = { type: 'string' }) {
+  const text = (type || '').trim();
+  if (!text) return { ...fallback };
+  const arrayOf =
+    text.match(/^(.+)\[\]$/)?.[1] ?? text.match(/^Array<(.+)>$/i)?.[1];
+  if (arrayOf) return { type: 'array', items: schemaFor(arrayOf, {}) };
+  const primitive = PRIMITIVE_SCHEMAS[text.toLowerCase()];
+  return primitive ? { type: primitive } : {};
+}
+
+/**
+ * Convert a JSDoc default, which comment-parser keeps as source text, to a
+ * value of the schema's type
+ * @param {string} value - Default as written, e.g. `10` or `'asc'`
+ * @param {Object} schema - Schema of the parameter
+ * @returns {*} Typed default
+ */
+function typedDefault(value, schema) {
+  const text = value.trim();
+  if (schema.type === 'number' || schema.type === 'integer') {
+    const number = Number(text);
+    if (text !== '' && Number.isFinite(number)) return number;
+  }
+  if (schema.type === 'boolean' && /^(true|false)$/.test(text)) {
+    return text === 'true';
+  }
+  return text.replace(/^(['"`])(.*)\1$/, '$2');
+}
+
+/**
+ * OpenAPI parameter object for a documented or path parameter
+ * @param {string} name - Parameter name
+ * @param {string} location - `path` or `query`
+ * @param {Object} [tag] - Matching @param tag
+ * @returns {Object} Parameter object
+ */
+function parameterObject(name, location, tag) {
+  const description = cleanTagDescription(tag?.description);
+  const schema = schemaFor(tag?.type);
+  if (tag?.default !== undefined) {
+    schema.default = typedDefault(tag.default, schema);
+  }
+  return {
+    name,
+    in: location,
+    required: location === 'path' || !tag?.optional,
+    ...(description && { description }),
+    schema,
+  };
+}
+
+/**
+ * Request body built from `@param body` and `@param body.<field>` tags
+ * @param {Array} paramTags - The route's @param tags
+ * @returns {Object|undefined} OpenAPI requestBody, or undefined when not documented
+ */
+function requestBody(paramTags) {
+  const bodyTag = paramTags.find((tag) => tag.name === 'body');
+  const fields = paramTags.filter((tag) => tag.name.startsWith('body.'));
+  if (!bodyTag && fields.length === 0) return undefined;
+
+  let schema = schemaFor(bodyTag?.type, { type: 'object' });
+  if (fields.length > 0) {
+    const properties = {};
+    const required = [];
+    for (const tag of fields) {
+      const field = tag.name.slice('body.'.length);
+      const description = cleanTagDescription(tag.description);
+      properties[field] = {
+        ...schemaFor(tag.type, {}),
+        ...(description && { description }),
+      };
+      if (!tag.optional) required.push(field);
+    }
+    schema = {
+      type: 'object',
+      properties,
+      ...(required.length > 0 && { required }),
+    };
+  }
+
+  const description = cleanTagDescription(bodyTag?.description);
+  return {
+    ...(description && { description }),
+    required: !bodyTag?.optional,
+    content: { 'application/json': { schema } },
+  };
+}
+
+/**
+ * Build the OpenAPI operation for one route at one concrete path
+ * @param {Object} route - Route from the parser
+ * @param {string} openApiPath - OpenAPI path, e.g. /users/{id}
+ * @param {string} operationId - Unique operation id
+ * @param {string} tag - Tag the operation is grouped under
+ * @returns {Object} Operation object
+ */
+function buildOperation(route, openApiPath, operationId, tag) {
+  const method = route.method.toLowerCase();
+  const tags = route.jsdoc?.tags ?? [];
+  const paramTags = getParamTags(tags).filter((t) => t.name);
+  const tagFor = (name) =>
+    paramTags.find((t) => t.name === name || t.name === `params.${name}`);
+
+  const text = (route.jsdoc?.description || '').trim();
+  const [firstLine] = text.split('\n');
+
+  const [returnTag] = getReturnTags(tags);
+  const returnsBody =
+    !!returnTag &&
+    !['void', 'undefined', 'never'].includes(
+      (returnTag.type || '').toLowerCase().trim(),
+    );
+  const successCode =
+    method === 'delete' && returnsBody
+      ? 200
+      : METHOD_SUCCESS_CODE[method] || 200;
+  const returnDescription = cleanTagDescription(returnTag?.description);
+  const successDescription =
+    returnDescription ||
+    (successCode === 201
+      ? 'Resource created'
+      : successCode === 204
+        ? 'No content'
+        : 'Successful response');
+
+  const operation = {
+    summary: firstLine || `${route.method} ${openApiPath}`,
+    ...(text !== firstLine && { description: text }),
+    operationId,
+    tags: [tag],
+  };
+
+  const parameters = [
+    ...extractParams(openApiPath).map((name) =>
+      parameterObject(name, 'path', tagFor(name)),
+    ),
+    ...paramTags
+      .filter((t) => /^query\.\w+$/.test(t.name))
+      .map((t) => parameterObject(t.name.slice('query.'.length), 'query', t)),
+  ];
+  if (parameters.length > 0) operation.parameters = parameters;
+
+  const body = requestBody(paramTags);
+  if (body) operation.requestBody = body;
+
+  operation.responses = {
+    [successCode]: { description: successDescription },
+  };
+  if (tags.some((t) => t.tag === 'deprecated')) operation.deprecated = true;
+
+  return operation;
+}
+
 /**
  * Generate OpenAPI 3.0.3 YAML documentation from parsed API data.
  * @param {Array} apiData - Array of parsed API metadata from parser
@@ -103,45 +274,17 @@ function generateOpenAPI(apiData, config = {}) {
           continue;
         }
 
-        const summary =
-          route.jsdoc?.description || `${route.method} ${openApiPath}`;
-
-        // Deduplicate operationIds: append a counter suffix on collision
         const baseId = deriveOperationId(method, openApiPath);
-        const idKey = baseId;
-        const count = usedOperationIds.get(idKey) || 0;
-        usedOperationIds.set(idKey, count + 1);
+        const count = usedOperationIds.get(baseId) || 0;
+        usedOperationIds.set(baseId, count + 1);
         const operationId = count === 0 ? baseId : `${baseId}-${count}`;
 
-        const params = extractParams(openApiPath);
-
-        const successCode = METHOD_SUCCESS_CODE[method] || 200;
-        const successDescription =
-          successCode === 201
-            ? 'Resource created'
-            : successCode === 204
-              ? 'No content'
-              : 'Successful response';
-
-        const operation = {
-          summary,
+        paths.get(openApiPath)[method] = buildOperation(
+          route,
+          openApiPath,
           operationId,
-          tags: [sourceFile],
-          responses: {
-            [successCode]: { description: successDescription },
-          },
-        };
-
-        if (params.length > 0) {
-          operation.parameters = params.map((name) => ({
-            name,
-            in: 'path',
-            required: true,
-            schema: { type: 'string' },
-          }));
-        }
-
-        paths.get(openApiPath)[method] = operation;
+          sourceFile,
+        );
       }
     }
   }
