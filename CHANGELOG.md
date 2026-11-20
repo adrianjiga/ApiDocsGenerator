@@ -17,10 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--route-servers app,router` flag for `generate`, `audit` and `scan`
 - `head`, `options` and `all` routes; OpenAPI output leaves out `all`, which has no OpenAPI operation. HEAD examples use `curl -I`
 - Route paths written as template literals without expressions, e.g. ``app.get(`/users`)``
+- Markdown and HTML show `@deprecated`, `@throws` and `@see`, and an item's own `@example` blocks in place of the generated usage example or `curl` request. Inline `{@link}` references to `http(s)` URLs become links
 - OpenAPI query parameters from `@param query.<name>` tags and a JSON request body from `@param body` and `@param body.<field>` tags
 
 ### Fixed
 
+- `@example` text kept its line breaks and indentation only in `source`; `@deprecated` and `@see` lost their first word to the tag name, and `@see {@link …}` was read as a type. Their full text is now the tag's `description`
 - A TypeScript `this` parameter is no longer listed as a parameter that needs a `@param`
 - Optional route parameters (`/users/:id?`, Express 5 `/users{/:id}`) produced invalid OpenAPI paths and operationIds; each now becomes one path without the parameter and one with it
 - Regex-constrained route parameters (`/users/:id(\d+)`) are converted to `{id}` in OpenAPI paths

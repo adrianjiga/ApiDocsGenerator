@@ -92,9 +92,20 @@ curl -X GET http://localhost:3000/users/:id
   TypeScript annotation and then `any`. Parameters no `@param` covers are
   listed after the tagged ones. Optional parameters and defaults are marked,
   e.g. ``- `b` (`number`, optional, default `1`)``.
+- `@deprecated` adds a `> **Deprecated:** <message>` line under the line
+  number. `@throws` (or `@exception`) and `@see` get **Throws:** and **See:**
+  lists after **Returns:**.
+- An inline `{@link https://…|label}` becomes a Markdown link. A link to
+  anything other than an `http(s)` URL, such as `{@link sum}`, is shown as
+  code.
+- A function's or route's own `@example` blocks replace the generated
+  **Usage Example** or **Example Request**, under **Example:** (or
+  **Examples:**). Line breaks and indentation are kept, and a leading
+  `<caption>…</caption>` is shown in italics above the code. Function examples
+  are fenced as `javascript`; route examples have no language.
 - The `curl` example uses `serverUrl` from the config (default
   `http://localhost:3000`) and the route path as written, with `:param`
-  placeholders left in.
+  placeholders left in. `HEAD` routes use `curl -I`.
 - TOC anchors follow GitHub's heading rules, including the `-1`, `-2` suffixes
   GitHub adds to repeated headings.
 
@@ -216,7 +227,9 @@ functions or routes.
 | `jsdoc.tags`                          | `comment-parser` tag objects as-is, including `source` and `problems`                                             |
 
 `@param` descriptions keep the leading `- ` from the source; the Markdown and
-HTML output strip it.
+HTML output strip it. The text of `@example`, `@deprecated` and `@see` tags is
+kept whole in `description`, with `type` and `name` empty. `@example`
+descriptions keep their line breaks and indentation.
 
 ## openapi.yaml
 
