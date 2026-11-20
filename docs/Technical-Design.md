@@ -106,19 +106,20 @@ to.
 
 ### Functions
 
-| Source form                                         | Item name             | Notes                                                                                              |
-| --------------------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------- |
-| `function f() {}`                                   | `f`                   | Module level only                                                                                  |
-| `export default function () {}`                     | `anonymous`           |                                                                                                    |
-| `const f = () => {}` / `const f = function () {}`   | `f`                   | Module level only                                                                                  |
-| `class A { m() {} }` / `const A = class { m() {} }` | `m`, class `A`        | Module-level classes; every method, including `constructor`, getters, setters and abstract methods |
-| `class A { m = () => {} }`                          | `m`, class `A`        | Fields (including `accessor` fields) holding an arrow function or function expression              |
-| `A.prototype.m = function () {}`                    | `m`, class `A`        | Module level only                                                                                  |
-| `const api = { list() {}, get: () => {} }`          | `api.list`, `api.get` | Module level only; getters and setters skipped                                                     |
-| `export default { list() {} }`                      | `list`                | Exported                                                                                           |
-| `module.exports = function main() {}`               | `main` (or `default`) | Module level only; exported                                                                        |
-| `exports.f = () => {}` / `module.exports.f = ...`   | `f`                   | Module level only; exported                                                                        |
-| `module.exports = { a() {}, b: () => {} }`          | `a`, `b`              | Module level only; exported                                                                        |
+| Source form                                         | Item name             | Notes                                                                                                                                                                                            |
+| --------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `function f() {}`                                   | `f`                   | Module level only                                                                                                                                                                                |
+| `export default function () {}`                     | `anonymous`           |                                                                                                                                                                                                  |
+| `const f = () => {}` / `const f = function () {}`   | `f`                   | Module level only                                                                                                                                                                                |
+| `class A { m() {} }` / `const A = class { m() {} }` | `m`, class `A`        | Module-level classes; every method, including `constructor`, getters, setters and abstract methods                                                                                               |
+| `class A { m = () => {} }`                          | `m`, class `A`        | Fields (including `accessor` fields) holding an arrow function or function expression                                                                                                            |
+| `m(a: string): void; m(a: any) {}` (overloads)      | `m` once              | One item for the implementation; a JSDoc above any overload signature documents it. Top-level `function` overloads work the same way. A `declare class` signature with no implementation is kept |
+| `A.prototype.m = function () {}`                    | `m`, class `A`        | Module level only                                                                                                                                                                                |
+| `const api = { list() {}, get: () => {} }`          | `api.list`, `api.get` | Module level only; getters and setters skipped                                                                                                                                                   |
+| `export default { list() {} }`                      | `list`                | Exported                                                                                                                                                                                         |
+| `module.exports = function main() {}`               | `main` (or `default`) | Module level only; exported                                                                                                                                                                      |
+| `exports.f = () => {}` / `module.exports.f = ...`   | `f`                   | Module level only; exported                                                                                                                                                                      |
+| `module.exports = { a() {}, b: () => {} }`          | `a`, `b`              | Module level only; exported                                                                                                                                                                      |
 
 Parameter names come from `getParamName`: rest parameters become `...name`,
 default values are dropped, and destructured parameters become `{a, b}` or

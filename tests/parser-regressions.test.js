@@ -842,3 +842,72 @@ Foo.prototype.bar = function () {};
     ).toEqual([['bar', false]]);
   });
 });
+
+describe('TypeScript overloads', () => {
+  const parseTs = async (source) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'apidocs-overload-'));
+    const file = path.join(dir, 'a.ts');
+    fs.writeFileSync(file, source);
+    try {
+      return await parseFile(file);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  };
+
+  it('reports one method per overloaded class method', async () => {
+    const api = await parseTs(`
+export class A {
+  /** Format a value */
+  format(a: string): string;
+  format(a: number): string;
+  format(a: any): string { return String(a); }
+}
+`);
+    expect(api.functions.map((f) => [f.name, f.line])).toEqual([['format', 6]]);
+    expect(api.functions[0].description).toBe('Format a value');
+  });
+
+  it('keeps static and instance overloads apart', async () => {
+    const api = await parseTs(`
+class A {
+  static of(a: string): A;
+  static of(a: any): A { return new A(); }
+  of(a: string): void;
+  of(a: any): void {}
+}
+`);
+    expect(api.functions.map((f) => [f.name, f.static])).toEqual([
+      ['of', true],
+      ['of', false],
+    ]);
+  });
+
+  it('keeps abstract methods and declare-only signatures', async () => {
+    const api = await parseTs(`
+abstract class Base {
+  abstract run(): void;
+}
+declare class Lib {
+  load(a: string): void;
+  load(a: number): void;
+}
+`);
+    expect(api.functions.map((f) => [f.className, f.name, f.line])).toEqual([
+      ['Base', 'run', 3],
+      ['Lib', 'load', 7],
+    ]);
+  });
+
+  it('documents a function from a JSDoc above its first overload', async () => {
+    const api = await parseTs(`
+/** Parse input */
+export function parse(a: string): number;
+export function parse(a: number): number;
+export function parse(a: any): number { return Number(a); }
+`);
+    expect(api.functions.map((f) => [f.name, f.line, f.description])).toEqual([
+      ['parse', 5, 'Parse input'],
+    ]);
+  });
+});

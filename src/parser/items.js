@@ -145,16 +145,10 @@ function handleClassDeclaration(node, functions, exported, className, source) {
   if (!node.body?.body) return;
   const name = node.id?.name || className || 'anonymous';
 
-  for (const member of node.body.body) {
+  const push = (member, docLines) => {
     const isMethod =
       member.type === 'MethodDefinition' ||
       member.type === 'TSAbstractMethodDefinition';
-    const isFunctionField =
-      (member.type === 'PropertyDefinition' ||
-        member.type === 'AccessorProperty') &&
-      FUNCTION_TYPES.includes(member.value?.type);
-    if ((!isMethod && !isFunctionField) || !member.value) continue;
-
     pushFunction(
       functions,
       member.value,
@@ -166,10 +160,51 @@ function handleClassDeclaration(node, functions, exported, className, source) {
         className: name,
         static: member.static,
         methodKind: isMethod ? member.kind || 'method' : 'method',
+        ...(docLines?.length && { docLines }),
       },
       source,
     );
+  };
+
+  const memberKey = (member) =>
+    `${member.static ? 'static' : 'instance'}:${member.key?.name ?? member.key?.value}`;
+  let overloads = [];
+  const flushOverloads = () => {
+    const last = overloads.at(-1);
+    if (last) {
+      push(
+        last,
+        overloads.slice(0, -1).map((m) => m.loc?.start.line),
+      );
+    }
+    overloads = [];
+  };
+
+  for (const member of node.body.body) {
+    const isMethod =
+      member.type === 'MethodDefinition' ||
+      member.type === 'TSAbstractMethodDefinition';
+    const isFunctionField =
+      (member.type === 'PropertyDefinition' ||
+        member.type === 'AccessorProperty') &&
+      FUNCTION_TYPES.includes(member.value?.type);
+    if ((!isMethod && !isFunctionField) || !member.value) continue;
+
+    const isOverload =
+      member.type === 'MethodDefinition' &&
+      member.value.type === 'TSEmptyBodyFunctionExpression';
+    if (overloads.length > 0 && memberKey(overloads[0]) !== memberKey(member)) {
+      flushOverloads();
+    }
+    if (isOverload) {
+      overloads.push(member);
+      continue;
+    }
+    const docLines = overloads.map((m) => m.loc?.start.line);
+    overloads = [];
+    push(member, docLines);
   }
+  flushOverloads();
 }
 
 /**
@@ -193,6 +228,20 @@ function collectItems(ast, source, routeServers) {
   }
   const exportDocLines = (node) =>
     exports.exportLines.has(node) ? [exports.exportLines.get(node)] : undefined;
+  const overloadLines = new Map();
+  for (const decl of exports.moduleLevel) {
+    if (decl.type !== 'TSDeclareFunction' || !decl.id) continue;
+    const lines = overloadLines.get(decl.id.name) ?? [];
+    lines.push(decl.loc?.start.line, ...(exportDocLines(decl) ?? []));
+    overloadLines.set(decl.id.name, lines);
+  }
+  const functionDocLines = (node) => {
+    const lines = [
+      ...(exportDocLines(node) ?? []),
+      ...(overloadLines.get(node.id?.name) ?? []),
+    ];
+    return lines.length > 0 ? lines : undefined;
+  };
 
   traverse(ast, (node) => {
     switch (node.type) {
@@ -205,7 +254,7 @@ function collectItems(ast, source, routeServers) {
             name: node.id?.name || 'anonymous',
             line: node.loc?.start.line || 0,
             exported: isExported(node, node.id?.name),
-            docLines: exportDocLines(node),
+            docLines: functionDocLines(node),
           },
           source,
         );
