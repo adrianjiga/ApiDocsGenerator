@@ -15,7 +15,7 @@ Run the bundled script from the repository root:
 - `base-ref` defaults to `HEAD`. Use `main` to see everything a branch changes, or a commit hash to isolate one change.
 - Input directories default to `examples tests`. Add any directory relative to the repo root, e.g. `src`.
 
-The script checks `base-ref` out into a temporary git worktree (sharing this repo's `node_modules`), runs `generate` (markdown, html, json, openapi) and `audit --format json` with both versions against the same inputs, masks timestamps and output paths, and prints a unified diff. It removes the worktree on exit.
+The script checks `base-ref` out into a temporary git worktree (sharing this repo's `node_modules`), runs `generate` (markdown, html, json, openapi) and `audit --format json` with both versions against the same inputs, masks timestamps and output paths, and prints a unified diff. `GENERATION_REPORT.md` is left out of the comparison because it records where the output was written, not what it contains. It removes the worktree on exit.
 
 Exit code `0` means no differences; `1` means the diff above it is the complete change in output.
 

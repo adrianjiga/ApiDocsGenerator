@@ -32,7 +32,7 @@ render() {
 render "$work/base-src/bin/api-docs-generator" "$work/before"
 render "$root/bin/api-docs-generator" "$work/after"
 
-if diff -ru "$work/before" "$work/after" | sed -e "s#$work/before#before#g" -e "s#$work/after#after#g"; then
+if diff -ru -x GENERATION_REPORT.md "$work/before" "$work/after" | sed -e "s#$work/before#before#g" -e "s#$work/after#after#g"; then
   echo "No output differences for: ${inputs[*]} ($base vs working tree)"
 else
   exit 1
