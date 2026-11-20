@@ -243,32 +243,39 @@ paths:
       operationId: get-users-id
       tags:
         - sample-app.js
-      responses:
-        "200":
-          description: Successful response
       parameters:
         - name: id
           in: path
           required: true
+          description: The user ID from the URL path
           schema:
             type: string
-    delete:
-      summary: Delete a user by ID
-      operationId: delete-users-id
-      tags:
-        - sample-app.js
       responses:
-        "204":
-          description: No content
+        "200":
+          description: User object containing id and name
 ```
 
 - `info.title` and `info.version` come from `apiTitle` and `apiVersion`;
   `servers[0].url` from `serverUrl`.
-- `:id` in Express paths becomes `{id}`.
+- `:id` in Express paths becomes `{id}`; a regex constraint such as
+  `:id(\d+)` is dropped. OpenAPI has no optional path segments, so an
+  optional parameter (`/users/:id?`, or `/users{/:id}` in Express 5) produces
+  one path without it and one with it.
 - `summary` is the route's JSDoc description, or `GET /users/{id}` without one.
-- Success responses: `201 Resource created` for `post`, `204 No content` for
-  `delete`, `200 Successful response` otherwise. No request bodies or response
-  schemas are generated.
+- A path parameter's `description` and `schema` type come from its `@param`
+  tag (`id` or `params.id`); the type defaults to `string`.
+- `@param` tags named `query.<name>` become query parameters, required unless
+  written in brackets: `@param {number} [query.limit=10] - Max results`.
+- `@param body` and `@param body.<field>` tags become a JSON `requestBody`.
+  Fields become object properties; the ones not in brackets are `required`.
+- JSDoc types map to schemas: `string`, `number`, `integer`, `boolean`,
+  `object` and arrays of them (`string[]`, `Array<number>`). Other types, such
+  as `User`, give an empty schema that accepts any value.
+- Success responses: `201` for `post`, `204` for `delete`, `200` otherwise.
+  A `delete` route whose `@returns` has a non-void type gets `200`. The
+  response `description` is the `@returns` description, or `Resource created`,
+  `No content` or `Successful response`. No response schemas are generated.
+- `@deprecated` sets `deprecated: true`.
 - There is one tag per source file name. If the same path and method are
   declared twice, only the first one is kept.
 

@@ -11,10 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - TypeScript parameter types, optionality, default values and return types are read from the source. Markdown and HTML show them where JSDoc gives no type, and JSON output carries them as `paramDetails` and `returnType`
 - `acceptTypeScriptReturns` config key: `audit` counts a declared TypeScript return type as a documented `@returns`
+- OpenAPI output uses `@param` descriptions and types for path parameters, `@returns` for the success response description, and `@deprecated` for `deprecated: true`
+- OpenAPI query parameters from `@param query.<name>` tags and a JSON request body from `@param body` and `@param body.<field>` tags
 
 ### Fixed
 
 - A TypeScript `this` parameter is no longer listed as a parameter that needs a `@param`
+- Optional route parameters (`/users/:id?`, Express 5 `/users{/:id}`) produced invalid OpenAPI paths and operationIds; each now becomes one path without the parameter and one with it
+- Regex-constrained route parameters (`/users/:id(\d+)`) are converted to `{id}` in OpenAPI paths
+- An OpenAPI `delete` operation whose `@returns` documents a body answers `200` instead of `204 No content`
 
 ## [0.1.0] - 2026-11-17
 
