@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- TypeScript parameter types, optionality, default values and return types are read from the source. Markdown and HTML show them where JSDoc gives no type, and JSON output carries them as `paramDetails` and `returnType`
+- `acceptTypeScriptReturns` config key: `audit` counts a declared TypeScript return type as a documented `@returns`
+
+### Fixed
+
+- A TypeScript `this` parameter is no longer listed as a parameter that needs a `@param`
+
 ## [0.1.0] - 2026-11-17
 
 Initial public release as `@adrianjiga/api-docs-generator`. Requires Node.js 22.12 or newer.

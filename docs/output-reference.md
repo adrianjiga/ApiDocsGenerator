@@ -86,8 +86,12 @@ curl -X GET http://localhost:3000/users/:id
 ````
 
 - A function without a JSDoc block gets `**Description:** No description
-  provided` and a `**Parameters:**` line listing its parameter names instead of
-  the description, parameter and returns blocks.
+  provided`. Its parameters and TypeScript return type are still listed, or
+  `**Parameters:** none` when it has no parameters.
+- A parameter's type comes from its `@param` tag, falling back to the
+  TypeScript annotation and then `any`. Parameters no `@param` covers are
+  listed after the tagged ones. Optional parameters and defaults are marked,
+  e.g. ``- `b` (`number`, optional, default `1`)``.
 - The `curl` example uses `serverUrl` from the config (default
   `http://localhost:3000`) and the route path as written, with `:param`
   placeholders left in.
@@ -158,6 +162,10 @@ functions or routes.
         {
           "name": "sum",
           "params": ["a", "b"],
+          "paramDetails": [
+            { "name": "a", "optional": false },
+            { "name": "b", "optional": false }
+          ],
           "description": "Calculate the sum of two numbers",
           "line": 11,
           "async": false,

@@ -19,7 +19,7 @@ Node.js CLI (npm package `@adrianjiga/api-docs-generator`, CLI command `api-docs
   - `type: 'doc'` — `generate(apiData, config)` returns a string written to its `filename` (e.g. markdown → `API.md`).
   - `type: 'report'` — `generate(report, threshold?)`; `filename: null` means print to stdout (terminal).
   - Aliases exist: `md`→markdown, `swagger`→openapi. `generate` skips unknown formats rather than failing.
-- Config: first of `apidocs.config.js`/`.mjs`/`.cjs` in cwd (or `--config`), loaded via dynamic `import()` in `generator.js:loadConfig`, merged over defaults. Keys: `excludePattern`, `serverUrl`, `apiTitle`, `apiVersion`, `routeServers`. Vitest's loader accepts ESM in CommonJS packages where Node doesn't, so test real-Node config behaviour by spawning the CLI. Repo root has `apidocs.config.js` — don't break it.
+- Config: first of `apidocs.config.js`/`.mjs`/`.cjs` in cwd (or `--config`), loaded via dynamic `import()` in `generator.js:loadConfig`, merged over defaults. Keys: `excludePattern`, `serverUrl`, `apiTitle`, `apiVersion`, `routeServers`, `acceptTypeScriptReturns`. Vitest's loader accepts ESM in CommonJS packages where Node doesn't, so test real-Node config behaviour by spawning the CLI. Repo root has `apidocs.config.js` — don't break it.
 
 ## Gotchas
 
