@@ -44,6 +44,7 @@ function sectionIds(fileSections, labels) {
 /**
  * Generate HTML documentation
  * @param {Array} apiData - Array of parsed API metadata
+ * @param {Object} [config] - Configuration; reads apiTitle and serverUrl
  * @returns {string} HTML formatted documentation
  */
 function generateHTML(apiData, config = {}) {

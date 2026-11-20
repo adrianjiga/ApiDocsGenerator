@@ -253,6 +253,7 @@ function buildOperation(route, openApiPath, operationId, tag) {
 /**
  * Generate OpenAPI 3.0.3 YAML documentation from parsed API data.
  * @param {Array} apiData - Array of parsed API metadata from parser
+ * @param {Object} [config] - Configuration; reads apiTitle, apiVersion and serverUrl
  * @returns {string} OpenAPI spec as YAML string
  */
 function generateOpenAPI(apiData, config = {}) {

@@ -8,6 +8,7 @@ import {
  * Format and print a documentation coverage report to the terminal
  * @param {Object} report - Coverage analysis report from analyzeCoverage()
  * @param {number} [threshold=80] - Coverage threshold percentage
+ * @returns {void}
  */
 function formatTerminalReport(report, threshold = DEFAULT_COVERAGE_THRESHOLD) {
   // Disable ANSI colors when not writing to a real TTY (e.g. piped to a file

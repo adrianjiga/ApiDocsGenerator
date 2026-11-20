@@ -39,6 +39,7 @@ function githubAnchors(headings) {
 /**
  * Generate Markdown documentation
  * @param {Array} apiData - Array of parsed API metadata
+ * @param {Object} [config] - Configuration; reads apiTitle and serverUrl
  * @returns {string} Markdown formatted documentation
  */
 function generateMarkdown(apiData, config = {}) {

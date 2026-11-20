@@ -236,6 +236,7 @@ program.action(() => {
  * Parse command-line arguments. Called by the bin entrypoint so the CLI runs
  * regardless of how it is invoked (installed globally, via npm exec, or by
  * running bin/api-docs-generator directly).
+ * @returns {Promise<void>}
  */
 async function run() {
   try {

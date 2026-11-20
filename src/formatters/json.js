@@ -6,6 +6,7 @@ const { version: toolVersion } = require('../../package.json');
 /**
  * Generate JSON documentation
  * @param {Array} apiData - Array of parsed API metadata
+ * @param {Object} [config] - Configuration; reads apiVersion
  * @returns {string} JSON formatted documentation
  */
 function generateJSON(apiData, config = {}) {

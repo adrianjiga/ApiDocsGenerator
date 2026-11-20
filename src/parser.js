@@ -184,6 +184,7 @@ function parseJSDoc(sourceCode) {
  * @param {Object} info - Name, line, export flag, optional class details and
  *   optional extra docLines a preceding JSDoc may point at (e.g. an `export` line)
  * @param {string} source - Source code the node was parsed from
+ * @returns {void}
  */
 function pushFunction(functions, fnNode, info, source) {
   const paramDetails = fnNode.params
@@ -257,6 +258,7 @@ function commonJsExportDepth(target) {
  * @param {Array} functions - Accumulator array for extracted function metadata
  * @param {Object} options - Optional name prefix and export flag
  * @param {string} source - Source code the node was parsed from
+ * @returns {void}
  */
 function handleObjectMethods(
   objectNode,
@@ -291,6 +293,7 @@ function handleObjectMethods(
  * @param {Object} node - AssignmentExpression node
  * @param {Array} functions - Accumulator array for extracted function metadata
  * @param {string} source - Source code the node was parsed from
+ * @returns {void}
  */
 function handleAssignment(node, functions, source) {
   const target = memberPath(node.left);
@@ -464,6 +467,7 @@ function isAllowedServer(serverNode, routeServers) {
  * @param {number} line - Line the route is declared on
  * @param {number} [group] - Id shared by routes declared in the same call
  * @param {number[]} [docLines] - Extra lines a preceding JSDoc may point at
+ * @returns {void}
  */
 function pushRoute(functions, methodName, routePath, line, group, docLines) {
   if (typeof routePath !== 'string' || !routePath.startsWith('/')) return;
@@ -503,6 +507,7 @@ function findRouteChainRoot(node) {
  * @param {Object} node - AST CallExpression node
  * @param {Array} functions - Accumulator array for extracted function/route metadata
  * @param {string[]} [routeServers] - Optional list of allowed server identifiers
+ * @returns {void}
  */
 function handleRouteObject(node, functions, routeServers) {
   const options = node.arguments[0];
@@ -545,6 +550,7 @@ function handleRouteObject(node, functions, routeServers) {
  *   identifiers (e.g. ['app', 'router']) to restrict route detection to. When
  *   omitted, any identifier callee with a server-relative path is treated as a
  *   route.
+ * @returns {void}
  */
 function handleRouteExpression(node, functions, routeServers) {
   const methodName = node.callee?.property?.name;
@@ -588,6 +594,7 @@ function handleRouteExpression(node, functions, routeServers) {
  * @param {boolean} exported - Whether the class is exported
  * @param {string} [className] - Name to use when the class itself is anonymous
  * @param {string} source - Source code the node was parsed from
+ * @returns {void}
  */
 function handleClassDeclaration(node, functions, exported, className, source) {
   if (!node.body?.body) return;
@@ -633,6 +640,7 @@ const SKIPPED_AST_KEYS = new Set([
  * the program's token and comment lists
  * @param {Object} root - AST root
  * @param {Function} visit - Called with each node
+ * @returns {void}
  */
 function traverse(root, visit) {
   const walk = (node) => {
@@ -1129,6 +1137,7 @@ async function _scanDirectoryImpl(dir, excludeRegex, rootDir) {
 /**
  * Parse all files in a directory
  * @param {string} dir - Directory path
+ * @param {Object} [config] - Configuration; reads excludePattern and routeServers
  * @returns {Array} Array of file metadata objects
  */
 async function parseDirectory(dir, config = {}) {

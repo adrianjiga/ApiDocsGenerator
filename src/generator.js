@@ -160,6 +160,7 @@ function docFormatNames() {
  * @param {string} sourceDir - Source directory to parse
  * @param {string} outputDir - Output directory for generated docs
  * @param {Array} formats - Array of formats: ['markdown', 'html', 'json']
+ * @param {Object|null} [userConfig] - Resolved configuration; loaded from the config file when omitted
  * @returns {Promise<Object>} Generation result; success is false when nothing was generated or any format failed
  */
 async function generate(
