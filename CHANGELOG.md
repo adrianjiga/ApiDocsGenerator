@@ -39,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Calls through HTTP clients (`axios.get('/users')`, `axios.create()` instances, supertest's `request(app).get('/users')`) are no longer reported as routes
 - `routeServers: 'app,router'` written as a string in the config is split on commas; it used to switch route detection to substring matching
 - TypeScript overloads are one item, not one per signature, and a JSDoc above the first overload documents the implementation
+- `export default (req, res) => {}` and other default-exported function expressions are detected, as `default`
 - OpenAPI tags no longer merge routes from files that share a name, such as `users/index.js` and `orders/index.js`
 - The audit accepts `@param params.id` for a route's `:id`, as the OpenAPI output already did
 - A TypeScript `this` parameter is no longer listed as a parameter that needs a `@param`

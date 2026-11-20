@@ -305,6 +305,17 @@ function collectItems(ast, source, routeServers) {
             { exported: true },
             source,
           );
+        } else if (FUNCTION_TYPES.includes(node.declaration?.type)) {
+          pushFunction(
+            functions,
+            node.declaration,
+            {
+              name: node.declaration.id?.name || 'default',
+              line: node.loc?.start.line || 0,
+              exported: true,
+            },
+            source,
+          );
         }
         break;
       case 'AssignmentExpression':

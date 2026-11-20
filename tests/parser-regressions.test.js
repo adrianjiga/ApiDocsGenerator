@@ -911,3 +911,38 @@ export function parse(a: any): number { return Number(a); }
     ]);
   });
 });
+
+describe('default-exported function expressions', () => {
+  it('detects export default of an arrow function as default', () => {
+    const [fn] = extractFunctions('export default async (req, res) => {};');
+    expect(fn).toMatchObject({
+      name: 'default',
+      params: ['req', 'res'],
+      exported: true,
+      async: true,
+    });
+  });
+
+  it('uses the name of a named function expression', () => {
+    const [fn] = extractFunctions('export default (function handler(req) {});');
+    expect(fn).toMatchObject({ name: 'handler', exported: true });
+  });
+
+  it('attaches the JSDoc above export default', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'apidocs-default-'));
+    const file = path.join(dir, 'handler.js');
+    fs.writeFileSync(
+      file,
+      '/**\n * Handle a request\n * @param {Object} req - Request\n * @returns {void}\n */\nexport default (req) => {};\n',
+    );
+    try {
+      const api = await parseFile(file);
+      expect(api.functions[0]).toMatchObject({
+        name: 'default',
+        description: 'Handle a request',
+      });
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
