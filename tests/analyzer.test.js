@@ -512,3 +512,44 @@ describe('analyzeCoverage – error scenarios', () => {
     expect(result.gaps).toEqual([]);
   });
 });
+
+describe('acceptTypeScriptReturns', () => {
+  const typedFn = (jsdoc) => ({
+    ...makeFunction('f', ['a'], jsdoc),
+    returnType: 'number',
+  });
+  const describedJsdoc = {
+    description: 'Does f',
+    tags: [{ tag: 'param', name: 'a', type: 'string', description: 'The a' }],
+  };
+  const file = (fn) => [
+    { file: 'a.ts', fileName: 'a.ts', functions: [fn], routes: [] },
+  ];
+
+  it('requires @returns by default even with a TypeScript return type', () => {
+    const report = analyzeCoverage(file(typedFn(describedJsdoc)));
+    expect(report.gaps[0].missing).toEqual(['returns']);
+  });
+
+  it('counts a TypeScript return type as @returns when enabled', () => {
+    const report = analyzeCoverage(file(typedFn(describedJsdoc)), {
+      acceptTypeScriptReturns: true,
+    });
+    expect(report.summary.documentedFunctions).toBe(1);
+  });
+
+  it('drops returns from the gaps of an undocumented typed function', () => {
+    const report = analyzeCoverage(file(typedFn(null)), {
+      acceptTypeScriptReturns: true,
+    });
+    expect(report.gaps[0].missing).toEqual(['description', 'params']);
+  });
+
+  it('still requires @returns for an untyped function when enabled', () => {
+    const report = analyzeCoverage(
+      file(makeFunction('f', ['a'], describedJsdoc)),
+      { acceptTypeScriptReturns: true },
+    );
+    expect(report.gaps[0].missing).toEqual(['returns']);
+  });
+});

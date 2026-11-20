@@ -234,7 +234,9 @@ describe('audit command', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
 
     await program.parseAsync(['node', 'cli.js', 'audit', '-d', '/tmp/src']);
-    expect(analyzeCoverage).toHaveBeenCalledWith(mockData);
+    expect(analyzeCoverage).toHaveBeenCalledWith(mockData, {
+      acceptTypeScriptReturns: false,
+    });
   });
 
   it('uses terminal format by default', async () => {

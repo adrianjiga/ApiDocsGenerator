@@ -18,6 +18,7 @@ const defaultConfig = {
   // 'router']) to restrict route detection to. Empty array keeps the default
   // broad detection.
   routeServers: [],
+  acceptTypeScriptReturns: false,
 };
 
 /**

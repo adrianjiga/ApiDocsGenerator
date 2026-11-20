@@ -159,7 +159,9 @@ program
       process.exit(1);
     }
 
-    const result = analyzeCoverage(apiData);
+    const result = analyzeCoverage(apiData, {
+      acceptTypeScriptReturns: config.acceptTypeScriptReturns,
+    });
 
     if (format === 'json') {
       const json = JSON.stringify(result, null, 2);

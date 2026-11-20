@@ -3,9 +3,12 @@ import { calcPercentage, getParamTags, getReturnTags } from './utils.js';
 /**
  * Analyze documentation coverage for parsed API data
  * @param {Array} apiData - Array of file objects from parseDirectory()
+ * @param {Object} [options] - Analysis options
+ * @param {boolean} [options.acceptTypeScriptReturns=false] - Count a declared
+ *   TypeScript return type as a documented @returns
  * @returns {Object} Coverage analysis with summary, per-file breakdown, and gaps
  */
-function analyzeCoverage(apiData) {
+function analyzeCoverage(apiData, { acceptTypeScriptReturns = false } = {}) {
   if (!Array.isArray(apiData)) {
     return {
       summary: {
@@ -47,7 +50,9 @@ function analyzeCoverage(apiData) {
           fileTotalItems++;
           totalFunctions++;
 
-          const docStatus = checkFunctionDocumentation(func);
+          const docStatus = checkFunctionDocumentation(func, {
+            acceptTypeScriptReturns,
+          });
 
           if (docStatus.isFullyDocumented) {
             fileDocumentedItems++;
@@ -196,13 +201,29 @@ function isParamDocumented(
 }
 
 /**
+ * Whether a return type names no value
+ * @param {string} [type] - JSDoc or TypeScript type text
+ * @returns {boolean} True for void, undefined and never
+ */
+function isVoidType(type) {
+  return ['void', 'undefined', 'never'].includes(
+    (type || '').toLowerCase().trim(),
+  );
+}
+
+/**
  * Check documentation status of an item (function or route)
  * @param {Object} item - Item with params and jsdoc properties
  * @param {Object} [options] - Check options
  * @param {boolean} [options.requireReturns=true] - Whether a @returns tag is required
+ * @param {boolean} [options.acceptTypeScriptReturns=false] - Whether a declared
+ *   TypeScript return type stands in for a @returns tag
  * @returns {Object} Status object with isFullyDocumented, isPartiallyDocumented, missing, existing
  */
-function checkDocumentation(item, { requireReturns = true } = {}) {
+function checkDocumentation(
+  item,
+  { requireReturns = true, acceptTypeScriptReturns = false } = {},
+) {
   const existing = {
     description: null,
     params: [],
@@ -210,14 +231,16 @@ function checkDocumentation(item, { requireReturns = true } = {}) {
   };
 
   const missing = [];
+  const typedReturn = acceptTypeScriptReturns && !!item.returnType;
 
   if (!item.jsdoc) {
     return {
       isFullyDocumented: false,
       isPartiallyDocumented: false,
-      missing: requireReturns
-        ? ['description', 'params', 'returns']
-        : ['description', 'params'],
+      missing:
+        requireReturns && !typedReturn
+          ? ['description', 'params', 'returns']
+          : ['description', 'params'],
       existing,
     };
   }
@@ -257,14 +280,11 @@ function checkDocumentation(item, { requireReturns = true } = {}) {
   // intentionally documented (the developer chose to declare no return value)
   const returnTags = getReturnTags(item.jsdoc.tags);
   const hasReturnsTag = returnTags.length > 0;
-  const isVoidReturn =
-    hasReturnsTag &&
-    returnTags.some((t) => {
-      const type = (t.type || '').toLowerCase().trim();
-      return type === 'void' || type === 'undefined' || type === 'never';
-    });
+  const isVoidReturn = hasReturnsTag
+    ? returnTags.some((t) => isVoidType(t.type))
+    : typedReturn && isVoidType(item.returnType);
 
-  if (hasReturnsTag) {
+  if (hasReturnsTag || typedReturn) {
     existing.returns = true;
     if (isVoidReturn) {
       existing.voidReturn = true;
@@ -282,10 +302,11 @@ function checkDocumentation(item, { requireReturns = true } = {}) {
 /**
  * Check documentation status of a function
  * @param {Object} func - Function object with name, params, jsdoc
+ * @param {Object} [options] - Options passed on to checkDocumentation
  * @returns {Object} Status object with isFullyDocumented, isPartiallyDocumented, missing, existing
  */
-function checkFunctionDocumentation(func) {
-  return checkDocumentation(func);
+function checkFunctionDocumentation(func, options) {
+  return checkDocumentation(func, options);
 }
 
 /**
