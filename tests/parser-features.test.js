@@ -361,6 +361,7 @@ postRouter.get("/posts", (req, res) => {});
 
   it('handles mixed app and router routes', () => {
     const source = `
+const app = express();
 const router = express.Router();
 app.get("/health", (req, res) => {});
 router.get("/api/data", (req, res) => {});
@@ -371,6 +372,16 @@ router.get("/api/data", (req, res) => {});
     const paths = routes.map((r) => r.path);
     expect(paths).toContain('/health');
     expect(paths).toContain('/api/data');
+  });
+
+  it('ignores identifiers the file never assigns a server to once it creates one', () => {
+    const source = `
+const router = express.Router();
+app.get("/health", (req, res) => {});
+router.get("/api/data", (req, res) => {});
+    `;
+    const routes = extractFunctions(source).filter((f) => f.type === 'route');
+    expect(routes.map((r) => r.path)).toEqual(['/api/data']);
   });
 });
 
@@ -501,6 +512,89 @@ describe('TypeScript signatures', () => {
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('route server inference', () => {
+  const routePaths = (source, routeServers) =>
+    extractFunctions(source, routeServers)
+      .filter((f) => f.type === 'route')
+      .map((r) => `${r.method} ${r.path}`);
+
+  it('ignores Map lookups in a file that creates an Express app', () => {
+    const source = `
+import express from 'express';
+const app = express();
+const cache = new Map();
+cache.get('/key');
+app.get('/users', h);
+`;
+    expect(routePaths(source)).toEqual(['GET /users']);
+  });
+
+  it('keeps broad detection when the file creates no server', () => {
+    const source = `
+module.exports = (app) => {
+  app.get('/users', h);
+};
+`;
+    expect(routePaths(source)).toEqual(['GET /users']);
+  });
+
+  it('recognises renamed express imports and requires', () => {
+    const imported = `
+import createApp, { Router as makeRouter } from 'express';
+const api = createApp();
+const v1 = makeRouter();
+api.get('/a', h);
+v1.get('/b', h);
+other.get('/c', h);
+`;
+    expect(routePaths(imported)).toEqual(['GET /a', 'GET /b']);
+
+    const required = `
+const e = require('express');
+const { Router: R } = require('express');
+const server = e();
+const r = R();
+const s2 = e.Router();
+server.get('/a', h);
+r.get('/b', h);
+s2.get('/c', h);
+other.get('/d', h);
+`;
+    expect(routePaths(required)).toEqual(['GET /a', 'GET /b', 'GET /c']);
+  });
+
+  it('recognises Fastify servers, including awaited ones', () => {
+    const source = `
+import Fastify from 'fastify';
+const server = Fastify({ logger: true });
+let other;
+other = await fastify();
+server.get('/a', h);
+other.route({ method: 'POST', url: '/b', handler: h });
+store.get('/c', h);
+`;
+    expect(routePaths(source)).toEqual(['GET /a', 'POST /b']);
+  });
+
+  it('recognises new Router() and chained routes on inferred servers', () => {
+    const source = `
+const router = new Router();
+router.route('/items').get(h).post(h);
+cache.route('/x').get(h);
+`;
+    expect(routePaths(source)).toEqual(['POST /items', 'GET /items']);
+  });
+
+  it('lets explicit routeServers override inference', () => {
+    const source = `
+const app = express();
+app.get('/a', h);
+api.get('/b', h);
+`;
+    expect(routePaths(source, ['api'])).toEqual(['GET /b']);
   });
 });
 

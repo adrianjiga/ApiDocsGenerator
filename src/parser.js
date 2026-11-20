@@ -22,6 +22,10 @@ const HTTP_METHODS = [
   'all',
 ];
 
+const SERVER_MODULES = new Set(['express', 'fastify']);
+
+const DEFAULT_SERVER_FACTORIES = ['express', 'Router', 'fastify', 'Fastify'];
+
 const FUNCTION_TYPES = ['FunctionExpression', 'ArrowFunctionExpression'];
 
 /**
@@ -339,6 +343,104 @@ function staticString(node) {
     return node.quasis[0]?.value.cooked ?? undefined;
   }
   return undefined;
+}
+
+/**
+ * Names bound to a module by `import` or `require()`, split into the module
+ * itself (default and namespace imports, `const x = require('m')`) and its
+ * named exports (`import { Router }`, `const { Router } = require('m')`)
+ * @param {Object} node - ImportDeclaration or VariableDeclarator node
+ * @returns {{module: string, local: string, imported?: string}[]} Bindings
+ */
+function moduleBindings(node) {
+  if (node.type === 'ImportDeclaration') {
+    return node.specifiers.map((spec) => ({
+      module: node.source.value,
+      local: spec.local.name,
+      ...(spec.type === 'ImportSpecifier' && {
+        imported: spec.imported.name ?? spec.imported.value,
+      }),
+    }));
+  }
+  const init = node.init;
+  const isRequire =
+    init?.type === 'CallExpression' &&
+    init.callee.type === 'Identifier' &&
+    init.callee.name === 'require';
+  const module = isRequire && staticString(init.arguments[0]);
+  if (!module) return [];
+  if (node.id.type === 'Identifier') {
+    return [{ module, local: node.id.name }];
+  }
+  if (node.id.type !== 'ObjectPattern') return [];
+  return node.id.properties
+    .filter((p) => p.type === 'Property' && p.value.type === 'Identifier')
+    .map((p) => ({ module, local: p.value.name, imported: propertyKey(p) }));
+}
+
+/**
+ * Identifiers a file assigns an Express or Fastify server or router to, such
+ * as `app` in `const app = express()` or `router` in
+ * `const router = express.Router()`. The factory names `express`, `Router`,
+ * `fastify` and `Fastify` are always recognised, as are the local names the
+ * `express` and `fastify` modules are imported or required under.
+ * @param {Object} ast - Program AST
+ * @returns {string[]} Server identifiers, empty when the file creates none
+ */
+function inferRouteServers(ast) {
+  const factories = new Set(DEFAULT_SERVER_FACTORIES);
+  const modules = new Set(['express']);
+  const assignments = [];
+
+  traverse(ast, (node) => {
+    if (
+      node.type === 'ImportDeclaration' ||
+      node.type === 'VariableDeclarator'
+    ) {
+      for (const binding of moduleBindings(node)) {
+        if (!SERVER_MODULES.has(binding.module)) continue;
+        if (!binding.imported || binding.imported === 'default') {
+          factories.add(binding.local);
+          modules.add(binding.local);
+        } else if (
+          binding.imported === 'Router' ||
+          binding.imported === 'fastify'
+        ) {
+          factories.add(binding.local);
+        }
+      }
+    }
+    if (node.type === 'VariableDeclarator' && node.id.type === 'Identifier') {
+      assignments.push([node.id.name, node.init]);
+    } else if (
+      node.type === 'AssignmentExpression' &&
+      node.left.type === 'Identifier'
+    ) {
+      assignments.push([node.left.name, node.right]);
+    }
+  });
+
+  const isFactoryCall = (value) => {
+    const call = value?.type === 'AwaitExpression' ? value.argument : value;
+    if (call?.type !== 'CallExpression' && call?.type !== 'NewExpression') {
+      return false;
+    }
+    const callee = call.callee;
+    if (callee.type === 'Identifier') return factories.has(callee.name);
+    return (
+      callee.type === 'MemberExpression' &&
+      !callee.computed &&
+      callee.object.type === 'Identifier' &&
+      modules.has(callee.object.name) &&
+      callee.property.name === 'Router'
+    );
+  };
+
+  return [
+    ...new Set(
+      assignments.filter(([, value]) => isFactoryCall(value)).map(([n]) => n),
+    ),
+  ];
 }
 
 /**
@@ -671,11 +773,14 @@ function collectExports(ast) {
  * Collect functions, class methods and routes from a parsed AST
  * @param {Object} ast - Program AST
  * @param {string} source - Source code the AST was parsed from
- * @param {string[]} [routeServers] - Optional list of allowed server identifiers
+ * @param {string[]} [routeServers] - Allowed server identifiers. When empty,
+ *   the identifiers the file assigns a server or router to are used, and when
+ *   it assigns none, any identifier counts.
  * @returns {Array} Array of function and route metadata objects
  */
 function collectItems(ast, source, routeServers) {
   const functions = [];
+  const servers = routeServers?.length ? routeServers : inferRouteServers(ast);
   const exports = collectExports(ast);
   const isExported = (node, name) =>
     exports.declarations.has(node) || (!!name && exports.names.has(name));
@@ -753,7 +858,7 @@ function collectItems(ast, source, routeServers) {
         break;
       case 'CallExpression':
         if (node.callee?.property) {
-          handleRouteExpression(node, functions, routeServers);
+          handleRouteExpression(node, functions, servers);
         }
         break;
     }
