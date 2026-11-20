@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `@example` text kept its line breaks and indentation only in `source`; `@deprecated` and `@see` lost their first word to the tag name, and `@see {@link …}` was read as a type. Their full text is now the tag's `description`
+- An undocumented function or route with no parameters is no longer reported as missing `params`
 - A TypeScript `this` parameter is no longer listed as a parameter that needs a `@param`
 - Optional route parameters (`/users/:id?`, Express 5 `/users{/:id}`) produced invalid OpenAPI paths and operationIds; each now becomes one path without the parameter and one with it
 - Regex-constrained route parameters (`/users/:id(\d+)`) are converted to `{id}` in OpenAPI paths

@@ -372,11 +372,16 @@ describe('parameter matching', () => {
 
 describe('checkRouteDocumentation', () => {
   it('returns all missing when jsdoc is null', () => {
-    const route = makeRoute('GET', '/users', []);
+    const route = makeRoute('GET', '/users/:id', ['id']);
     const result = checkRouteDocumentation(route);
     expect(result.isFullyDocumented).toBe(false);
     expect(result.isPartiallyDocumented).toBe(false);
     expect(result.missing).toEqual(['description', 'params']);
+  });
+
+  it('does not list params as missing for an undocumented route without path params', () => {
+    const result = checkRouteDocumentation(makeRoute('GET', '/users', []));
+    expect(result.missing).toEqual(['description']);
   });
 
   it('detects missing @param for path param as partially documented', () => {
@@ -641,5 +646,35 @@ describe('per-kind summary counts', () => {
       partiallyDocumentedRoutes: 0,
       undocumentedRoutes: 0,
     });
+  });
+});
+
+describe('undocumented items without parameters', () => {
+  it('lists only description and returns for a parameterless function', () => {
+    const report = analyzeCoverage([
+      {
+        file: 'a.js',
+        fileName: 'a.js',
+        functions: [makeFunction('init', [], null)],
+        routes: [],
+      },
+    ]);
+    expect(report.gaps[0].missing).toEqual(['description', 'returns']);
+  });
+
+  it('still lists params for an undocumented function that has some', () => {
+    const report = analyzeCoverage([
+      {
+        file: 'a.js',
+        fileName: 'a.js',
+        functions: [makeFunction('init', ['opts'], null)],
+        routes: [],
+      },
+    ]);
+    expect(report.gaps[0].missing).toEqual([
+      'description',
+      'params',
+      'returns',
+    ]);
   });
 });

@@ -251,10 +251,11 @@ function checkDocumentation(
     return {
       isFullyDocumented: false,
       isPartiallyDocumented: false,
-      missing:
-        requireReturns && !typedReturn
-          ? ['description', 'params', 'returns']
-          : ['description', 'params'],
+      missing: [
+        'description',
+        ...(item.params.length > 0 ? ['params'] : []),
+        ...(requireReturns && !typedReturn ? ['returns'] : []),
+      ],
       existing,
     };
   }
