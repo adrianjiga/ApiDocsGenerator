@@ -299,9 +299,6 @@ function generateOpenAPI(apiData, config = {}) {
         for (const method of methods) {
           const key = `${method} ${openApiPath}`;
           const existing = operations[method];
-          // A path/method pair may exist only once in an OpenAPI spec. Earlier
-          // routes win, except that an explicit route replaces an operation
-          // expanded from an earlier `all` route.
           if (existing && (isAll || !fromAll.has(key))) continue;
 
           let operationId = existing?.operationId;
