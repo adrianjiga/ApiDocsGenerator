@@ -731,6 +731,55 @@ router.route('/items').get(h).post(h);
     expect(routePaths(source)).toEqual(['POST /items', 'GET /items']);
   });
 
+  it('ignores calls through imported or required HTTP clients', () => {
+    const source = `
+import axios from 'axios';
+const got = require('got');
+const { default: ky } = require('ky');
+axios.get('/users');
+got.post('/orders');
+ky.get('/items');
+app.get('/real', h);
+`;
+    expect(routePaths(source)).toEqual(['GET /real']);
+  });
+
+  it('ignores clients created from a client library', () => {
+    const source = `
+import axios from 'axios';
+const api = axios.create({ baseURL: '/api' });
+const v2 = api.extend();
+api.get('/users');
+v2.delete('/users/1');
+router.get('/real', h);
+`;
+    expect(routePaths(source)).toEqual(['GET /real']);
+  });
+
+  it('ignores supertest requests in tests', () => {
+    const source = `
+const request = require('supertest');
+const app = require('../app');
+const agent = request.agent(app);
+it('lists users', async () => {
+  await request(app).get('/users').expect(200);
+  await agent.post('/login').send({});
+});
+`;
+    expect(routePaths(source)).toEqual([]);
+  });
+
+  it('keeps an app that is also passed to supertest', () => {
+    const source = `
+import request from 'supertest';
+import express from 'express';
+const app = express();
+app.get('/health', h);
+request(app).get('/health');
+`;
+    expect(routePaths(source)).toEqual(['GET /health']);
+  });
+
   it('lets explicit routeServers override inference', () => {
     const source = `
 const app = express();

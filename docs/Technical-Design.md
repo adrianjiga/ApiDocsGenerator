@@ -188,7 +188,12 @@ Calls are inspected only when the callee is a member expression
     calls (`express()`, `createApp()`, `require('./app')`), `new` of any other
     class (`new Hono()`), function parameters and imports. Scopes are not
     tracked, so one such binding anywhere in the file is enough. Member
-    expressions such as `this.app` always count.
+    expressions such as `this.app` count.
+  - HTTP clients never count: names imported or required from `axios`,
+    `got`, `ky`, `superagent`, `supertest`, `undici`, `node-fetch`, `needle`,
+    `request`, `http` or `https`, names created from them (`axios.create()`,
+    `request.agent(app)`), and call chains that start with one
+    (`request(app).get('/users')`).
 
 Routes from one call (a chain, or a Fastify object with several methods) share
 a `group` id, the source offset of the call. This is internal and never written

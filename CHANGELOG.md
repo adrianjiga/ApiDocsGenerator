@@ -36,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A `@param` tag with no name no longer renders as an empty code span in Markdown
 - Default values and types keep the whitespace inside string and template literals, so `fill = '    '` is no longer shown as `' '`
 - OpenAPI operationIds are always unique, even when a suffixed id such as `get-users-id-1` matches another route's base id
+- Calls through HTTP clients (`axios.get('/users')`, `axios.create()` instances, supertest's `request(app).get('/users')`) are no longer reported as routes
 - OpenAPI tags no longer merge routes from files that share a name, such as `users/index.js` and `orders/index.js`
 - The audit accepts `@param params.id` for a route's `:id`, as the OpenAPI output already did
 - A TypeScript `this` parameter is no longer listed as a parameter that needs a `@param`

@@ -111,8 +111,8 @@ The command is `api-docs-generator` in every case.
 - **Routes**: Express `app.get('/path')` (also `post`, `put`, `delete`,
   `patch`, `head`, `options` and `all`), chained `app.route('/path').get()`,
   and Fastify `fastify.route({ method, url })`. Calls on names bound only to
-  values that cannot be a server, such as `const cache = new Map()`, are
-  ignored.
+  values that cannot be a server, such as `const cache = new Map()`, and calls
+  through HTTP clients (`axios`, `supertest`…) are ignored.
 - **Output**: Markdown, HTML, JSON and OpenAPI 3.0.3 docs; terminal, JSON and
   HTML dashboard coverage reports.
 

@@ -77,7 +77,9 @@ Calls on a name the file binds only to a value that cannot be a server are
 ignored: a literal, an object or array literal, a function, or `new` of a
 built-in such as `Map` or `URLSearchParams`. Servers created by a call
 (`express()`, `createApp()`), by `new` of another class, or received as a
-parameter or import are still detected.
+parameter or import are still detected. Calls through HTTP clients such as
+`axios.get('/users')` or supertest's `request(app).get('/users')` are never
+routes.
 
 If `routeServers` is set, only calls on those identifiers count, in every file:
 `routeServers: ['app']` ignores `router.get(...)`.

@@ -64,43 +64,126 @@ function isNonServerValue(value) {
   );
 }
 
+const HTTP_CLIENT_MODULES = new Set([
+  'axios',
+  'got',
+  'ky',
+  'needle',
+  'node-fetch',
+  'request',
+  'superagent',
+  'supertest',
+  'undici',
+  'http',
+  'https',
+  'node:http',
+  'node:https',
+]);
+
 /**
- * Names the file binds only to values that cannot be a server, such as
- * `cache` in `const cache = new Map()`. A name with any other binding in the
- * file (a call, an import, a function parameter) is left out, so routes on it
- * are still reported. Scopes are not tracked: bindings anywhere in the file
- * count.
+ * Root identifier of a call or member chain, e.g. `axios` for
+ * `axios.create()` and `request` for `request(app)`
+ * @param {Object} node - Expression node
+ * @returns {string|undefined} Identifier name, or undefined when the chain
+ *   does not start with one
+ */
+function chainRoot(node) {
+  let current = node;
+  while (current) {
+    if (current.type === 'Identifier') return current.name;
+    if (current.type === 'CallExpression' || current.type === 'NewExpression') {
+      current = current.callee;
+    } else if (current.type === 'MemberExpression') {
+      current = current.object;
+    } else if (current.type === 'AwaitExpression') {
+      current = current.argument;
+    } else {
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Module name of a `require('module')` call
+ * @param {Object} [node] - Expression node
+ * @returns {string|undefined} The module name, or undefined for other nodes
+ */
+function requiredModule(node) {
+  return node?.type === 'CallExpression' &&
+    node.callee.type === 'Identifier' &&
+    node.callee.name === 'require'
+    ? staticString(node.arguments[0])
+    : undefined;
+}
+
+/**
+ * Names in a file that are not route servers: names bound to an HTTP client
+ * library (imported or required from a module such as `axios` or `supertest`,
+ * or created from one, as in `axios.create()` or `request(app)`), and names
+ * bound only to values that cannot be a server, such as `cache` in
+ * `const cache = new Map()`. A name with any other binding in the file (a
+ * call, an import, a function parameter) is a possible server, unless it is a
+ * client. Scopes are not tracked: bindings anywhere in the file count.
  * @param {Object} ast - Program AST
- * @returns {Set<string>} Identifiers that are not servers
+ * @returns {{nonServers: Set<string>, clients: Set<string>}} Identifiers that
+ *   are not servers, and the subset that are HTTP clients
  */
 function nonServerNames(ast) {
-  const nonServer = new Set();
+  const clients = new Set();
+  const bindings = [];
   const possibleServer = new Set();
-  const bind = (name, value) => {
-    if (value && isNonServerValue(value)) nonServer.add(name);
-    else possibleServer.add(name);
-  };
 
   traverse(ast, (node) => {
-    if (node.type === 'VariableDeclarator' && node.id.type === 'Identifier') {
-      if (node.init) bind(node.id.name, node.init);
+    if (node.type === 'ImportDeclaration') {
+      const isClient = HTTP_CLIENT_MODULES.has(node.source.value);
+      for (const spec of node.specifiers) {
+        (isClient ? clients : possibleServer).add(spec.local.name);
+      }
+    } else if (node.type === 'VariableDeclarator' && node.init) {
+      if (HTTP_CLIENT_MODULES.has(requiredModule(node.init))) {
+        if (node.id.type === 'Identifier') clients.add(node.id.name);
+        for (const prop of node.id.properties ?? []) {
+          if (prop.value?.type === 'Identifier') clients.add(prop.value.name);
+        }
+      } else if (node.id.type === 'Identifier') {
+        bindings.push([node.id.name, node.init]);
+      }
     } else if (
       node.type === 'AssignmentExpression' &&
       node.left.type === 'Identifier'
     ) {
-      bind(node.left.name, node.right);
+      bindings.push([node.left.name, node.right]);
     } else if (FUNCTION_NODE_TYPES.has(node.type)) {
       for (const param of node.params) {
         const target = param.type === 'AssignmentPattern' ? param.left : param;
         if (target.type === 'Identifier') possibleServer.add(target.name);
       }
-    } else if (node.type === 'ImportDeclaration') {
-      for (const spec of node.specifiers) possibleServer.add(spec.local.name);
     }
   });
 
-  for (const name of possibleServer) nonServer.delete(name);
-  return nonServer;
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const [name, value] of bindings) {
+      if (!clients.has(name) && clients.has(chainRoot(value))) {
+        clients.add(name);
+        grew = true;
+      }
+    }
+  }
+
+  const nonServers = new Set(clients);
+  const notOnlyNonServer = new Set(possibleServer);
+  for (const [name, value] of bindings) {
+    if (clients.has(name)) continue;
+    if (isNonServerValue(value)) nonServers.add(name);
+    else notOnlyNonServer.add(name);
+  }
+  for (const name of notOnlyNonServer) {
+    if (!clients.has(name)) nonServers.delete(name);
+  }
+  return { nonServers, clients };
 }
 
 /**
@@ -115,8 +198,11 @@ function routeServerFilter(ast, routeServers) {
     return (node) =>
       node?.type === 'Identifier' && routeServers.includes(node.name);
   }
-  const nonServers = nonServerNames(ast);
-  return (node) => !(node?.type === 'Identifier' && nonServers.has(node.name));
+  const { nonServers, clients } = nonServerNames(ast);
+  return (node) => {
+    if (node?.type === 'Identifier') return !nonServers.has(node.name);
+    return !clients.has(chainRoot(node));
+  };
 }
 
 /**
