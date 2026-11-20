@@ -16,6 +16,7 @@ import {
  * @returns {string} Markdown code span
  */
 function inlineCode(text) {
+  if (!text) return '';
   const longestRun = Math.max(
     0,
     ...Array.from(text.matchAll(/`+/g), (m) => m[0].length),

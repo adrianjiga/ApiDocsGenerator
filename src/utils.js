@@ -160,7 +160,9 @@ function destructuredParamTags(paramNames, paramTags) {
  * @returns {Array<{name: string, type?: string, description: string, optional: boolean, defaultValue?: string}>} Parameters in display order
  */
 function describeParams(item) {
-  const tags = getParamTags(item.jsdoc?.tags);
+  const tags = getParamTags(item.jsdoc?.tags).filter(
+    (tag) => tag.name && tag.name !== '-',
+  );
   const details = item.paramDetails ?? [];
   const plain = (name) => (name.startsWith('...') ? name.slice(3) : name);
   const byName = new Map(details.map((d) => [plain(d.name), d]));

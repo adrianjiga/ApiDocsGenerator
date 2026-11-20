@@ -420,6 +420,22 @@ describe('describeParams – destructured parameters', () => {
   });
 });
 
+describe('describeParams – malformed tags', () => {
+  it('skips @param tags without a usable name', () => {
+    const item = {
+      jsdoc: {
+        tags: [
+          { tag: 'param', name: '-', type: 'string', description: 'x' },
+          { tag: 'param', name: '', type: 'string', description: '' },
+          { tag: 'param', name: 'a', type: 'number', description: 'A' },
+        ],
+      },
+      paramDetails: [{ name: 'a', optional: false }],
+    };
+    expect(describeParams(item).map((p) => p.name)).toEqual(['a']);
+  });
+});
+
 describe('describeReturns', () => {
   it('uses the TypeScript return type when there is no @returns', () => {
     expect(describeReturns({ jsdoc: null, returnType: 'number' })).toEqual([

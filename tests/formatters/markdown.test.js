@@ -482,4 +482,11 @@ describe('generateMarkdown', () => {
       '- [Foo \\[disambiguation\\]](https://en.wikipedia.org/wiki/Foo_%28bar%29)\n',
     );
   });
+
+  it('writes no empty code span for a @param tag without a name', () => {
+    const md = generateMarkdown(
+      taggedFn([{ tag: 'param', name: '', type: 'string', description: 'x' }]),
+    );
+    expect(md).not.toContain('- ``');
+  });
 });

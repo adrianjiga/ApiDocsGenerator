@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `curl` examples single-quote the URL, so paths with `?` or `*` (such as `/users/:id?`) work when pasted into zsh
 - `audit` with nothing in scope (for example `--exported-only` on code with no exports) prints `Nothing to audit` and exits `0` instead of failing at 0%
 - OpenAPI request bodies are emitted only for `post`, `put` and `patch`, including operations expanded from an `all` route
+- A `@param` tag with no name no longer renders as an empty code span in Markdown
 - The audit accepts `@param params.id` for a route's `:id`, as the OpenAPI output already did
 - A TypeScript `this` parameter is no longer listed as a parameter that needs a `@param`
 - Optional route parameters (`/users/:id?`, Express 5 `/users{/:id}`) produced invalid OpenAPI paths and operationIds; each now becomes one path without the parameter and one with it
