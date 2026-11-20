@@ -22,6 +22,8 @@ const OPENAPI_METHODS = new Set([
   'trace',
 ]);
 
+const BODY_METHODS = new Set(['post', 'put', 'patch']);
+
 const ALL_METHODS = [
   'get',
   'post',
@@ -249,7 +251,7 @@ function buildOperation(route, openApiPath, operationId, tag) {
   ];
   if (parameters.length > 0) operation.parameters = parameters;
 
-  const body = requestBody(paramTags);
+  const body = BODY_METHODS.has(method) && requestBody(paramTags);
   if (body) operation.requestBody = body;
 
   operation.responses = {

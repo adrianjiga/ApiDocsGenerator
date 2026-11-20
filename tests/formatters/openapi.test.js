@@ -738,4 +738,27 @@ app.get('/items/:id?', handler);
     expect(spec.paths['/items'].get.summary).toBe('List items');
     expect(spec.paths['/items'].delete.summary).toBe('Catch-all');
   });
+
+  it('puts the request body only on methods that take one', () => {
+    const spec = parse(
+      withJsdoc('ALL', '/items', [], {
+        description: 'Items',
+        tags: [tag('body', 'Object', 'The item')],
+      }),
+    );
+    const withBody = Object.entries(spec.paths['/items'])
+      .filter(([, op]) => op.requestBody)
+      .map(([method]) => method);
+    expect(withBody).toEqual(['post', 'put', 'patch']);
+  });
+
+  it('leaves the request body off an explicit GET or DELETE', () => {
+    const spec = parse(
+      withJsdoc('DELETE', '/items', [], {
+        description: 'Delete items',
+        tags: [tag('body', 'Object', 'Filter')],
+      }),
+    );
+    expect(spec.paths['/items'].delete.requestBody).toBeUndefined();
+  });
 });

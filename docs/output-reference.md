@@ -287,7 +287,9 @@ paths:
   tag (`id` or `params.id`); the type defaults to `string`.
 - `@param` tags named `query.<name>` become query parameters, required unless
   written in brackets: `@param {number} [query.limit=10] - Max results`.
-- `@param body` and `@param body.<field>` tags become a JSON `requestBody`.
+- `@param body` and `@param body.<field>` tags become a JSON `requestBody` on
+  `post`, `put` and `patch` operations; OpenAPI 3.0 does not define one for
+  `get`, `head`, `delete` or `options`.
   Fields become object properties; the ones not in brackets are `required`.
 - JSDoc types map to schemas: `string`, `number`, `integer`, `boolean`,
   `object` and arrays of them (`string[]`, `Array<number>`). Other types, such
