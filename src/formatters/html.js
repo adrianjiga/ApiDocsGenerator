@@ -1,12 +1,88 @@
 import {
   curlCommand,
+  describeExtras,
   describeParams,
   describeReturns,
   escapeHtml,
+  inlineLinks,
   sanitizeHtmlId,
   uniqueFileLabels,
 } from '../utils.js';
 import { BASE_CSS } from './shared-styles.js';
+
+/**
+ * Escape tag text and render its inline {@link} references: http(s) targets
+ * as links, anything else as code
+ * @param {string} text - Tag text
+ * @returns {string} HTML fragment
+ */
+function linkText(text) {
+  return inlineLinks(text)
+    .map((segment) => {
+      if ('text' in segment) return escapeHtml(segment.text);
+      return segment.url
+        ? `<a href="${escapeHtml(segment.target)}">${escapeHtml(segment.label)}</a>`
+        : `<code>${escapeHtml(segment.label)}</code>`;
+    })
+    .join('');
+}
+
+/**
+ * Deprecation notice for an item, or nothing when it is not deprecated
+ * @param {Object} extras - Result of describeExtras
+ * @returns {string} HTML fragment
+ */
+function deprecatedNotice(extras) {
+  if (extras.deprecated === undefined) return '';
+  const message = extras.deprecated ? ` ${linkText(extras.deprecated)}` : '';
+  return `<div class="deprecated"><strong>Deprecated</strong>${message}</div>`;
+}
+
+/**
+ * Throws and See also sections of an item
+ * @param {Object} extras - Result of describeExtras
+ * @returns {string} HTML fragment, empty when there is nothing to show
+ */
+function throwsAndSee(extras) {
+  let html = '';
+  if (extras.throws.length > 0) {
+    html += `<div class="throws">
+                <h5>⚠️ Throws</h5>`;
+    for (const t of extras.throws) {
+      const type = t.type ? `<code>${escapeHtml(t.type)}</code>` : '';
+      const separator = type && t.description ? ' — ' : '';
+      html += `<div class="param-item">${type}${separator}${linkText(t.description)}</div>`;
+    }
+    html += '</div>';
+  }
+  if (extras.see.length > 0) {
+    html += `<div class="see">
+                <h5>🔗 See</h5>`;
+    for (const see of extras.see) {
+      html += `<div class="param-item">${linkText(see)}</div>`;
+    }
+    html += '</div>';
+  }
+  return html;
+}
+
+/**
+ * The item's own @example blocks
+ * @param {Object} extras - Result of describeExtras
+ * @returns {string} HTML fragment, empty when there are no examples
+ */
+function examplesSection(extras) {
+  if (extras.examples.length === 0) return '';
+  let html = `
+          <h5 style="margin-top: 15px;">💡 ${extras.examples.length > 1 ? 'Examples' : 'Example'}</h5>`;
+  for (const example of extras.examples) {
+    if (example.caption) {
+      html += `<div class="example-caption">${escapeHtml(example.caption)}</div>`;
+    }
+    html += `<div class="code-block">${escapeHtml(example.code)}</div>`;
+  }
+  return html;
+}
 
 /**
  * Type, optionality and default of a parameter, as shown after its name
@@ -279,7 +355,38 @@ function generateHTML(apiData, config = {}) {
       font-size: 0.875rem;
       border: 1px solid rgba(99, 102, 241, 0.1);
       box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
+      white-space: pre;
     }
+
+    .throws h5, .see h5 {
+      color: #10b981;
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+      margin-top: 1rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .deprecated {
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      border-left: 3px solid #f59e0b;
+      border-radius: 0.375rem;
+      color: #fcd34d;
+      padding: 0.5rem 1rem;
+      margin: 0.75rem 0;
+      font-size: 0.875rem;
+    }
+
+    .example-caption {
+      color: #94a3b8;
+      font-size: 0.8125rem;
+      font-style: italic;
+      margin-top: 0.75rem;
+    }
+
+    .item a { color: #a5f3fc; }
 
     footer {
       text-align: center;
@@ -340,6 +447,9 @@ function generateHTML(apiData, config = {}) {
           <h4>${escapeHtml(fn.name)}(${fn.params.map((p) => escapeHtml(p)).join(', ')})</h4>
           <div class="meta">📍 Line ${fn.line}</div>`;
 
+        const extras = describeExtras(fn);
+        html += deprecatedNotice(extras);
+
         html += `<div class="description">${escapeHtml(fn.jsdoc ? fn.jsdoc.description : fn.description)}</div>`;
 
         const params = describeParams(fn);
@@ -362,9 +472,13 @@ function generateHTML(apiData, config = {}) {
           html += `</div>`;
         }
 
-        html += `
+        html += throwsAndSee(extras);
+        html +=
+          examplesSection(extras) ||
+          `
           <h5 style="margin-top: 15px;">💡 Usage Example</h5>
-          <div class="code-block">${escapeHtml(fn.name)}(${fn.params.map((p) => escapeHtml(p)).join(', ')});</div>
+          <div class="code-block">${escapeHtml(fn.name)}(${fn.params.map((p) => escapeHtml(p)).join(', ')});</div>`;
+        html += `
         </div>`;
       });
 
@@ -382,6 +496,9 @@ function generateHTML(apiData, config = {}) {
           <h4><span class="method-badge">${escapeHtml(route.method)}</span> ${escapeHtml(route.path)}</h4>
           <div class="meta">📍 Line ${route.line}</div>`;
 
+        const extras = describeExtras(route);
+        html += deprecatedNotice(extras);
+
         if (route.jsdoc?.description) {
           html += `<div class="description">${escapeHtml(route.jsdoc.description)}</div>`;
         }
@@ -393,9 +510,13 @@ function generateHTML(apiData, config = {}) {
           </div>`;
         }
 
-        html += `
+        html += throwsAndSee(extras);
+        html +=
+          examplesSection(extras) ||
+          `
           <h5 style="margin-top: 15px;">💡 Example Request</h5>
-          <div class="code-block">${escapeHtml(curlCommand(route.method, `${config.serverUrl || 'http://localhost:3000'}${route.path}`))}</div>
+          <div class="code-block">${escapeHtml(curlCommand(route.method, `${config.serverUrl || 'http://localhost:3000'}${route.path}`))}</div>`;
+        html += `
         </div>`;
       });
 

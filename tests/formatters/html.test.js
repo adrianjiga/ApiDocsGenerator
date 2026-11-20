@@ -24,6 +24,40 @@ const typedApiData = [
   },
 ];
 
+const taggedFn = (tags) => [
+  {
+    file: '/src/a.js',
+    fileName: 'a.js',
+    functions: [
+      {
+        name: 'divide',
+        params: ['a', 'b'],
+        description: 'Divide',
+        line: 1,
+        jsdoc: { description: 'Divide', tags },
+      },
+    ],
+    routes: [],
+  },
+];
+
+const taggedRoute = (tags) => [
+  {
+    file: '/src/a.js',
+    fileName: 'a.js',
+    functions: [],
+    routes: [
+      {
+        method: 'GET',
+        path: '/health',
+        params: [],
+        line: 1,
+        jsdoc: { description: 'Health', tags },
+      },
+    ],
+  },
+];
+
 describe('generateHTML', () => {
   it('returns valid HTML document', () => {
     const html = generateHTML(mockApiData);
@@ -379,5 +413,61 @@ describe('generateHTML', () => {
     expect(html).toContain(
       '<div class="code-block">curl http://localhost:3000/any</div>',
     );
+  });
+
+  it('shows a deprecation notice', () => {
+    const html = generateHTML(
+      taggedFn([{ tag: 'deprecated', description: 'Use b' }]),
+    );
+    expect(html).toContain(
+      '<div class="deprecated"><strong>Deprecated</strong> Use b</div>',
+    );
+  });
+
+  it('links only http(s) targets and escapes the rest', () => {
+    const html = generateHTML(
+      taggedFn([
+        { tag: 'see', description: '{@link https://mdn.io?a=1&b=2|MDN}' },
+        { tag: 'see', description: '{@link javascript:alert(1) click}' },
+        { tag: 'see', description: '<b>raw</b>' },
+      ]),
+    );
+    expect(html).toContain('<a href="https://mdn.io?a=1&amp;b=2">MDN</a>');
+    expect(html).toContain('<code>click</code>');
+    expect(html).not.toContain('href="javascript:');
+    expect(html).toContain('&lt;b&gt;raw&lt;/b&gt;');
+  });
+
+  it('lists @throws with their types', () => {
+    const html = generateHTML(
+      taggedFn([
+        { tag: 'throws', type: 'RangeError', description: 'When b is 0' },
+      ]),
+    );
+    expect(html).toContain('<code>RangeError</code> — When b is 0');
+  });
+
+  it('uses an escaped @example in place of the usage example', () => {
+    const html = generateHTML(
+      taggedFn([
+        {
+          tag: 'example',
+          description: '<caption>Basic</caption>\nif (a < b) {\n  go();\n}',
+        },
+      ]),
+    );
+    expect(html).toContain('<div class="example-caption">Basic</div>');
+    expect(html).toContain(
+      '<div class="code-block">if (a &lt; b) {\n  go();\n}</div>',
+    );
+    expect(html).not.toContain('Usage Example');
+  });
+
+  it('uses a route @example in place of the example request', () => {
+    const html = generateHTML(
+      taggedRoute([{ tag: 'example', description: 'curl /health' }]),
+    );
+    expect(html).toContain('<div class="code-block">curl /health</div>');
+    expect(html).not.toContain('Example Request');
   });
 });
