@@ -653,58 +653,80 @@ app.get('/users', h);
     expect(routePaths(source)).toEqual(['GET /users']);
   });
 
-  it('keeps broad detection when the file creates no server', () => {
+  it('ignores values that cannot be servers in a file that creates none', () => {
     const source = `
-module.exports = (app) => {
-  app.get('/users', h);
-};
+const params = new URLSearchParams(query);
+const lookup = { get: (k) => k };
+const paths = ['/a'];
+params.get('/q');
+lookup.get('/x');
+paths.all('/y');
+api.get('/users', h);
 `;
     expect(routePaths(source)).toEqual(['GET /users']);
   });
 
-  it('recognises renamed express imports and requires', () => {
-    const imported = `
-import createApp, { Router as makeRouter } from 'express';
+  it('keeps routes on parameters next to a created server', () => {
+    const source = `
+import express from 'express';
+export function mount(router) {
+  router.get('/a', h);
+}
+const app = express();
+app.get('/b', h);
+const register = (server = defaultServer) => server.post('/c', h);
+`;
+    expect(routePaths(source)).toEqual(['GET /a', 'GET /b', 'POST /c']);
+  });
+
+  it('keeps routes on imported routers and servers from unknown calls', () => {
+    const source = `
+import { router as users } from './users.js';
+const app = require('express')();
 const api = createApp();
-const v1 = makeRouter();
-api.get('/a', h);
-v1.get('/b', h);
-other.get('/c', h);
+const local = require('./app');
+const hono = new Hono();
+users.get('/u', h);
+app.get('/a', h);
+api.get('/b', h);
+local.get('/c', h);
+hono.get('/d', h);
 `;
-    expect(routePaths(imported)).toEqual(['GET /a', 'GET /b']);
-
-    const required = `
-const e = require('express');
-const { Router: R } = require('express');
-const server = e();
-const r = R();
-const s2 = e.Router();
-server.get('/a', h);
-r.get('/b', h);
-s2.get('/c', h);
-other.get('/d', h);
-`;
-    expect(routePaths(required)).toEqual(['GET /a', 'GET /b', 'GET /c']);
+    expect(routePaths(source)).toEqual([
+      'GET /u',
+      'GET /a',
+      'GET /b',
+      'GET /c',
+      'GET /d',
+    ]);
   });
 
-  it('recognises Fastify servers, including awaited ones', () => {
+  it('keeps a name bound to both a server and a non-server value', () => {
     const source = `
-import Fastify from 'fastify';
-const server = Fastify({ logger: true });
-let other;
-other = await fastify();
+let server = new Map();
+server = fastify();
 server.get('/a', h);
-other.route({ method: 'POST', url: '/b', handler: h });
-store.get('/c', h);
 `;
-    expect(routePaths(source)).toEqual(['GET /a', 'POST /b']);
+    expect(routePaths(source)).toEqual(['GET /a']);
   });
 
-  it('recognises new Router() and chained routes on inferred servers', () => {
+  it('keeps routes on member expressions such as this.app', () => {
     const source = `
-const router = new Router();
-router.route('/items').get(h).post(h);
+class Api {
+  start() {
+    this.app.get('/a', h);
+  }
+}
+`;
+    expect(routePaths(source)).toEqual(['GET /a']);
+  });
+
+  it('applies to chained and Fastify object routes', () => {
+    const source = `
+const cache = new Map();
 cache.route('/x').get(h);
+cache.route({ method: 'GET', url: '/y', handler: h });
+router.route('/items').get(h).post(h);
 `;
     expect(routePaths(source)).toEqual(['POST /items', 'GET /items']);
   });

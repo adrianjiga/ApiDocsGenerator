@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TypeScript parameter types, optionality, default values and return types are read from the source. Markdown and HTML show them where JSDoc gives no type, and JSON output carries them as `paramDetails` and `returnType`
 - `acceptTypeScriptReturns` config key: `audit` counts a declared TypeScript return type as a documented `@returns`
 - OpenAPI output uses `@param` descriptions and types for path parameters, `@returns` for the success response description, and `@deprecated` for `deprecated: true`
-- Route servers are inferred per file from `express()`, `express.Router()`, `Router()` and `fastify()` assignments, so calls such as `cache.get('/key')` on a `Map` are no longer reported as routes. Files that create no server keep the broad detection
+- Calls on names a file binds only to values that cannot be a server (`new Map()`, `new URLSearchParams()`, literals, object literals, functions) are no longer reported as routes, so `cache.get('/key')` on a `Map` is ignored. Servers from calls, imports, parameters and other classes are still detected
 - `--exported-only` flag and `exportedOnly` config key for `audit`: only exported functions (and all routes) count towards coverage
 - `--route-servers app,router` flag for `generate`, `audit` and `scan`
 - `head`, `options` and `all` routes; OpenAPI output leaves out `all`, which has no OpenAPI operation. HEAD examples use `curl -I`
@@ -27,6 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `@example` text kept its line breaks and indentation only in `source`; `@deprecated` and `@see` lost their first word to the tag name, and `@see {@link …}` was read as a type. Their full text is now the tag's `description`
 - An undocumented function or route with no parameters is no longer reported as missing `params`
 - The file line in Markdown and HTML output shows the path relative to the scanned directory, not just the file name
+- A destructured parameter is matched to its `@param` correctly when an earlier parameter has no tag; before, the audit could miss it and Markdown and HTML listed it twice
+- `@exception` descriptions keep their first word, as `@throws` ones do
+- Prototype methods of an exported constructor are marked exported, so `--exported-only` counts them
 - A TypeScript `this` parameter is no longer listed as a parameter that needs a `@param`
 - Optional route parameters (`/users/:id?`, Express 5 `/users{/:id}`) produced invalid OpenAPI paths and operationIds; each now becomes one path without the parameter and one with it
 - Regex-constrained route parameters (`/users/:id(\d+)`) are converted to `{id}` in OpenAPI paths

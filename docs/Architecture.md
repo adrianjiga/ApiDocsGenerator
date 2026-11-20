@@ -195,7 +195,7 @@ unparseable files.
 | `src/parser/ast.js`               | `parseSource` (typescript-estree), `traverse`, and AST helpers shared by the other parser modules     |
 | `src/parser/jsdoc.js`             | Comment collection, tag normalization, `parseJSDoc`, `matchJSDocToItems`                              |
 | `src/parser/exports.js`           | `collectExports`: module-level scope (blocks, IIFE, UMD) and exported names                           |
-| `src/parser/routes.js`            | HTTP methods, route server inference, Express/Fastify route handlers, `extractRouteParams`            |
+| `src/parser/routes.js`            | HTTP methods, route server filtering, Express/Fastify route handlers, `extractRouteParams`            |
 | `src/parser/items.js`             | Function, class and object-method collection; `collectItems` and `extractFunctions`                   |
 | `src/parser/scan.js`              | `scanDirectory` and `compileExcludeRegex`                                                             |
 | `src/analyzer.js`                 | Coverage rules (`checkDocumentation`) and `analyzeCoverage` report                                    |

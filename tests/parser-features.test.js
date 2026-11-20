@@ -374,14 +374,14 @@ router.get("/api/data", (req, res) => {});
     expect(paths).toContain('/api/data');
   });
 
-  it('ignores identifiers the file never assigns a server to once it creates one', () => {
+  it('keeps routes on identifiers the file does not declare', () => {
     const source = `
 const router = express.Router();
 app.get("/health", (req, res) => {});
 router.get("/api/data", (req, res) => {});
     `;
     const routes = extractFunctions(source).filter((f) => f.type === 'route');
-    expect(routes.map((r) => r.path)).toEqual(['/api/data']);
+    expect(routes.map((r) => r.path)).toEqual(['/health', '/api/data']);
   });
 });
 

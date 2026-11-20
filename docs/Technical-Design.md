@@ -175,16 +175,18 @@ Calls are inspected only when the callee is a member expression
   absolute URLs (`http.get('https://...')`) are ignored.
 - Path parameters are taken from `:name` segments (`/:(\w+)/g`).
 - The object the method is called on (for a chain, the object `.route()` is
-  called on) must be a server identifier:
-  - When `routeServers` is set, the identifiers in that list.
-  - Otherwise, the identifiers the file assigns a server to
-    (`inferRouteServers`): `const x = <factory>(...)`, `new <factory>(...)`,
-    `await <factory>(...)` or `x = <factory>(...)`, where the factory is
-    `express`, `Router`, `fastify`, `Fastify`, `<express>.Router`, or any name
-    the `express` or `fastify` module (or its `Router` export) is imported or
-    required as.
-  - When the file assigns no server, any object counts. This keeps routes in
-    files that receive the server as a parameter, such as Fastify plugins.
+  called on) must pass `routeServerFilter`:
+  - When `routeServers` is set, it must be an identifier in that list.
+  - Otherwise, any object counts except a name the file binds only to values
+    that cannot be a server (`nonServerNames`): literals, object and array
+    literals, functions and classes, and `new` of a JavaScript built-in
+    (`Map`, `Set`, `URLSearchParams`, `Headers`…). So `const cache = new Map();
+    cache.get('/key')` is not a route.
+  - A name with any other binding in the file counts as a possible server:
+    calls (`express()`, `createApp()`, `require('./app')`), `new` of any other
+    class (`new Hono()`), function parameters and imports. Scopes are not
+    tracked, so one such binding anywhere in the file is enough. Member
+    expressions such as `this.app` always count.
 
 Routes from one call (a chain, or a Fastify object with several methods) share
 a `group` id, the source offset of the call. This is internal and never written

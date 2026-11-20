@@ -7,7 +7,7 @@ import {
   traverse,
 } from './ast.js';
 import { collectExports, commonJsExportDepth } from './exports.js';
-import { handleRouteExpression, inferRouteServers } from './routes.js';
+import { handleRouteExpression, routeServerFilter } from './routes.js';
 
 /**
  * Push function metadata for a function node
@@ -177,13 +177,13 @@ function handleClassDeclaration(node, functions, exported, className, source) {
  * @param {Object} ast - Program AST
  * @param {string} source - Source code the AST was parsed from
  * @param {string[]} [routeServers] - Allowed server identifiers. When empty,
- *   the identifiers the file assigns a server or router to are used, and when
- *   it assigns none, any identifier counts.
+ *   any object counts except names the file binds only to values that cannot
+ *   be a server (see routeServerFilter).
  * @returns {Array} Array of function and route metadata objects
  */
 function collectItems(ast, source, routeServers) {
   const functions = [];
-  const servers = routeServers?.length ? routeServers : inferRouteServers(ast);
+  const isServer = routeServerFilter(ast, routeServers);
   const exports = collectExports(ast);
   const isExported = (node, name) =>
     exports.declarations.has(node) || (!!name && exports.names.has(name));
@@ -265,7 +265,7 @@ function collectItems(ast, source, routeServers) {
         break;
       case 'CallExpression':
         if (node.callee?.property) {
-          handleRouteExpression(node, functions, servers);
+          handleRouteExpression(node, functions, isServer);
         }
         break;
     }

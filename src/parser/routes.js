@@ -1,5 +1,13 @@
 import { propertyKey, staticString, traverse } from './ast.js';
 
+const FUNCTION_NODE_TYPES = new Set([
+  'FunctionDeclaration',
+  'FunctionExpression',
+  'ArrowFunctionExpression',
+  'TSDeclareFunction',
+  'TSEmptyBodyFunctionExpression',
+]);
+
 const HTTP_METHODS = [
   'get',
   'post',
@@ -11,119 +19,104 @@ const HTTP_METHODS = [
   'all',
 ];
 
-const SERVER_MODULES = new Set(['express', 'fastify']);
+const BUILT_IN_CLASSES = new Set([
+  'Map',
+  'WeakMap',
+  'Set',
+  'WeakSet',
+  'URL',
+  'URLSearchParams',
+  'Headers',
+  'FormData',
+  'Array',
+  'Object',
+  'Date',
+  'RegExp',
+  'Promise',
+  'Error',
+]);
 
-const DEFAULT_SERVER_FACTORIES = ['express', 'Router', 'fastify', 'Fastify'];
+const NON_SERVER_VALUE_TYPES = new Set([
+  'Literal',
+  'TemplateLiteral',
+  'ObjectExpression',
+  'ArrayExpression',
+  'FunctionExpression',
+  'ArrowFunctionExpression',
+  'ClassExpression',
+]);
 
 /**
- * Names bound to a module by `import` or `require()`, split into the module
- * itself (default and namespace imports, `const x = require('m')`) and its
- * named exports (`import { Router }`, `const { Router } = require('m')`)
- * @param {Object} node - ImportDeclaration or VariableDeclarator node
- * @returns {{module: string, local: string, imported?: string}[]} Bindings
+ * Whether a value cannot be an Express or Fastify server or router: a
+ * literal, an object or array literal, a function or class, or `new` of a
+ * JavaScript built-in such as `Map` or `URLSearchParams`. Calls such as
+ * `express()`, `createApp()` or `require('./app')`, and `new` of any other
+ * class, could return a server.
+ * @param {Object} value - Value a name is bound to
+ * @returns {boolean} True when the value is certainly not a server
  */
-function moduleBindings(node) {
-  if (node.type === 'ImportDeclaration') {
-    return node.specifiers.map((spec) => ({
-      module: node.source.value,
-      local: spec.local.name,
-      ...(spec.type === 'ImportSpecifier' && {
-        imported: spec.imported.name ?? spec.imported.value,
-      }),
-    }));
-  }
-  const init = node.init;
-  const isRequire =
-    init?.type === 'CallExpression' &&
-    init.callee.type === 'Identifier' &&
-    init.callee.name === 'require';
-  const module = isRequire && staticString(init.arguments[0]);
-  if (!module) return [];
-  if (node.id.type === 'Identifier') {
-    return [{ module, local: node.id.name }];
-  }
-  if (node.id.type !== 'ObjectPattern') return [];
-  return node.id.properties
-    .filter((p) => p.type === 'Property' && p.value.type === 'Identifier')
-    .map((p) => ({ module, local: p.value.name, imported: propertyKey(p) }));
+function isNonServerValue(value) {
+  if (NON_SERVER_VALUE_TYPES.has(value.type)) return true;
+  return (
+    value.type === 'NewExpression' &&
+    value.callee.type === 'Identifier' &&
+    BUILT_IN_CLASSES.has(value.callee.name)
+  );
 }
 
 /**
- * Identifiers a file assigns an Express or Fastify server or router to, such
- * as `app` in `const app = express()` or `router` in
- * `const router = express.Router()`. The factory names `express`, `Router`,
- * `fastify` and `Fastify` are always recognised, as are the local names the
- * `express` and `fastify` modules are imported or required under.
+ * Names the file binds only to values that cannot be a server, such as
+ * `cache` in `const cache = new Map()`. A name with any other binding in the
+ * file (a call, an import, a function parameter) is left out, so routes on it
+ * are still reported. Scopes are not tracked: bindings anywhere in the file
+ * count.
  * @param {Object} ast - Program AST
- * @returns {string[]} Server identifiers, empty when the file creates none
+ * @returns {Set<string>} Identifiers that are not servers
  */
-function inferRouteServers(ast) {
-  const factories = new Set(DEFAULT_SERVER_FACTORIES);
-  const modules = new Set(['express']);
-  const assignments = [];
+function nonServerNames(ast) {
+  const nonServer = new Set();
+  const possibleServer = new Set();
+  const bind = (name, value) => {
+    if (value && isNonServerValue(value)) nonServer.add(name);
+    else possibleServer.add(name);
+  };
 
   traverse(ast, (node) => {
-    if (
-      node.type === 'ImportDeclaration' ||
-      node.type === 'VariableDeclarator'
-    ) {
-      for (const binding of moduleBindings(node)) {
-        if (!SERVER_MODULES.has(binding.module)) continue;
-        if (!binding.imported || binding.imported === 'default') {
-          factories.add(binding.local);
-          modules.add(binding.local);
-        } else if (
-          binding.imported === 'Router' ||
-          binding.imported === 'fastify'
-        ) {
-          factories.add(binding.local);
-        }
-      }
-    }
     if (node.type === 'VariableDeclarator' && node.id.type === 'Identifier') {
-      assignments.push([node.id.name, node.init]);
+      if (node.init) bind(node.id.name, node.init);
     } else if (
       node.type === 'AssignmentExpression' &&
       node.left.type === 'Identifier'
     ) {
-      assignments.push([node.left.name, node.right]);
+      bind(node.left.name, node.right);
+    } else if (FUNCTION_NODE_TYPES.has(node.type)) {
+      for (const param of node.params) {
+        const target = param.type === 'AssignmentPattern' ? param.left : param;
+        if (target.type === 'Identifier') possibleServer.add(target.name);
+      }
+    } else if (node.type === 'ImportDeclaration') {
+      for (const spec of node.specifiers) possibleServer.add(spec.local.name);
     }
   });
 
-  const isFactoryCall = (value) => {
-    const call = value?.type === 'AwaitExpression' ? value.argument : value;
-    if (call?.type !== 'CallExpression' && call?.type !== 'NewExpression') {
-      return false;
-    }
-    const callee = call.callee;
-    if (callee.type === 'Identifier') return factories.has(callee.name);
-    return (
-      callee.type === 'MemberExpression' &&
-      !callee.computed &&
-      callee.object.type === 'Identifier' &&
-      modules.has(callee.object.name) &&
-      callee.property.name === 'Router'
-    );
-  };
-
-  return [
-    ...new Set(
-      assignments.filter(([, value]) => isFactoryCall(value)).map(([n]) => n),
-    ),
-  ];
+  for (const name of possibleServer) nonServer.delete(name);
+  return nonServer;
 }
 
 /**
- * Whether a route's server object passes the optional routeServers filter
- * @param {Object} serverNode - Callee object node (e.g. `app` in `app.get`)
- * @param {string[]} [routeServers] - Allowed server identifiers
- * @returns {boolean} True when the route should be reported
+ * Build the check that decides whether a call's object is a route server
+ * @param {Object} ast - Program AST
+ * @param {string[]} [routeServers] - Configured server identifiers
+ * @returns {function(Object): boolean} Called with the object a route method
+ *   is called on (e.g. `app` in `app.get`)
  */
-function isAllowedServer(serverNode, routeServers) {
-  if (!routeServers || routeServers.length === 0) return true;
-  return (
-    serverNode?.type === 'Identifier' && routeServers.includes(serverNode.name)
-  );
+function routeServerFilter(ast, routeServers) {
+  if (routeServers?.length) {
+    return (node) =>
+      node?.type === 'Identifier' && routeServers.includes(node.name);
+  }
+  const nonServers = nonServerNames(ast);
+  return (node) => !(node?.type === 'Identifier' && nonServers.has(node.name));
 }
 
 /**
@@ -182,13 +175,13 @@ function findRouteChainRoot(node) {
  * Handle a Fastify-style `server.route({ method, url, handler })` call
  * @param {Object} node - AST CallExpression node
  * @param {Array} functions - Accumulator array for extracted function/route metadata
- * @param {string[]} [routeServers] - Optional list of allowed server identifiers
+ * @param {function(Object): boolean} isServer - Result of routeServerFilter
  * @returns {void}
  */
-function handleRouteObject(node, functions, routeServers) {
+function handleRouteObject(node, functions, isServer) {
   const options = node.arguments[0];
   if (options?.type !== 'ObjectExpression') return;
-  if (!isAllowedServer(node.callee.object, routeServers)) return;
+  if (!isServer(node.callee.object)) return;
 
   const props = new Map();
   for (const prop of options.properties) {
@@ -222,23 +215,21 @@ function handleRouteObject(node, functions, routeServers) {
  * Handle a CallExpression node and push route metadata if it matches an HTTP method
  * @param {Object} node - AST CallExpression node
  * @param {Array} functions - Accumulator array for extracted function/route metadata
- * @param {string[]} [routeServers] - Optional list of Express/Fastify instance
- *   identifiers (e.g. ['app', 'router']) to restrict route detection to. When
- *   omitted, any identifier callee with a server-relative path is treated as a
- *   route.
+ * @param {function(Object): boolean} isServer - Result of routeServerFilter;
+ *   decides whether the object the method is called on is a server
  * @returns {void}
  */
-function handleRouteExpression(node, functions, routeServers) {
+function handleRouteExpression(node, functions, isServer) {
   const methodName = node.callee?.property?.name;
   if (methodName === 'route') {
-    handleRouteObject(node, functions, routeServers);
+    handleRouteObject(node, functions, isServer);
     return;
   }
   if (!methodName || !HTTP_METHODS.includes(methodName)) return;
 
   const chainRoot = findRouteChainRoot(node.callee.object);
   if (chainRoot) {
-    if (!isAllowedServer(chainRoot.callee.object, routeServers)) return;
+    if (!isServer(chainRoot.callee.object)) return;
     pushRoute(
       functions,
       methodName,
@@ -250,7 +241,7 @@ function handleRouteExpression(node, functions, routeServers) {
     return;
   }
 
-  if (!isAllowedServer(node.callee.object, routeServers)) return;
+  if (!isServer(node.callee.object)) return;
 
   // Only treat the call as a route when the first argument is a server-relative
   // path (e.g. "/users/:id"). This avoids misreporting unrelated HTTP-client
@@ -263,4 +254,4 @@ function handleRouteExpression(node, functions, routeServers) {
   );
 }
 
-export { handleRouteExpression, inferRouteServers };
+export { handleRouteExpression, routeServerFilter };

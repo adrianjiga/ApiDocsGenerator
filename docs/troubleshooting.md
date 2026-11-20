@@ -73,11 +73,11 @@ starting with `/`. Variables, interpolated templates and full URLs are not
 treated as routes, which is also what keeps HTTP-client calls such as
 `axios.get('https://...')` out.
 
-If a file creates a server (`const app = express()`, `express.Router()`,
-`Router()`, `fastify()`), only calls on the identifiers it assigns servers to
-count there. A file that creates `router` but also calls an imported `app`
-loses `app.get(...)`; list both with `routeServers` or `--route-servers
-app,router`.
+Calls on a name the file binds only to a value that cannot be a server are
+ignored: a literal, an object or array literal, a function, or `new` of a
+built-in such as `Map` or `URLSearchParams`. Servers created by a call
+(`express()`, `createApp()`), by `new` of another class, or received as a
+parameter or import are still detected.
 
 If `routeServers` is set, only calls on those identifiers count, in every file:
 `routeServers: ['app']` ignores `router.get(...)`.
